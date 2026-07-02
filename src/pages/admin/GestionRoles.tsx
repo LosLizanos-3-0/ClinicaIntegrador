@@ -14,7 +14,7 @@
  */
 
 import React, { useState } from "react";
-import type { Rol, MatrizPermisos } from "../types/clinica.types";
+import type { Rol, MatrizPermisos } from "../../types/clinica.types";
 
 // ─── Datos mock ───────────────────────────────────────────────────────────────
 const ROLES_MOCK: Rol[] = [

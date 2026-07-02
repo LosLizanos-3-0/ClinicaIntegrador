@@ -1,18 +1,33 @@
 /**
  * App.tsx
- * Integra las 4 pantallas del módulo Admin con navegación lateral.
+ * Integra las pantallas generales (login, registro, inicio) y los módulos
+ * de Admin y Farmacéutico con navegación lateral.
  *
  * Requiere: React 18+ · TypeScript · Bootstrap 5.3
  * (usa clases auxiliares definidas en clinica-admin.css)
  */
 
 import React, { useState } from "react";
-import GestionUsuarios from "./pages/GestionUsuarios";
-import GestionReportes from "./pages/GestionReportes";
-import GestionEspecialidades from "./pages/GestionEspecialidades";
-import GestionRoles from "./pages/GestionRoles";
+import Login from "./pages/farmaceutico/Login";
+import Inicio from "./pages/farmaceutico/Inicio";
+import GestionUsuarios from "./pages/admin/GestionUsuarios";
+import GestionReportes from "./pages/admin/GestionReportes";
+import GestionEspecialidades from "./pages/admin/GestionEspecialidades";
+import GestionRoles from "./pages/admin/GestionRoles";
+import ConsultaRecetas from "./pages/farmaceutico/ConsultaRecetas";
+import GestionInventario from "./pages/farmaceutico/GestionInventario";
+import type { Credencial } from "./types/clinica.types";
+import { clinicaStore } from "./types/clinicaStore";
 
-type Seccion = "usuarios" | "reportes" | "especialidades" | "roles";
+type Vista = "login" | "registro" | "inicio";
+
+type Seccion =
+  | "usuarios"
+  | "reportes"
+  | "especialidades"
+  | "roles"
+  | "recetas"
+  | "inventario";
 
 interface NavItem {
   id: Seccion;
@@ -20,23 +35,69 @@ interface NavItem {
   icono: string;
 }
 
-const NAV_ITEMS: NavItem[] = [
-  { id: "usuarios", label: "Usuarios", icono: "👤" },
-  { id: "reportes", label: "Reportes", icono: "📊" },
-  { id: "especialidades", label: "Especialidades", icono: "🩺" },
-  { id: "roles", label: "Roles", icono: "🛡️" },
-];
+const NAV_ITEMS_POR_ROL: Record<string, NavItem[]> = {
+  Administrador: [
+    { id: "usuarios", label: "Usuarios", icono: "👤" },
+    { id: "reportes", label: "Reportes", icono: "📊" },
+    { id: "especialidades", label: "Especialidades", icono: "🩺" },
+    { id: "roles", label: "Roles", icono: "🛡️" },
+  ],
+  Farmacéutico: [
+    { id: "recetas", label: "Recetas", icono: "" },
+    { id: "inventario", label: "Inventario", icono: "" },
+  ],
+};
 
 export default function App() {
-  const [seccion, setSeccion] = useState<Seccion>("usuarios");
+  const [vista, setVista] = useState<Vista>("login");
+  const [credencial, setCredencial] = useState<Credencial | null>(null);
+  const [seccion, setSeccion] = useState<Seccion | null>(null);
+
+  const handleIngresar = (c: Credencial) => {
+    setCredencial(c);
+    setSeccion(null);
+    setVista("inicio");
+  };
+
+  const handleCerrarSesion = () => {
+    clinicaStore.cerrarSesion();
+    setCredencial(null);
+    setSeccion(null);
+    setVista("login");
+  };
+
+  if (vista === "login") {
+    return <Login onIngresar={handleIngresar} onIrARegistro={() => setVista("registro")} />;
+  }
+
+
+
+  if (!credencial) {
+    return <Login onIngresar={handleIngresar} onIrARegistro={() => setVista("registro")} />;
+  }
+
+  if (!seccion) {
+    return (
+      <Inicio
+        credencial={credencial}
+        onSeleccionarModulo={(id) => setSeccion(id as Seccion)}
+        onCerrarSesion={handleCerrarSesion}
+      />
+    );
+  }
+
+  const NAV_ITEMS = NAV_ITEMS_POR_ROL[credencial.rol] ?? [];
 
   return (
     <div className="min-vh-100 bg-light d-flex">
       {/* Sidebar */}
       <aside className="sidebar-width bg-white border-end flex-shrink-0 d-none d-md-flex flex-column">
         {/* Logo */}
-        <div className="px-4 py-4 border-bottom">
+        <div className="px-4 py-4 border-bottom d-flex align-items-center justify-content-between">
           <p className="fs-5 fw-bold text-dark mb-0">🏥 ClinicSoft</p>
+          <button onClick={() => setSeccion(null)} className="btn btn-link text-secondary p-0" title="Inicio">
+            Inicio
+          </button>
         </div>
 
         {/* Menú */}
@@ -61,15 +122,26 @@ export default function App() {
         </nav>
 
         {/* Footer */}
-        <div className="px-4 py-3 border-top">
-          <p className="fs-12 text-secondary mb-0">
-            ITI-524 · Proyecto Integrador
-          </p>
+        <div className="px-4 py-3 border-top d-flex align-items-center justify-content-between">
+          <div className="d-flex align-items-center gap-2">
+            <div className="avatar-circle avatar-blue">{credencial.iniciales}</div>
+            <p className="fs-11 text-secondary mb-0">{credencial.nombreCompleto}</p>
+          </div>
+          <button onClick={handleCerrarSesion} className="btn btn-link text-secondary p-0" title="Cerrar sesión">
+            Cerrar Sesion
+          </button>
         </div>
       </aside>
 
       {/* Navegación móvil */}
       <div className="d-md-none position-fixed bottom-0 start-0 end-0 bg-white border-top d-flex z-40">
+        <button
+          onClick={() => setSeccion(null)}
+          className="flex-fill py-2 fs-12 d-flex flex-column align-items-center border-0 bg-white text-secondary"
+        >
+          <span className="fs-5">Inicio</span>
+          Inicio
+        </button>
         {NAV_ITEMS.map((item) => (
           <button
             key={item.id}
@@ -115,6 +187,10 @@ export default function App() {
             }}
           />
         )}
+
+        {seccion === "recetas" && <ConsultaRecetas />}
+
+        {seccion === "inventario" && <GestionInventario />}
       </main>
     </div>
   );

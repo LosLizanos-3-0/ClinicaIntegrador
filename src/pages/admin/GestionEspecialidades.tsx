@@ -19,8 +19,8 @@
  */
 
 import React, { useState, useMemo } from "react";
-import type { EstadoEspecialidad } from "../types/clinica.types";
-import { clinicaStore, useClinicaStore, type UsuarioClinica, type EspecialidadClinica } from "../types/clinicaStore";
+import type { EstadoEspecialidad } from "../../types/clinica.types";
+import { clinicaStore, useClinicaStore, type UsuarioClinica, type EspecialidadClinica } from "../../types/clinicaStore";
 
 // ─── Tipos internos ───────────────────────────────────────────────────────────
 type Vista = "grid" | "list";
@@ -556,3 +556,5 @@ function StatCard({ label, value, color = "text-dark" }: { label: string; value:
     </div>
   );
 }
+
+

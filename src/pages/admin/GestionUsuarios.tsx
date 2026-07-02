@@ -17,8 +17,8 @@
  */
 
 import React, { useState, useMemo } from "react";
-import type { RolUsuario, EstadoUsuario } from "../types/clinica.types";
-import { clinicaStore, useClinicaStore, type UsuarioClinica } from "../types/clinicaStore";
+import type { RolUsuario, EstadoUsuario } from "../../types/clinica.types";
+import { clinicaStore, useClinicaStore, type UsuarioClinica } from "../../types/clinicaStore";
 
 // "Enfermera" no existe en nuestro sistema, así que se excluye del selector
 // de roles y de los colores de badge. (El tipo `RolUsuario` de

@@ -1,5 +1,3 @@
-// ─── Tipos compartidos del sistema de clínica ────────────────────────────────
-
 export type EstadoUsuario = "Activo" | "Inactivo";
 
 export type RolUsuario =
@@ -19,7 +17,6 @@ export interface Usuario {
   iniciales: string;
 }
 
-// ─── Reportes (RF09) ──────────────────────────────────────────────────────────
 export type TipoReporte = "Consultas" | "Finanzas" | "Personal" | "Pacientes" | "Auditoría";
 
 export interface KPI {
@@ -47,7 +44,6 @@ export interface Reporte {
   colorClase: string;
 }
 
-// ─── Especialidades (RF03) ────────────────────────────────────────────────────
 export type EstadoEspecialidad = "Activa" | "Inactiva";
 
 export interface Especialidad {
@@ -62,7 +58,6 @@ export interface Especialidad {
   tags: string[];
 }
 
-// ─── Roles y permisos (RF08) ──────────────────────────────────────────────────
 export interface Rol {
   id: number;
   nombre: string;
@@ -73,3 +68,66 @@ export interface Rol {
 }
 
 export type MatrizPermisos = Record<number, Record<string, Record<string, boolean>>>;
+
+export interface Credencial {
+  usuario: string;
+  contrasena: string;
+  rol: RolUsuario;
+  nombreCompleto: string;
+  iniciales: string;
+}
+
+export interface Paciente {
+  id: number;
+  nombre: string;
+  apellido1: string;
+  apellido2: string;
+  cedula: string;
+  fechaNacimiento: string;
+  correo: string;
+  telefono: string;
+  contrasena: string;
+  registro: string;
+}
+
+export type CategoriaMedicamento =
+  | "Analgésico"
+  | "Antibiótico"
+  | "Antiinflamatorio"
+  | "Antialérgico"
+  | "Antihipertensivo"
+  | "Vitaminas"
+  | "Otro";
+
+export interface Medicamento {
+  id: number;
+  nombre: string;
+  presentacion: string;
+  unidad: string;
+  laboratorio: string;
+  categoria: CategoriaMedicamento;
+  stock: number;
+  stockMinimo: number;
+  precio: number;
+}
+
+export type EstadoReceta = "Pendiente" | "Validada" | "Entregada";
+
+export interface ItemReceta {
+  medicamentoId: number;
+  medicamento: string;
+  cantidad: number;
+  indicaciones: string;
+}
+
+export interface Receta {
+  id: number;
+  paciente: string;
+  cedulaPaciente: string;
+  medico: string;
+  especialidad: string;
+  fecha: string;
+  items: ItemReceta[];
+  estado: EstadoReceta;
+  observaciones?: string;
+}

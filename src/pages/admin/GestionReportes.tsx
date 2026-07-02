@@ -13,7 +13,7 @@
  */
 
 import React, { useState } from "react";
-import type { KPI, BarraEspecialidad, Reporte, TipoReporte } from "../types/clinica.types";
+import type { KPI, BarraEspecialidad, Reporte, TipoReporte } from "../../types/clinica.types";
 
 // ─── Datos mock ───────────────────────────────────────────────────────────────
 const KPIS_MOCK: KPI[] = [
