@@ -1,111 +1,178 @@
-:root {
-  --text: #6b6375;
-  --text-h: #08060d;
-  --bg: #fff;
-  --border: #e5e4e7;
-  --code-bg: #f4f3ec;
-  --accent: #aa3bff;
-  --accent-bg: rgba(170, 59, 255, 0.1);
-  --accent-border: rgba(170, 59, 255, 0.5);
-  --social-bg: rgba(244, 243, 236, 0.5);
-  --shadow:
-    rgba(0, 0, 0, 0.1) 0 10px 15px -3px, rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
+/* ===================================================================
+   clinica-admin.css
+   Utilidades complementarias a Bootstrap 5.3 para el módulo admin.
+   Reemplaza los valores "arbitrarios" que existían en Tailwind
+   (text-[11px], bg-purple-100, left-[18px], etc.) que Bootstrap no
+   trae de fábrica. Importar este archivo UNA vez, después del CSS
+   de Bootstrap, por ejemplo en main.tsx:  import "./clinica-admin.css";
+   =================================================================== */
 
-  --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --heading: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --mono: ui-monospace, Consolas, monospace;
+/* ---------- Tamaños de texto pequeños (Tailwind text-[10px]/[11px]) --- */
+.fs-10 { font-size: 10px; }
+.fs-11 { font-size: 11px; }
+.fs-12 { font-size: 12px; }
 
-  font: 18px/145% var(--sans);
-  letter-spacing: 0.18px;
-  color-scheme: light dark;
-  color: var(--text);
-  background: var(--bg);
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+/* ---------- Opacidad intermedia (Tailwind opacity-60) ------------------ */
+.opacity-60 { opacity: .6; }
 
-  @media (max-width: 1024px) {
-    font-size: 16px;
-  }
+/* ---------- Overlay de modal (Tailwind bg-black/40) --------------------- */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, .4);
+  z-index: 1055; /* por encima de .modal de bootstrap si se mezclan */
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --text: #9ca3af;
-    --text-h: #f3f4f6;
-    --bg: #16171d;
-    --border: #2e303a;
-    --code-bg: #1f2028;
-    --accent: #c084fc;
-    --accent-bg: rgba(192, 132, 252, 0.15);
-    --accent-border: rgba(192, 132, 252, 0.5);
-    --social-bg: rgba(47, 48, 58, 0.5);
-    --shadow:
-      rgba(0, 0, 0, 0.4) 0 10px 15px -3px, rgba(0, 0, 0, 0.25) 0 4px 6px -2px;
-  }
+/* ---------- Tarjetas / contenedores grises (bg-gray-50) ---------------- */
+.bg-soft { background-color: #f9fafb; }
 
-  #social .button-icon {
-    filter: invert(1) brightness(2);
-  }
-}
-
-#root {
-  width: 1126px;
-  max-width: 100%;
-  margin: 0 auto;
-  text-align: center;
-  border-inline: 1px solid var(--border);
-  min-height: 100svh;
+/* ---------- Avatares circulares con iniciales --------------------------- */
+.avatar-circle {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
   display: flex;
-  flex-direction: column;
-  box-sizing: border-box;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 600;
+  flex-shrink: 0;
 }
+.avatar-blue    { background-color: #dbeafe; color: #1d4ed8; }
+.avatar-emerald { background-color: #d1fae5; color: #047857; }
+.avatar-amber   { background-color: #fef3c7; color: #b45309; }
+.avatar-pink    { background-color: #fce7f3; color: #be185d; }
+.avatar-purple  { background-color: #ede9fe; color: #6d28d9; }
+.avatar-teal    { background-color: #ccfbf1; color: #0f766e; }
 
-body {
-  margin: 0;
-}
-
-h1,
-h2 {
-  font-family: var(--heading);
+/* ---------- Badges de color (roles, estados, tipos de reporte) --------- */
+.badge-soft {
+  font-size: 11px;
   font-weight: 500;
-  color: var(--text-h);
+  padding: .15rem .55rem;
+  border-radius: 999px;
+  display: inline-block;
+}
+.badge-soft-blue     { background-color: #dbeafe; color: #1d4ed8; }
+.badge-soft-emerald  { background-color: #d1fae5; color: #047857; }
+.badge-soft-green    { background-color: #dcfce7; color: #15803d; }
+.badge-soft-pink     { background-color: #fce7f3; color: #be185d; }
+.badge-soft-purple   { background-color: #ede9fe; color: #6d28d9; }
+.badge-soft-teal     { background-color: #ccfbf1; color: #0f766e; }
+.badge-soft-amber    { background-color: #fef3c7; color: #b45309; }
+.badge-soft-orange   { background-color: #ffedd5; color: #c2410c; }
+.badge-soft-gray     { background-color: #f3f4f6; color: #4b5563; }
+.badge-soft-red      { background-color: #fee2e2; color: #b91c1c; }
+
+/* ---------- Icono cuadrado de color (KPIs) ------------------------------ */
+.icon-box {
+  width: 2rem;
+  height: 2rem;
+  border-radius: .5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: .875rem;
 }
 
-h1 {
-  font-size: 56px;
-  letter-spacing: -1.68px;
-  margin: 32px 0;
-  @media (max-width: 1024px) {
-    font-size: 36px;
-    margin: 20px 0;
-  }
+/* ---------- Toggle switch (Gestión de roles) ---------------------------- */
+.toggle-switch {
+  width: 2.25rem;
+  height: 1.25rem;
+  border-radius: 999px;
+  position: relative;
+  border: none;
+  flex-shrink: 0;
+  transition: background-color .15s ease-in-out;
+  padding: 0;
 }
-h2 {
-  font-size: 24px;
-  line-height: 118%;
-  letter-spacing: -0.24px;
-  margin: 0 0 8px;
-  @media (max-width: 1024px) {
-    font-size: 20px;
-  }
+.toggle-switch.off { background-color: #d1d5db; }
+.toggle-switch.on  { background-color: #0d6efd; }
+.toggle-switch:focus {
+  outline: none;
+  box-shadow: 0 0 0 .2rem rgba(13, 110, 253, .25);
 }
-p {
-  margin: 0;
+.toggle-switch .knob {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 1rem;
+  height: 1rem;
+  background: #fff;
+  border-radius: 50%;
+  box-shadow: 0 1px 2px rgba(0,0,0,.15);
+  transition: left .15s ease-in-out;
 }
+.toggle-switch.on .knob { left: 18px; }
 
-code,
-.counter {
-  font-family: var(--mono);
+/* ---------- Botones icono cuadrados (editar / bloquear / eliminar) ----- */
+.btn-icon-sm {
+  width: 1.75rem;
+  height: 1.75rem;
   display: inline-flex;
-  border-radius: 4px;
-  color: var(--text-h);
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  font-size: .75rem;
+}
+.btn-icon-warn:hover   { background-color: #fef3c7 !important; color: #b45309 !important; border-color: #fde68a !important; }
+.btn-icon-danger:hover { background-color: #fee2e2 !important; color: #dc2626 !important; border-color: #fecaca !important; }
+
+/* ---------- Color de texto morado (no incluido en Bootstrap) ----------- */
+.text-purple { color: #7c3aed; }
+
+/* ---------- Filas de tabla tipo "grid" personalizado -------------------- */
+.grid-usuarios {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: .5rem;
+}
+.grid-especialidades-list {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: .5rem;
+}
+@media (min-width: 768px) {
+  .grid-usuarios {
+    grid-template-columns: 40px 1fr 180px 140px 100px 120px;
+  }
+  .grid-especialidades-list {
+    grid-template-columns: 1fr 100px 90px 100px 110px 90px;
+  }
 }
 
-code {
-  font-size: 15px;
-  line-height: 135%;
-  padding: 4px 8px;
-  background: var(--code-bg);
+/* ---------- Colores de barra no incluidos en Bootstrap ------------------ */
+.bg-purple-bar { background-color: #8b5cf6; }
+.bg-orange-bar { background-color: #f97316; }
+
+/* ---------- Barra de progreso delgada (reportes por especialidad) ------ */
+.bar-thin {
+  height: .5rem;
+  border-radius: 999px;
+  background-color: #e5e7eb;
+  overflow: hidden;
 }
+.bar-thin > div { height: 100%; border-radius: 999px; }
+
+.w-fit-content { width: fit-content; }
+
+/* ---------- Layout general de App.tsx (sidebar / contenido) ------------ */
+.sidebar-width { width: 13rem; }
+
+.border-end-4 {
+  border-right-width: 4px !important;
+  border-right-style: solid !important;
+}
+
+.z-40 { z-index: 1030; }
+
+.content-main {
+  padding-bottom: 4rem; /* espacio para el nav móvil inferior */
+}
+@media (min-width: 768px) {
+  .content-main { padding-bottom: 1.5rem; }
+}
+
+/* ---------- Hover suave para filas/cards -------------------------------- */
+.hover-row:hover { background-color: #f9fafb; }
+.card-hover-primary:hover { border-color: #93c5fd !important; }
