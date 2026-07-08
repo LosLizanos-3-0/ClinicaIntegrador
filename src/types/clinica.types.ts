@@ -86,8 +86,8 @@ export interface Paciente {
   fechaNacimiento: string;
   correo: string;
   telefono: string;
-  contrasena: string;
   registro: string;
+  estado: EstadoUsuario;
 }
 
 export type CategoriaMedicamento =
@@ -109,6 +109,48 @@ export interface Medicamento {
   stock: number;
   stockMinimo: number;
   precio: number;
+}
+
+export type EstadoCita = "Programada" | "Confirmada" | "Atendida" | "Cancelada";
+
+export interface Cita {
+  id: number;
+  pacienteId: number;
+  paciente: string;
+  cedulaPaciente: string;
+  medicoId: number;
+  medico: string;
+  especialidad: string;
+  fecha: string;
+  hora: string;
+  motivo: string;
+  estado: EstadoCita;
+  notas?: string;
+}
+
+export type EstadoFactura = "Pendiente" | "Pagada" | "Anulada";
+
+export type MetodoPago = "Efectivo" | "Tarjeta" | "Sinpe Móvil" | "Transferencia";
+
+export interface ItemFactura {
+  concepto: string;
+  cantidad: number;
+  precioUnitario: number;
+}
+
+export interface Factura {
+  id: number;
+  pacienteId: number;
+  paciente: string;
+  cedulaPaciente: string;
+  citaId?: number;
+  fecha: string;
+  items: ItemFactura[];
+  subtotal: number;
+  impuesto: number;
+  total: number;
+  estado: EstadoFactura;
+  metodoPago?: MetodoPago;
 }
 
 export type EstadoReceta = "Pendiente" | "Validada" | "Entregada";

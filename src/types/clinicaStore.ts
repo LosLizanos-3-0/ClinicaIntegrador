@@ -8,6 +8,10 @@ import type {
   Medicamento,
   Receta,
   RolUsuario,
+  Cita,
+  EstadoCita,
+  Factura,
+  MetodoPago,
 } from "./clinica.types";
 
 export interface UsuarioClinica extends Usuario {
@@ -22,6 +26,8 @@ interface ClinicaState {
   pacientes: Paciente[];
   medicamentos: Medicamento[];
   recetas: Receta[];
+  citas: Cita[];
+  facturas: Factura[];
   usuarioActual: Credencial | null;
 }
 
@@ -47,8 +53,8 @@ const USUARIOS_INICIALES: UsuarioClinica[] = [
 ];
 
 const PACIENTES_INICIALES: Paciente[] = [
-  { id: 1, nombre: "Marcela", apellido1: "Solano", apellido2: "Ureña",   cedula: "1-1234-5678", fechaNacimiento: "1990-04-12", correo: "marcela.solano@gmail.com", telefono: "8888-1234", contrasena: "paciente123", registro: "14/02/2024" },
-  { id: 2, nombre: "Diego",   apellido1: "Chinchilla", apellido2: "Rojas", cedula: "1-0987-6543", fechaNacimiento: "1985-11-02", correo: "diego.chinchilla@gmail.com", telefono: "8888-5678", contrasena: "paciente123", registro: "22/03/2024" },
+  { id: 1, nombre: "Marcela", apellido1: "Solano", apellido2: "Ureña",   cedula: "1-1234-5678", fechaNacimiento: "1990-04-12", correo: "marcela.solano@gmail.com", telefono: "8888-1234", registro: "14/02/2024", estado: "Activo" },
+  { id: 2, nombre: "Diego",   apellido1: "Chinchilla", apellido2: "Rojas", cedula: "1-0987-6543", fechaNacimiento: "1985-11-02", correo: "diego.chinchilla@gmail.com", telefono: "8888-5678", registro: "22/03/2024", estado: "Activo" },
 ];
 
 const MEDICAMENTOS_INICIALES: Medicamento[] = [
@@ -113,6 +119,68 @@ const RECETAS_INICIALES: Receta[] = [
   },
 ];
 
+const CITAS_INICIALES: Cita[] = [
+  {
+    id: 5001,
+    pacienteId: 1,
+    paciente: "Marcela Solano Ureña",
+    cedulaPaciente: "1-1234-5678",
+    medicoId: 1,
+    medico: "Dr. Rafael Morales",
+    especialidad: "Cardiología",
+    fecha: "03/07/2026",
+    hora: "09:00",
+    motivo: "Control de presión arterial",
+    estado: "Confirmada",
+  },
+  {
+    id: 5002,
+    pacienteId: 2,
+    paciente: "Diego Chinchilla Rojas",
+    cedulaPaciente: "1-0987-6543",
+    medicoId: 5,
+    medico: "Dra. Sandra Pérez",
+    especialidad: "Pediatría",
+    fecha: "03/07/2026",
+    hora: "10:30",
+    motivo: "Valoración general",
+    estado: "Programada",
+  },
+  {
+    id: 5003,
+    pacienteId: 1,
+    paciente: "Marcela Solano Ureña",
+    cedulaPaciente: "1-1234-5678",
+    medicoId: 8,
+    medico: "Dra. Karina Méndez",
+    especialidad: "Ginecología",
+    fecha: "25/06/2026",
+    hora: "14:00",
+    motivo: "Consulta de seguimiento",
+    estado: "Atendida",
+  },
+];
+
+const FACTURAS_INICIALES: Factura[] = [
+  {
+    id: 9001,
+    pacienteId: 1,
+    paciente: "Marcela Solano Ureña",
+    cedulaPaciente: "1-1234-5678",
+    citaId: 5003,
+    fecha: "25/06/2026",
+    items: [
+      { concepto: "Consulta Ginecología", cantidad: 1, precioUnitario: 25000 },
+      { concepto: "Ultrasonido", cantidad: 1, precioUnitario: 18000 },
+    ],
+    subtotal: 43000,
+    impuesto: 5590,
+    total: 48590,
+    estado: "Pagada",
+    metodoPago: "Tarjeta",
+  },
+];
+
 const CREDENCIALES_INICIALES: Credencial[] = [
   { usuario: "admin",         contrasena: "123",     rol: "Administrador", nombreCompleto: "Andrea Salas",       iniciales: "AS" },
   { usuario: "medico",        contrasena: "123",    rol: "Médico",        nombreCompleto: "Dr. Rafael Morales", iniciales: "RM" },
@@ -126,6 +194,8 @@ let state: ClinicaState = {
   pacientes: PACIENTES_INICIALES,
   medicamentos: MEDICAMENTOS_INICIALES,
   recetas: RECETAS_INICIALES,
+  citas: CITAS_INICIALES,
+  facturas: FACTURAS_INICIALES,
   usuarioActual: null,
 };
 
@@ -226,14 +296,44 @@ function correoDisponible(correo: string): boolean {
   return !existeUsuario && !existePaciente;
 }
 
-function registrarPaciente(paciente: Omit<Paciente, "id" | "registro">) {
+function registrarPaciente(paciente: Omit<Paciente, "id" | "registro" | "estado">) {
   const nuevo: Paciente = {
     ...paciente,
     id: Date.now(),
     registro: new Date().toLocaleDateString("es-CR"),
+    estado: "Activo",
   };
   setPacientes((prev) => [...prev, nuevo]);
   return nuevo;
+}
+
+function actualizarPaciente(paciente: Paciente) {
+  setPacientes((prev) => prev.map((p) => (p.id === paciente.id ? paciente : p)));
+  // Si el nombre del paciente cambia, se refleja en sus citas y facturas ya
+  // registradas para que no queden desactualizadas.
+  const nombreCompleto = `${paciente.nombre} ${paciente.apellido1} ${paciente.apellido2}`.trim();
+  setCitas((prev) =>
+    prev.map((c) =>
+      c.pacienteId === paciente.id ? { ...c, paciente: nombreCompleto, cedulaPaciente: paciente.cedula } : c
+    )
+  );
+  setFacturas((prev) =>
+    prev.map((f) =>
+      f.pacienteId === paciente.id ? { ...f, paciente: nombreCompleto, cedulaPaciente: paciente.cedula } : f
+    )
+  );
+}
+
+function toggleEstadoPaciente(id: number) {
+  setPacientes((prev) =>
+    prev.map((p) =>
+      p.id === id ? { ...p, estado: (p.estado === "Activo" ? "Inactivo" : "Activo") as EstadoUsuario } : p
+    )
+  );
+}
+
+function medicosActivos(state: ClinicaState): UsuarioClinica[] {
+  return state.usuarios.filter((u) => u.rol === "Médico" && u.estado === "Activo");
 }
 
 function setMedicamentos(updater: (prev: Medicamento[]) => Medicamento[]) {
@@ -264,6 +364,76 @@ function validarReceta(id: number, idIngresado: number): boolean {
 
 function marcarRecetaEntregada(id: number) {
   setRecetas((prev) => prev.map((r) => (r.id === id ? { ...r, estado: "Entregada" } : r)));
+}
+
+// ─── Citas ────────────────────────────────────────────────────────────────────
+function setCitas(updater: (prev: Cita[]) => Cita[]) {
+  state = { ...state, citas: updater(state.citas) };
+  emitChange();
+}
+
+function crearCita(cita: Omit<Cita, "id" | "estado">) {
+  const nueva: Cita = { ...cita, id: Date.now(), estado: "Programada" };
+  setCitas((prev) => [...prev, nueva]);
+  return nueva;
+}
+
+function actualizarCita(cita: Cita) {
+  setCitas((prev) => prev.map((c) => (c.id === cita.id ? cita : c)));
+}
+
+function confirmarCita(id: number) {
+  setCitas((prev) => prev.map((c) => (c.id === id ? { ...c, estado: "Confirmada" as EstadoCita } : c)));
+}
+
+function cancelarCita(id: number) {
+  setCitas((prev) => prev.map((c) => (c.id === id ? { ...c, estado: "Cancelada" as EstadoCita } : c)));
+}
+
+function marcarCitaAtendida(id: number) {
+  setCitas((prev) => prev.map((c) => (c.id === id ? { ...c, estado: "Atendida" as EstadoCita } : c)));
+}
+
+// ─── Facturas ─────────────────────────────────────────────────────────────────
+function setFacturas(updater: (prev: Factura[]) => Factura[]) {
+  state = { ...state, facturas: updater(state.facturas) };
+  emitChange();
+}
+
+const IVA = 0.13;
+
+function crearFactura(datos: {
+  pacienteId: number;
+  paciente: string;
+  cedulaPaciente: string;
+  citaId?: number;
+  items: { concepto: string; cantidad: number; precioUnitario: number }[];
+}) {
+  const subtotal = datos.items.reduce((acc, it) => acc + it.cantidad * it.precioUnitario, 0);
+  const impuesto = Math.round(subtotal * IVA);
+  const nueva: Factura = {
+    id: Date.now(),
+    pacienteId: datos.pacienteId,
+    paciente: datos.paciente,
+    cedulaPaciente: datos.cedulaPaciente,
+    citaId: datos.citaId,
+    fecha: new Date().toLocaleDateString("es-CR"),
+    items: datos.items,
+    subtotal,
+    impuesto,
+    total: subtotal + impuesto,
+    estado: "Pendiente",
+  };
+  setFacturas((prev) => [...prev, nueva]);
+  return nueva;
+}
+
+function marcarFacturaPagada(id: number, metodoPago: MetodoPago) {
+  setFacturas((prev) => prev.map((f) => (f.id === id ? { ...f, estado: "Pagada", metodoPago } : f)));
+}
+
+function anularFactura(id: number) {
+  setFacturas((prev) => prev.map((f) => (f.id === id ? { ...f, estado: "Anulada" } : f)));
 }
 
 function iniciarSesion(usuario: string, contrasena: string): Credencial | null {
@@ -297,10 +467,21 @@ export const clinicaStore = {
   nombreEspecialidad,
   correoDisponible,
   registrarPaciente,
+  actualizarPaciente,
+  toggleEstadoPaciente,
+  medicosActivos,
   crearMedicamento,
   actualizarMedicamento,
   validarReceta,
   marcarRecetaEntregada,
+  crearCita,
+  actualizarCita,
+  confirmarCita,
+  cancelarCita,
+  marcarCitaAtendida,
+  crearFactura,
+  marcarFacturaPagada,
+  anularFactura,
   iniciarSesion,
   cerrarSesion,
 };

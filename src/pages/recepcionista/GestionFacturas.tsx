@@ -1,0 +1,384 @@
+/**
+ * GestionFacturas.tsx
+ * Módulo de Recepcionista – Facturación de consultas
+ *   ✔ Generar facturas SIEMPRE asociadas a una cita "Atendida"
+ *   ✔ Precio unitario automático según la especialidad de la cita
+ *   ✔ Calcular subtotal, impuesto (IVA 13%) y total
+ *   ✔ Marcar facturas como pagadas / anuladas
+ *
+ * Requiere: React 18+ · TypeScript · Bootstrap 5.3
+ * (usa clases auxiliares definidas en clinica-admin.css / index.css)
+ *
+ * Las facturas viven en `clinicaStore.ts`. Al elegir una cita "Atendida" se
+ * precarga el paciente y el precio se calcula automáticamente según la
+ * especialidad (ver PRECIO_POR_ESPECIALIDAD más abajo). Ya no es posible
+ * facturar sin asociar una cita, ni editar cantidades/conceptos manualmente.
+ */
+
+import React, { useMemo, useState } from "react";
+import type { EstadoFactura, Factura, MetodoPago } from "../../types/clinica.types";
+import { clinicaStore, useClinicaStore } from "../../types/clinicaStore";
+
+const ESTADOS: EstadoFactura[] = ["Pendiente", "Pagada", "Anulada"];
+const METODOS_PAGO: MetodoPago[] = ["Efectivo", "Tarjeta", "Sinpe Móvil", "Transferencia"];
+
+const ESTADO_COLOR: Record<EstadoFactura, string> = {
+  Pendiente: "badge-soft-amber",
+  Pagada: "badge-soft-green",
+  Anulada: "badge-soft-gray",
+};
+
+const IVA = 0.13;
+
+// Precio fijo sugerido por especialidad. Ajustá estos montos a los reales
+// de tu clínica. Cualquier especialidad no listada usa PRECIO_DEFECTO.
+const PRECIO_POR_ESPECIALIDAD: Record<string, number> = {
+  "Cardiología": 25000,
+  "Pediatría": 20000,
+  "Ginecología": 25000,
+  "Neurología": 30000,
+  "Traumatología": 28000,
+};
+const PRECIO_DEFECTO = 20000;
+
+const formatoColones = (valor: number) =>
+  valor.toLocaleString("es-CR", { style: "currency", currency: "CRC", maximumFractionDigits: 0 });
+
+interface ModalNuevaFacturaProps {
+  onGuardar: (datos: {
+    pacienteId: number;
+    paciente: string;
+    cedulaPaciente: string;
+    citaId?: number;
+    items: { concepto: string; cantidad: number; precioUnitario: number }[];
+  }) => string | void;
+  onCerrar: () => void;
+}
+
+// ─── Modal Nueva factura ───────────────────────────────────────────────────────
+function ModalNuevaFactura({ onGuardar, onCerrar }: ModalNuevaFacturaProps) {
+  const { citas } = useClinicaStore();
+  const citasAtendidasSinFacturar = citas.filter((c) => c.estado === "Atendida");
+
+  const [citaId, setCitaId] = useState<number | "">("");
+  const [error, setError] = useState<string>("");
+
+  const citaSeleccionada = citas.find((c) => c.id === citaId);
+
+  const concepto = citaSeleccionada ? `Consulta ${citaSeleccionada.especialidad}` : "";
+  const precioUnitario = citaSeleccionada
+    ? PRECIO_POR_ESPECIALIDAD[citaSeleccionada.especialidad] ?? PRECIO_DEFECTO
+    : 0;
+
+  const totales = useMemo(() => {
+    const subtotal = precioUnitario;
+    const impuesto = Math.round(subtotal * IVA);
+    return { subtotal, impuesto, total: subtotal + impuesto };
+  }, [precioUnitario]);
+
+  const handleSubmit = () => {
+    if (!citaId || !citaSeleccionada) {
+      setError("Selecciona la cita atendida a facturar.");
+      return;
+    }
+    const resultado = onGuardar({
+      pacienteId: citaSeleccionada.pacienteId,
+      paciente: citaSeleccionada.paciente,
+      cedulaPaciente: citaSeleccionada.cedulaPaciente,
+      citaId: citaSeleccionada.id,
+      items: [{ concepto, cantidad: 1, precioUnitario }],
+    });
+    if (resultado) setError(resultado);
+  };
+
+  return (
+    <div className="modal-overlay d-flex align-items-center justify-content-center p-3">
+      <div className="bg-white rounded-4 shadow w-100" style={{ maxWidth: 480 }}>
+        <div className="px-4 py-3 border-bottom d-flex align-items-center justify-content-between">
+          <h3 className="fs-6 fw-medium text-dark mb-0">Generar factura</h3>
+          <button onClick={onCerrar} className="btn btn-link text-secondary fs-5 lh-1 text-decoration-none p-0">✕</button>
+        </div>
+
+        <div className="p-4 d-flex flex-column gap-3">
+          <Field label="Cita atendida a facturar">
+            <select
+              value={citaId}
+              onChange={(e) => setCitaId(e.target.value ? Number(e.target.value) : "")}
+              className="form-select form-select-sm"
+            >
+              <option value="">Selecciona una cita…</option>
+              {citasAtendidasSinFacturar.map((c) => (
+                <option key={c.id} value={c.id}>
+                  #{c.id} — {c.paciente} · {c.especialidad} · {c.fecha}
+                </option>
+              ))}
+            </select>
+            {citasAtendidasSinFacturar.length === 0 && (
+              <p className="fs-11 text-secondary mt-1 mb-0">
+                No hay citas atendidas pendientes de facturar.
+              </p>
+            )}
+          </Field>
+
+          {citaSeleccionada && (
+            <>
+              <div className="bg-soft border rounded p-2">
+                <p className="fs-12 fw-medium text-dark mb-0">{citaSeleccionada.paciente}</p>
+                <p className="fs-11 text-secondary mb-0">Cédula {citaSeleccionada.cedulaPaciente}</p>
+              </div>
+
+              <div className="border rounded p-2 d-flex justify-content-between align-items-center">
+                <span className="fs-12 text-dark">{concepto}</span>
+                <span className="fs-12 text-secondary">{formatoColones(precioUnitario)}</span>
+              </div>
+
+              <div className="bg-soft border rounded p-3">
+                <div className="d-flex justify-content-between fs-12 text-secondary">
+                  <span>Subtotal</span><span>{formatoColones(totales.subtotal)}</span>
+                </div>
+                <div className="d-flex justify-content-between fs-12 text-secondary">
+                  <span>IVA (13%)</span><span>{formatoColones(totales.impuesto)}</span>
+                </div>
+                <div className="d-flex justify-content-between fs-6 fw-medium text-dark mt-1">
+                  <span>Total a pagar</span><span>{formatoColones(totales.total)}</span>
+                </div>
+              </div>
+            </>
+          )}
+
+          {error && (
+            <div className="badge-soft badge-soft-red w-100 text-start py-2 px-3 fs-12">{error}</div>
+          )}
+        </div>
+
+        <div className="px-4 py-3 border-top d-flex justify-content-end gap-2">
+          <button onClick={onCerrar} className="btn btn-outline-secondary btn-sm">
+            Cancelar
+          </button>
+          <button onClick={handleSubmit} className="btn btn-primary btn-sm">
+            Generar factura
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Modal detalle / cobro ─────────────────────────────────────────────────────
+function ModalDetalleFactura({ factura, onCerrar }: { factura: Factura; onCerrar: () => void }) {
+  const [metodoPago, setMetodoPago] = useState<MetodoPago>("Efectivo");
+
+  return (
+    <div className="modal-overlay d-flex align-items-center justify-content-center p-3">
+      <div className="bg-white rounded-4 shadow w-100" style={{ maxWidth: 480 }}>
+        <div className="px-4 py-3 border-bottom d-flex align-items-center justify-content-between">
+          <h3 className="fs-6 fw-medium text-dark mb-0">Factura #{factura.id}</h3>
+          <button onClick={onCerrar} className="btn btn-link text-secondary fs-5 lh-1 text-decoration-none p-0">✕</button>
+        </div>
+
+        <div className="p-4 d-flex flex-column gap-3">
+          <div className="d-flex align-items-center justify-content-between">
+            <div>
+              <p className="fw-medium text-dark mb-0">{factura.paciente}</p>
+              <p className="fs-11 text-secondary mb-0">Cédula {factura.cedulaPaciente} · {factura.fecha}</p>
+            </div>
+            <span className={`badge-soft ${ESTADO_COLOR[factura.estado]}`}>{factura.estado}</span>
+          </div>
+
+          <div>
+            <p className="fs-12 fw-medium text-dark mb-2">Detalle</p>
+            <div className="d-flex flex-column gap-2">
+              {factura.items.map((item, i) => (
+                <div key={i} className="bg-soft border rounded p-2 d-flex justify-content-between">
+                  <div>
+                    <p className="fs-12 fw-medium text-dark mb-0">{item.concepto}</p>
+                    <p className="fs-11 text-secondary mb-0">Cantidad: {item.cantidad}</p>
+                  </div>
+                  <p className="fs-12 text-dark mb-0">{formatoColones(item.cantidad * item.precioUnitario)}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="bg-soft border rounded p-3">
+            <div className="d-flex justify-content-between fs-12 text-secondary">
+              <span>Subtotal</span><span>{formatoColones(factura.subtotal)}</span>
+            </div>
+            <div className="d-flex justify-content-between fs-12 text-secondary">
+              <span>IVA (13%)</span><span>{formatoColones(factura.impuesto)}</span>
+            </div>
+            <div className="d-flex justify-content-between fs-6 fw-medium text-dark mt-1">
+              <span>Total</span><span>{formatoColones(factura.total)}</span>
+            </div>
+          </div>
+
+          {factura.estado === "Pagada" && factura.metodoPago && (
+            <p className="fs-12 text-success text-center mb-0">Pagada con {factura.metodoPago}.</p>
+          )}
+
+          {factura.estado === "Anulada" && (
+            <p className="fs-12 text-secondary text-center mb-0">Esta factura fue anulada.</p>
+          )}
+
+          {factura.estado === "Pendiente" && (
+            <>
+              <Field label="Método de pago">
+                <select
+                  value={metodoPago}
+                  onChange={(e) => setMetodoPago(e.target.value as MetodoPago)}
+                  className="form-select form-select-sm"
+                >
+                  {METODOS_PAGO.map((m) => <option key={m}>{m}</option>)}
+                </select>
+              </Field>
+              <div className="d-flex gap-2">
+                <button
+                  onClick={() => { clinicaStore.anularFactura(factura.id); onCerrar(); }}
+                  className="btn btn-outline-danger btn-sm flex-fill"
+                >
+                  Anular factura
+                </button>
+                <button
+                  onClick={() => { clinicaStore.marcarFacturaPagada(factura.id, metodoPago); onCerrar(); }}
+                  className="btn btn-success btn-sm flex-fill"
+                >
+                  Registrar pago
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Componente principal ─────────────────────────────────────────────────────
+export default function GestionFacturas() {
+  const { facturas } = useClinicaStore();
+
+  const [busqueda, setBusqueda] = useState<string>("");
+  const [filtroEstado, setFiltroEstado] = useState<string>("Todos");
+  const [mostrarNueva, setMostrarNueva] = useState<boolean>(false);
+  const [facturaActiva, setFacturaActiva] = useState<Factura | null>(null);
+
+  const facturasFiltradas = useMemo(() => {
+    const texto = busqueda.trim().toLowerCase();
+    return facturas
+      .filter((f) => filtroEstado === "Todos" || f.estado === filtroEstado)
+      .filter((f) =>
+        texto === "" ||
+        f.paciente.toLowerCase().includes(texto) ||
+        f.cedulaPaciente.includes(texto) ||
+        String(f.id).includes(texto)
+      )
+      .sort((a, b) => b.id - a.id);
+  }, [facturas, busqueda, filtroEstado]);
+
+  const stats = {
+    pendientes: facturas.filter((f) => f.estado === "Pendiente").length,
+    pagadas: facturas.filter((f) => f.estado === "Pagada").length,
+    totalCobrado: facturas.filter((f) => f.estado === "Pagada").reduce((acc, f) => acc + f.total, 0),
+  };
+
+  const guardarFactura: ModalNuevaFacturaProps["onGuardar"] = (datos) => {
+    clinicaStore.crearFactura(datos);
+    setMostrarNueva(false);
+  };
+
+  return (
+    <>
+      {mostrarNueva && (
+        <ModalNuevaFactura onGuardar={guardarFactura} onCerrar={() => setMostrarNueva(false)} />
+      )}
+      {facturaActiva && (
+        <ModalDetalleFactura factura={facturaActiva} onCerrar={() => setFacturaActiva(null)} />
+      )}
+
+      <div className="bg-white rounded-4 border overflow-hidden">
+        <div className="px-4 py-3 border-bottom bg-soft d-flex flex-wrap gap-3 align-items-start justify-content-between">
+          <div>
+            <h2 className="fs-6 fw-bold text-dark text-start mb-0">Facturación de consultas</h2>
+          </div>
+          <div className="d-flex gap-2">
+            <button onClick={() => setMostrarNueva(true)} className="btn btn-primary btn-sm">
+              + Generar factura
+            </button>
+          </div>
+        </div>
+
+        <div className="p-4">
+          {/* Stats */}
+          <div className="row row-cols-3 g-3 mb-4">
+            <div className="col"><StatCard label="Pendientes" value={stats.pendientes} color="text-warning" /></div>
+            <div className="col"><StatCard label="Pagadas" value={stats.pagadas} color="text-success" /></div>
+            <div className="col"><StatCard label="Total cobrado" value={formatoColones(stats.totalCobrado)} color="text-dark" /></div>
+          </div>
+
+          {/* Filtros */}
+          <div className="d-flex flex-column flex-sm-row gap-2 mb-3">
+            <div className="flex-fill d-flex align-items-center gap-2 bg-soft border rounded px-3 py-2">
+              <span className="text-secondary fs-6">🔍</span>
+              <input
+                value={busqueda}
+                onChange={(e) => setBusqueda(e.target.value)}
+                placeholder="Buscar por paciente, cédula o número de factura…"
+                className="form-control form-control-sm border-0 bg-transparent shadow-none p-0"
+              />
+            </div>
+            <select
+              value={filtroEstado}
+              onChange={(e) => setFiltroEstado(e.target.value)}
+              className="form-select form-select-sm bg-soft"
+              style={{ maxWidth: 200 }}
+            >
+              <option value="Todos">Todos los estados</option>
+              {ESTADOS.map((e) => <option key={e}>{e}</option>)}
+            </select>
+          </div>
+
+          {facturasFiltradas.length === 0 && (
+            <p className="fs-6 text-secondary text-center py-4 mb-0">No hay facturas para este filtro.</p>
+          )}
+
+          <div className="d-flex flex-column gap-2">
+            {facturasFiltradas.map((f) => (
+              <div key={f.id} className="border rounded p-3 d-flex align-items-center justify-content-between hover-row">
+                <div>
+                  <p className="fs-12 text-secondary mb-0">Factura #{f.id} · {f.fecha}</p>
+                  <p className="fw-medium text-dark mb-0">{f.paciente}</p>
+                  <p className="fs-11 text-secondary mb-0">{f.items.length} concepto(s) · {formatoColones(f.total)}</p>
+                </div>
+                <div className="d-flex align-items-center gap-2 flex-shrink-0">
+                  <span className={`badge-soft ${ESTADO_COLOR[f.estado]}`}>{f.estado}</span>
+                  <button onClick={() => setFacturaActiva(f)} className="btn btn-outline-secondary btn-sm">
+                    Ver detalle
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
+
+// ─── Subcomponentes ───────────────────────────────────────────────────────────
+function StatCard({ label, value, color = "text-dark" }: { label: string; value: number | string; color?: string }) {
+  return (
+    <div className="bg-soft border rounded px-3 py-3">
+      <p className={`fs-4 fw-medium mb-0 ${color}`}>{value}</p>
+      <p className="fs-11 text-secondary mt-1 mb-0">{label}</p>
+    </div>
+  );
+}
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <label className="form-label fs-12 text-secondary mb-1">{label}</label>
+      {children}
+    </div>
+  );
+}

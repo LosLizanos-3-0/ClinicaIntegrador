@@ -21,6 +21,9 @@ import GestionEspecialidades from "./pages/admin/GestionEspecialidades";
 import GestionRoles from "./pages/admin/GestionRoles";
 import ConsultaRecetas from "./pages/farmaceutico/ConsultaRecetas";
 import GestionInventario from "./pages/farmaceutico/GestionInventario";
+import GestionPacientes from "./pages/recepcionista/GestionPacientes";
+import GestionCitas from "./pages/recepcionista/GestionCitas";
+import GestionFacturas from "./pages/recepcionista/GestionFacturas";
 import type { Credencial } from "./types/clinica.types";
 import { clinicaStore } from "./types/clinicaStore";
 
@@ -32,7 +35,10 @@ type Seccion =
   | "especialidades"
   | "roles"
   | "recetas"
-  | "inventario";
+  | "inventario"
+  | "pacientes"
+  | "citas"
+  | "facturas";
 
 interface NavItem {
   id: Seccion;
@@ -50,6 +56,11 @@ const NAV_ITEMS_POR_ROL: Record<string, NavItem[]> = {
   Farmacéutico: [
     { id: "recetas",     label: "Recetas",     icono: "file-earmark-medical-fill" },
     { id: "inventario",  label: "Inventario",  icono: "box-seam-fill" },
+  ],
+  Recepcionista: [
+    { id: "pacientes", label: "Pacientes", icono: "🧾" },
+    { id: "citas", label: "Citas", icono: "📅" },
+    { id: "facturas", label: "Facturas", icono: "🧮" },
   ],
 };
 
@@ -197,6 +208,12 @@ export default function App() {
         {seccion === "recetas" && <ConsultaRecetas />}
 
         {seccion === "inventario" && <GestionInventario />}
+
+        {seccion === "pacientes" && <GestionPacientes />}
+
+        {seccion === "citas" && <GestionCitas />}
+
+        {seccion === "facturas" && <GestionFacturas />}
       </main>
     </div>
   );
