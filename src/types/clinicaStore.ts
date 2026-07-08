@@ -190,6 +190,17 @@ function actualizarEspecialidad(especialidad: EspecialidadClinica) {
   setEspecialidades((prev) => prev.map((e) => (e.id === especialidad.id ? especialidad : e)));
 }
 
+// RF03 – Activar / Desactivar especialidad (reemplaza el antiguo "eliminar").
+// Mismo patrón que toggleEstadoUsuario: invierte el estado inmutablemente
+// y notifica a los suscriptores (useSyncExternalStore) para re-render.
+function toggleEstadoEspecialidad(id: number) {
+  setEspecialidades((prev) =>
+    prev.map((e) =>
+      e.id === id ? { ...e, estado: (e.estado === "Activa" ? "Inactiva" : "Activa") as EspecialidadClinica["estado"] } : e
+    )
+  );
+}
+
 function eliminarEspecialidad(id: number) {
   setEspecialidades((prev) => prev.filter((e) => e.id !== id));
   setUsuarios((prev) => prev.map((u) => (u.especialidadId === id ? { ...u, especialidadId: undefined } : u)));
@@ -280,6 +291,7 @@ export const clinicaStore = {
   quitarEspecialidadDeMedico,
   crearEspecialidad,
   actualizarEspecialidad,
+  toggleEstadoEspecialidad,
   eliminarEspecialidad,
   medicosDeEspecialidad,
   nombreEspecialidad,

@@ -6,6 +6,10 @@
    trae de fábrica. Importar este archivo UNA vez, después del CSS
    de Bootstrap, por ejemplo en main.tsx:  import "./clinica-admin.css";
    =================================================================== */
+   /*instalar esta libreria*/
+   /*npm install bootstrap-icons  */
+   /* npm install bootstrap*/
+
 
 /* ---------- Tamaños de texto pequeños (Tailwind text-[10px]/[11px]) --- */
 .fs-10 { font-size: 10px; }
@@ -117,6 +121,14 @@
 }
 .btn-icon-warn:hover   { background-color: #fef3c7 !important; color: #b45309 !important; border-color: #fde68a !important; }
 .btn-icon-danger:hover { background-color: #fee2e2 !important; color: #dc2626 !important; border-color: #fecaca !important; }
+
+/* Fuerza el mismo gris exacto en el ícono, sin importar el matiz propio
+   del glifo de Bootstrap Icons (p. ej. bi-pencil-square se percibe algo
+   azulado por su antialiasing). Así editar/eliminar/bloquear siempre
+   coinciden en tono en Roles y en Especialidades. */
+.btn-icon-sm.text-secondary i {
+  color: #6c757d !important;
+}
 
 /* ---------- Color de texto morado (no incluido en Bootstrap) ----------- */
 .text-purple { color: #7c3aed; }

@@ -3,8 +3,13 @@
  * Integra las pantallas generales (login, registro, inicio) y los módulos
  * de Admin y Farmacéutico con navegación lateral.
  *
- * Requiere: React 18+ · TypeScript · Bootstrap 5.3
+ * Requiere: React 18+ · TypeScript · Bootstrap 5.3 · Bootstrap Icons 1.11+
+ * Agregar en el <head> del proyecto (si no está ya):
+ *   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
  * (usa clases auxiliares definidas en clinica-admin.css)
+ *
+ * Los íconos del menú lateral usan Bootstrap Icons (mismo set que el resto
+ * del sistema) en vez de emojis, para un tono más formal/profesional.
  */
 
 import React, { useState } from "react";
@@ -32,19 +37,19 @@ type Seccion =
 interface NavItem {
   id: Seccion;
   label: string;
-  icono: string;
+  icono: string; // nombre de ícono de Bootstrap Icons, sin el prefijo "bi-"
 }
 
 const NAV_ITEMS_POR_ROL: Record<string, NavItem[]> = {
   Administrador: [
-    { id: "usuarios", label: "Usuarios", icono: "👤" },
-    { id: "reportes", label: "Reportes", icono: "📊" },
-    { id: "especialidades", label: "Especialidades", icono: "🩺" },
-    { id: "roles", label: "Roles", icono: "🛡️" },
+    { id: "usuarios",        label: "Usuarios",        icono: "people-fill" },
+    { id: "reportes",        label: "Reportes",        icono: "bar-chart-fill" },
+    { id: "especialidades",  label: "Especialidades",  icono: "heart-pulse-fill" },
+    { id: "roles",           label: "Roles",            icono: "shield-lock-fill" },
   ],
   Farmacéutico: [
-    { id: "recetas", label: "Recetas", icono: "" },
-    { id: "inventario", label: "Inventario", icono: "" },
+    { id: "recetas",     label: "Recetas",     icono: "file-earmark-medical-fill" },
+    { id: "inventario",  label: "Inventario",  icono: "box-seam-fill" },
   ],
 };
 
@@ -94,9 +99,10 @@ export default function App() {
       <aside className="sidebar-width bg-white border-end flex-shrink-0 d-none d-md-flex flex-column">
         {/* Logo */}
         <div className="px-4 py-4 border-bottom d-flex align-items-center justify-content-between">
-          <p className="fs-5 fw-bold text-dark mb-0">🏥 ClinicSoft</p>
-          <button onClick={() => setSeccion(null)} className="btn btn-link text-secondary p-0" title="Inicio">
-            Inicio
+          <p className="fs-5 fw-bold text-dark mb-0">ClinicSoft</p>
+          <button onClick={() => setSeccion(null)} className="btn btn-link text-secondary p-0 d-flex align-items-center gap-1" title="Inicio">
+            <i className="bi bi-house-door-fill" aria-hidden="true" />
+            <span className="fs-12">Inicio</span>
           </button>
         </div>
 
@@ -112,7 +118,7 @@ export default function App() {
                   : "bg-white text-secondary hover-row"
               }`}
             >
-              <span className="fs-5">{item.icono}</span>
+              <i className={`bi bi-${item.icono} fs-5`} aria-hidden="true" />
 
               <div>
                 <p className="lh-1 mb-0">{item.label}</p>
@@ -128,7 +134,7 @@ export default function App() {
             <p className="fs-11 text-secondary mb-0">{credencial.nombreCompleto}</p>
           </div>
           <button onClick={handleCerrarSesion} className="btn btn-link text-secondary p-0" title="Cerrar sesión">
-            Cerrar Sesion
+            <i className="bi bi-box-arrow-right" aria-hidden="true" />
           </button>
         </div>
       </aside>
@@ -139,7 +145,7 @@ export default function App() {
           onClick={() => setSeccion(null)}
           className="flex-fill py-2 fs-12 d-flex flex-column align-items-center border-0 bg-white text-secondary"
         >
-          <span className="fs-5">Inicio</span>
+          <i className="bi bi-house-door-fill fs-5" aria-hidden="true" />
           Inicio
         </button>
         {NAV_ITEMS.map((item) => (
@@ -150,7 +156,7 @@ export default function App() {
               seccion === item.id ? "text-primary" : "text-secondary"
             }`}
           >
-            <span className="fs-5">{item.icono}</span>
+            <i className={`bi bi-${item.icono} fs-5`} aria-hidden="true" />
             {item.label}
           </button>
         ))}

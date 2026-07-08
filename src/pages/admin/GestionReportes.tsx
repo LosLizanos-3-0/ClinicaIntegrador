@@ -8,7 +8,9 @@
  *   ✔ Estado de citas (dona SVG)
  *   ✔ Listado de reportes con descarga
  *
- * Requiere: React 18+ · TypeScript · Bootstrap 5.3
+ * Requiere: React 18+ · TypeScript · Bootstrap 5.3 · Bootstrap Icons 1.11+
+ * Agregar en el <head> del proyecto (si no está ya):
+ *   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
  * (usa clases auxiliares definidas en clinica-admin.css)
  */
 
@@ -19,7 +21,7 @@ import type { KPI, BarraEspecialidad, Reporte, TipoReporte } from "../../types/c
 const KPIS_MOCK: KPI[] = [
   { label: "Citas del día",        valor: "29", delta: "", positivo: true, icono: "📅", colorClase: "badge-soft-blue" },
   { label: "Ingresos del mes",     valor: "₡48,620", delta: "", positivo: true, icono: "💰", colorClase: "badge-soft-emerald" },
-  { label: "Pacientes registrados",        valor: "350",    delta: "-3% vs mes anterior",  positivo: true,  icono: "🚫", colorClase: "badge-soft-amber" },
+  { label: "Pacientes registrados",        valor: "350",    delta: "-3% vs mes anterior",  positivo: true,  icono: "✅", colorClase: "badge-soft-amber" },
   { label: "Satisfacción promedio",valor: "4.7",   delta: "", positivo: true, icono: "⭐", colorClase: "badge-soft-purple" },
 ];
 
@@ -52,6 +54,7 @@ interface GestionReportesProps {
   onNuevoReporte?: (r: Reporte) => void;
   onVerReporte?:   (r: Reporte) => void;
   onDescargar?:    (r: Reporte) => void;
+  onExportar?:     () => void;
 }
 
 // ─── Segmento dona ────────────────────────────────────────────────────────────
@@ -106,6 +109,7 @@ export default function GestionReportes({
   onNuevoReporte,
   onVerReporte,
   onDescargar,
+  onExportar,
 }: GestionReportesProps) {
   const [reportes,    setReportes]    = useState<Reporte[]>(reportesIniciales);
   const [filtroTipo,  setFiltroTipo]  = useState<string>("Todos");
@@ -147,7 +151,9 @@ export default function GestionReportes({
           <div className="bg-white rounded-4 shadow w-100" style={{ maxWidth: 448 }}>
             <div className="px-4 py-3 border-bottom d-flex align-items-center justify-content-between">
               <h3 className="fs-6 fw-medium text-dark mb-0">Generar nuevo reporte</h3>
-              <button onClick={() => setModalNuevo(false)} className="btn btn-link text-secondary fs-5 text-decoration-none p-0">✕</button>
+              <button onClick={() => setModalNuevo(false)} aria-label="Cerrar" className="btn btn-link text-secondary fs-5 text-decoration-none p-0">
+                <i className="bi bi-x-lg" aria-hidden="true" />
+              </button>
             </div>
             <div className="p-4 d-flex flex-column gap-3">
               <div>
@@ -196,12 +202,20 @@ export default function GestionReportes({
           <div>
             <h2 className="fs-6 fw-bold text-dark text-start mb-0">Gestión de reportes</h2>
           </div>
-          <button
-            onClick={() => setModalNuevo(true)}
-            className="btn btn-primary btn-sm"
-          >
-            + Nuevo reporte
-          </button>
+          <div className="d-flex gap-2">
+            <button
+              onClick={() => onExportar?.()}
+              className="btn btn-outline-secondary btn-sm d-flex align-items-center gap-1"
+            >
+              <i className="bi bi-download" aria-hidden="true" /> Exportar
+            </button>
+            <button
+              onClick={() => setModalNuevo(true)}
+              className="btn btn-primary btn-sm"
+            >
+              + Nuevo reporte
+            </button>
+          </div>
         </div>
 
         <div className="p-4">
@@ -243,10 +257,14 @@ export default function GestionReportes({
                   </div>
                   <div className="d-flex align-items-center gap-2 flex-shrink-0">
                     <span className={`badge-soft ${r.colorClase}`}>{r.tipo}</span>
-                    <button onClick={() => onVerReporte?.(r)} aria-label="Ver reporte"
-                      className="btn btn-outline-secondary btn-icon-sm bg-white">👁</button>
-                    <button onClick={() => onDescargar?.(r)} aria-label="Descargar"
-                      className="btn btn-outline-secondary btn-icon-sm bg-white">⬇</button>
+                    <button onClick={() => onVerReporte?.(r)} aria-label="Ver reporte" title="Ver reporte"
+                      className="btn btn-outline-secondary btn-icon-sm bg-white text-secondary">
+                      <i className="bi bi-eye" aria-hidden="true" />
+                    </button>
+                    <button onClick={() => onDescargar?.(r)} aria-label="Descargar" title="Descargar"
+                      className="btn btn-outline-secondary btn-icon-sm bg-white text-secondary">
+                      <i className="bi bi-download" aria-hidden="true" />
+                    </button>
                   </div>
                 </div>
               ))}

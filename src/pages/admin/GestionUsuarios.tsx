@@ -5,15 +5,21 @@
  *   ✔ Editar usuarios
  *   ✔ Asignar roles
  *   ✔ Asignar especialidad (solo rol "Médico")
- *   ✔ Desactivar / Activar usuarios
+ *   ✔ Desactivar / Activar usuarios (con confirmación)
  *
- * Requiere: React 18+ · TypeScript · Bootstrap 5.3
+ * Requiere: React 18+ · TypeScript · Bootstrap 5.3 · Bootstrap Icons 1.11+
+ * Agregar en el <head> del proyecto (si no está ya):
+ *   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
  * (usa clases auxiliares definidas en clinica-admin.css)
  *
  * Los datos de usuarios y especialidades viven en `clinicaStore.ts`, un store
- * compartido con GestionEspecialidades.tsx. Así, crear/editar un usuario con
- * rol "Médico" aquí se refleja automáticamente en la pantalla de
+ * compartido con GestionEspecialidades.tsx y GestionRoles.tsx. Así, crear/editar
+ * un usuario con rol "Médico" aquí se refleja automáticamente en la pantalla de
  * especialidades, y viceversa.
+ *
+ * Activar/desactivar usuario pasa primero por un modal de confirmación (mismo
+ * patrón visual usado en GestionEspecialidades.tsx y GestionRoles.tsx), antes
+ * de llamar a `clinicaStore.toggleEstadoUsuario(id)`.
  */
 
 import React, { useState, useMemo } from "react";
@@ -58,6 +64,63 @@ interface ModalUsuarioProps {
   usuario?: UsuarioClinica;
   onGuardar: (form: FormUsuario) => void;
   onCerrar: () => void;
+}
+
+interface ModalConfirmarEstadoUsuarioProps {
+  usuario: UsuarioClinica;
+  onConfirmar: () => void;
+  onCerrar: () => void;
+}
+
+// ─── Modal: confirmar activar/desactivar usuario ──────────────────────────────
+function ModalConfirmarEstadoUsuario({ usuario, onConfirmar, onCerrar }: ModalConfirmarEstadoUsuarioProps) {
+  const vaADesactivar = usuario.estado === "Activo";
+  const accion = vaADesactivar ? "desactivar" : "activar";
+
+  return (
+    <div className="modal-overlay d-flex align-items-center justify-content-center p-3" style={{ zIndex: 1070 }}>
+      <div className="bg-white rounded-4 shadow w-100" style={{ maxWidth: 420 }}>
+        <div className="p-4 d-flex flex-column align-items-center text-center">
+          <div
+            className={`d-flex align-items-center justify-content-center rounded-circle mb-3 ${
+              vaADesactivar ? "bg-danger-subtle" : "bg-success-subtle"
+            }`}
+            style={{ width: 56, height: 56 }}
+          >
+            <i
+              className={`bi bi-exclamation-triangle-fill fs-3 ${
+                vaADesactivar ? "text-danger" : "text-success"
+              }`}
+              aria-hidden="true"
+            />
+          </div>
+
+          <h3 className="fs-6 fw-semibold text-dark mb-2">
+            {vaADesactivar ? "¿Desactivar usuario?" : "¿Activar usuario?"}
+          </h3>
+
+          <p className="fs-6 text-secondary mb-0">
+            ¿Deseas {accion} a <strong>{usuario.nombre}</strong>?
+            {vaADesactivar && (
+              <> No podrá iniciar sesión ni realizar acciones en el sistema mientras esté inactivo.</>
+            )}
+          </p>
+        </div>
+
+        <div className="px-4 py-3 border-top d-flex justify-content-end gap-2">
+          <button onClick={onCerrar} className="btn btn-outline-secondary btn-sm">
+            Cancelar
+          </button>
+          <button
+            onClick={onConfirmar}
+            className={`btn btn-sm ${vaADesactivar ? "btn-danger" : "btn-success"}`}
+          >
+            Aceptar
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 // ─── Modal Crear / Editar ─────────────────────────────────────────────────────
@@ -111,7 +174,9 @@ function ModalUsuario({ usuario, onGuardar, onCerrar }: ModalUsuarioProps) {
           <h3 className="fs-6 fw-medium text-dark mb-0">
             {esNuevo ? "Crear nuevo usuario" : "Editar usuario"}
           </h3>
-          <button onClick={onCerrar} className="btn btn-link text-secondary fs-5 lh-1 text-decoration-none p-0">✕</button>
+          <button onClick={onCerrar} aria-label="Cerrar" className="btn btn-link text-secondary fs-5 lh-1 text-decoration-none p-0">
+            <i className="bi bi-x-lg" aria-hidden="true" />
+          </button>
         </div>
 
         <div className="p-4 d-flex flex-column gap-3">
@@ -155,7 +220,7 @@ function ModalUsuario({ usuario, onGuardar, onCerrar }: ModalUsuarioProps) {
               >
                 <option value="">Selecciona una especialidad…</option>
                 {especialidadesActivas.map((esp) => (
-                  <option key={esp.id} value={esp.id}>{esp.icono} {esp.nombre}</option>
+                  <option key={esp.id} value={esp.id}>{esp.nombre}</option>
                 ))}
               </select>
               {especialidadesActivas.length === 0 && (
@@ -201,6 +266,7 @@ export default function GestionUsuarios() {
   const [pagina, setPagina]             = useState<number>(1);
   const [modalUsuario, setModalUsuario] = useState<UsuarioClinica | null | undefined>(undefined);
   // undefined = cerrado, null = nuevo, UsuarioClinica = editar
+  const [confirmEstadoUsuario, setConfirmEstadoUsuario] = useState<UsuarioClinica | null>(null);
   const POR_PAGINA = 5;
 
   const stats = useMemo(() => ({
@@ -232,14 +298,23 @@ export default function GestionUsuarios() {
     setModalUsuario(undefined);
   };
 
-  const toggleEstado = (usuario: UsuarioClinica) => {
-    clinicaStore.toggleEstadoUsuario(usuario.id);
+  // Abre el modal de confirmación en vez de togglear directamente
+  const solicitarCambioEstado = (usuario: UsuarioClinica) => {
+    setConfirmEstadoUsuario(usuario);
+  };
+
+  // Se ejecuta al confirmar en el modal
+  const confirmarCambioEstado = () => {
+    if (confirmEstadoUsuario) {
+      clinicaStore.toggleEstadoUsuario(confirmEstadoUsuario.id);
+    }
+    setConfirmEstadoUsuario(null);
   };
 
   const especialidadDe = (u: UsuarioClinica): string => {
     if (u.rol !== "Médico") return "—";
     const esp = especialidades.find((e) => e.id === u.especialidadId);
-    return esp ? `${esp.icono} ${esp.nombre}` : "—";
+    return esp ? esp.nombre : "—";
   };
 
   return (
@@ -249,6 +324,14 @@ export default function GestionUsuarios() {
           usuario={modalUsuario ?? undefined}
           onGuardar={guardarUsuario}
           onCerrar={() => setModalUsuario(undefined)}
+        />
+      )}
+
+      {confirmEstadoUsuario && (
+        <ModalConfirmarEstadoUsuario
+          usuario={confirmEstadoUsuario}
+          onConfirmar={confirmarCambioEstado}
+          onCerrar={() => setConfirmEstadoUsuario(null)}
         />
       )}
 
@@ -280,7 +363,7 @@ export default function GestionUsuarios() {
           {/* Filtros */}
           <div className="d-flex flex-column flex-sm-row gap-2 mb-3">
             <div className="flex-fill d-flex align-items-center gap-2 bg-soft border rounded px-3 py-2">
-              <span className="text-secondary fs-6">🔍</span>
+              <i className="bi bi-search text-secondary fs-6" aria-hidden="true" />
               <input
                 value={busqueda}
                 onChange={(e) => { setBusqueda(e.target.value); setPagina(1); }}
@@ -348,9 +431,14 @@ export default function GestionUsuarios() {
                   </span>
                 </div>
                 <div className="d-flex align-items-center justify-content-center gap-1">
-                  <IconBtn label="Editar"    onClick={() => setModalUsuario(u)}>✎</IconBtn>
-                  <IconBtn label={u.estado === "Activo" ? "Desactivar" : "Activar"} onClick={() => toggleEstado(u)} warn>
-                    {u.estado === "Activo" ? "🔒" : "🔓"}
+                  <IconBtn label="Editar" onClick={() => setModalUsuario(u)}>
+                    <i className="bi bi-pencil-square" aria-hidden="true" />
+                  </IconBtn>
+                  <IconBtn
+                    label={u.estado === "Activo" ? "Desactivar" : "Activar"}
+                    onClick={() => solicitarCambioEstado(u)}
+                  >
+                    <i className={`bi ${u.estado === "Activo" ? "bi-lock-fill" : "bi-unlock-fill"}`} aria-hidden="true" />
                   </IconBtn>
                 </div>
               </div>
@@ -395,26 +483,21 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   );
 }
 
+// Mismo look que los botones de acción de Gestión de especialidades / roles:
+// ícono Bootstrap, fondo blanco, borde gris, texto/ícono en gris secundario.
 function IconBtn({
-  children, label, onClick, warn = false, danger = false,
+  children, label, onClick,
 }: {
   children: React.ReactNode;
   label: string;
   onClick: () => void;
-  warn?: boolean;
-  danger?: boolean;
 }) {
-  const cls = danger
-    ? "btn-icon-danger"
-    : warn
-    ? "btn-icon-warn"
-    : "";
   return (
     <button
       aria-label={label}
       title={label}
       onClick={onClick}
-      className={`btn btn-outline-secondary btn-icon-sm bg-white text-secondary ${cls}`}
+      className="btn btn-outline-secondary btn-icon-sm bg-white text-secondary"
     >
       {children}
     </button>

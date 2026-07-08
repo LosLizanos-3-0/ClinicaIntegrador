@@ -5,29 +5,29 @@ interface ModuloInicio {
   id: string;
   label: string;
   descripcion: string;
-  icono: string;
+  icono: string; // nombre de ícono de Bootstrap Icons, sin el prefijo "bi-"
   colorClase: string;
 }
 
 const MODULOS_POR_ROL: Record<RolUsuario, ModuloInicio[]> = {
   Administrador: [
-    { id: "usuarios",       label: "Gestión de usuarios",       descripcion: "Crear, editar y asignar roles",       icono: "👤", colorClase: "badge-soft-blue" },
-    { id: "reportes",       label: "Gestión de reportes",       descripcion: "Reportes de citas y financieros",     icono: "📊", colorClase: "badge-soft-emerald" },
-    { id: "especialidades", label: "Gestión de especialidades", descripcion: "Especialidades médicas y médicos",    icono: "🩺", colorClase: "badge-soft-purple" },
-    { id: "roles",          label: "Gestión de roles",          descripcion: "Permisos por rol del sistema",        icono: "🛡️", colorClase: "badge-soft-amber" },
+    { id: "usuarios",       label: "Gestión de usuarios",       descripcion: "Crear, editar y asignar roles",       icono: "people-fill",        colorClase: "badge-soft-blue" },
+    { id: "reportes",       label: "Gestión de reportes",       descripcion: "Reportes de citas y financieros",     icono: "bar-chart-fill",      colorClase: "badge-soft-emerald" },
+    { id: "especialidades", label: "Gestión de especialidades", descripcion: "Especialidades médicas y médicos",    icono: "heart-pulse-fill",    colorClase: "badge-soft-purple" },
+    { id: "roles",          label: "Gestión de roles",          descripcion: "Permisos por rol del sistema",        icono: "shield-lock-fill",    colorClase: "badge-soft-amber" },
   ],
   Recepcionista: [
-    { id: "pacientes", label: "Gestión de pacientes", descripcion: "Registro y datos de pacientes", icono: "🧾", colorClase: "badge-soft-blue" },
-    { id: "citas",     label: "Gestión de citas",     descripcion: "Agendar, reprogramar y cancelar", icono: "📅", colorClase: "badge-soft-green" },
-    { id: "facturas",  label: "Generar facturas",     descripcion: "Facturación de consultas",       icono: "🧮", colorClase: "badge-soft-amber" },
+    { id: "pacientes", label: "Gestión de pacientes", descripcion: "Registro y datos de pacientes",   icono: "person-vcard-fill",   colorClase: "badge-soft-blue" },
+    { id: "citas",     label: "Gestión de citas",     descripcion: "Agendar, reprogramar y cancelar", icono: "calendar-check-fill", colorClase: "badge-soft-green" },
+    { id: "facturas",  label: "Generar facturas",     descripcion: "Facturación de consultas",        icono: "receipt-cutoff",      colorClase: "badge-soft-amber" },
   ],
   Médico: [
-    { id: "citas-medico", label: "Recepción de citas", descripcion: "Consulta y expediente del paciente", icono: "🩹", colorClase: "badge-soft-emerald" },
+    { id: "citas-medico", label: "Recepción de citas", descripcion: "Consulta y expediente del paciente", icono: "clipboard2-pulse-fill", colorClase: "badge-soft-emerald" },
   ],
   Enfermera: [],
   Farmacéutico: [
-    { id: "recetas",    label: "Consulta de recetas",     descripcion: "Validar y entregar medicamentos", icono: "", colorClase: "" },
-    { id: "inventario", label: "Gestión de inventario",   descripcion: "Añadir y modificar medicamentos", icono: "", colorClase: "" },
+    { id: "recetas",    label: "Consulta de recetas",   descripcion: "Validar y entregar medicamentos", icono: "file-earmark-medical-fill", colorClase: "badge-soft-blue" },
+    { id: "inventario", label: "Gestión de inventario", descripcion: "Añadir y modificar medicamentos", icono: "box-seam-fill",             colorClase: "badge-soft-teal" },
   ],
 };
 
@@ -77,8 +77,11 @@ export default function Inicio({ credencial, onSeleccionarModulo, onCerrarSesion
                 onClick={() => onSeleccionarModulo(m.id)}
                 className="btn text-start bg-white border rounded-4 p-4 w-100 h-100 card-hover-primary"
               >
-                <div className={`icon-box badge-soft ${m.colorClase} mb-3`} style={{ borderRadius: ".5rem", fontSize: "1.1rem" }}>
-                  {m.icono}
+                <div
+                  className={`icon-box badge-soft ${m.colorClase} mb-3 d-inline-flex align-items-center justify-content-center`}
+                  style={{ borderRadius: ".5rem", width: 40, height: 40, fontSize: "1.1rem" }}
+                >
+                  <i className={`bi bi-${m.icono}`} aria-hidden="true" />
                 </div>
                 <p className="fs-6 fw-medium text-dark mb-1">{m.label}</p>
                 <p className="fs-12 text-secondary mb-0">{m.descripcion}</p>
