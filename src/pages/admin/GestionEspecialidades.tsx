@@ -4,10 +4,12 @@
  *   ✔ Registrar especialidades
  *   ✔ Asignar / quitar médicos a especialidades
  *   ✔ Editar especialidades
- *   ✔ Eliminar / desactivar especialidades
+ *   ✔ Activar / Desactivar especialidades (con confirmación)
  *   ✔ Vista cuadrícula y lista
  *
- * Requiere: React 18+ · TypeScript · Bootstrap 5.3
+ * Requiere: React 18+ · TypeScript · Bootstrap 5.3 · Bootstrap Icons 1.11+
+ * Agregar en el <head> del proyecto (si no está ya, p. ej. por GestionRoles.tsx):
+ *   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
  * (usa clases auxiliares definidas en clinica-admin.css)
  *
  * Los datos de usuarios y especialidades viven en `clinicaStore.ts`, un store
@@ -16,6 +18,9 @@
  * `especialidadId` coincide con esta especialidad. Así, cualquier médico
  * creado/editado desde la pantalla de Usuarios aparece aquí automáticamente,
  * y viceversa.
+ *
+ * Activar/desactivar usa `clinicaStore.toggleEstadoEspecialidad(id)`, el
+ * mismo patrón que `toggleEstadoUsuario` en GestionUsuarios.tsx.
  */
 
 import React, { useState, useMemo } from "react";
@@ -40,6 +45,63 @@ interface ModalGestionMedicosProps {
   onQuitar: (medicoId: number) => void;
   onCerrar: () => void;
   vistaInicial?: "lista" | "agregar";
+}
+
+interface ModalConfirmarEstadoProps {
+  especialidad: EspecialidadClinica;
+  onConfirmar: () => void;
+  onCerrar: () => void;
+}
+
+// ─── Modal: confirmar activar/desactivar especialidad ─────────────────────────
+function ModalConfirmarEstado({ especialidad, onConfirmar, onCerrar }: ModalConfirmarEstadoProps) {
+  const vaADesactivar = especialidad.estado === "Activa";
+  const accion = vaADesactivar ? "desactivar" : "activar";
+
+  return (
+    <div className="modal-overlay d-flex align-items-center justify-content-center p-3" style={{ zIndex: 1070 }}>
+      <div className="bg-white rounded-4 shadow w-100" style={{ maxWidth: 420 }}>
+        <div className="p-4 d-flex flex-column align-items-center text-center">
+          <div
+            className={`d-flex align-items-center justify-content-center rounded-circle mb-3 ${
+              vaADesactivar ? "bg-danger-subtle" : "bg-success-subtle"
+            }`}
+            style={{ width: 56, height: 56 }}
+          >
+            <i
+              className={`bi bi-exclamation-triangle-fill fs-3 ${
+                vaADesactivar ? "text-danger" : "text-success"
+              }`}
+              aria-hidden="true"
+            />
+          </div>
+
+          <h3 className="fs-6 fw-semibold text-dark mb-2">
+            {vaADesactivar ? "¿Desactivar especialidad?" : "¿Activar especialidad?"}
+          </h3>
+
+          <p className="fs-6 text-secondary mb-0">
+            ¿Deseas {accion} la especialidad <strong>{especialidad.nombre}</strong>?
+            {vaADesactivar && (
+              <> No aparecerá disponible para asignar a nuevos médicos mientras esté inactiva.</>
+            )}
+          </p>
+        </div>
+
+        <div className="px-4 py-3 border-top d-flex justify-content-end gap-2">
+          <button onClick={onCerrar} className="btn btn-outline-secondary btn-sm">
+            Cancelar
+          </button>
+          <button
+            onClick={onConfirmar}
+            className={`btn btn-sm ${vaADesactivar ? "btn-danger" : "btn-success"}`}
+          >
+            Aceptar
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 // ─── Modal: gestionar médicos de una especialidad ─────────────────────────────
@@ -74,7 +136,9 @@ function ModalGestionMedicos({
           <h3 className="fs-6 fw-medium text-dark mb-0">
             {vista === "lista" ? titulo : "Agregar médico"}
           </h3>
-          <button onClick={onCerrar} className="btn btn-link text-secondary fs-5 text-decoration-none p-0">✕</button>
+          <button onClick={onCerrar} aria-label="Cerrar" className="btn btn-link text-secondary fs-5 text-decoration-none p-0">
+            <i className="bi bi-x-lg" aria-hidden="true" />
+          </button>
         </div>
 
         <div className="p-4">
@@ -124,7 +188,7 @@ function ModalGestionMedicos({
           {vista === "agregar" && (
             <>
               <div className="d-flex align-items-center gap-2 bg-soft border rounded px-3 py-2 mb-3">
-                <span className="text-secondary fs-6">🔍</span>
+                <i className="bi bi-search text-secondary fs-6" aria-hidden="true" />
                 <input
                   value={busqueda}
                   onChange={(e) => setBusqueda(e.target.value)}
@@ -230,7 +294,9 @@ function ModalEspecialidad({ especialidad, onGuardar, onCerrar }: ModalEspeciali
           <h3 className="fs-6 fw-medium text-dark mb-0">
             {esNueva ? "Nueva especialidad" : "Editar especialidad"}
           </h3>
-          <button onClick={onCerrar} className="btn btn-link text-secondary fs-5 text-decoration-none p-0">✕</button>
+          <button onClick={onCerrar} aria-label="Cerrar" className="btn btn-link text-secondary fs-5 text-decoration-none p-0">
+            <i className="bi bi-x-lg" aria-hidden="true" />
+          </button>
         </div>
 
         <div className="p-4 d-flex flex-column gap-3">
@@ -251,11 +317,6 @@ function ModalEspecialidad({ especialidad, onGuardar, onCerrar }: ModalEspeciali
 
           <div className="row g-3">
             <div className="col-6">
-              <label className="form-label fs-12 text-secondary mb-1">Icono (emoji)</label>
-              <input value={form.icono} onChange={(e) => handleChange("icono", e.target.value)}
-                className="form-control form-control-sm" />
-            </div>
-            <div className="col-6">
               <label className="form-label fs-12 text-secondary mb-1">Estado</label>
               <select value={form.estado} onChange={(e) => handleChange("estado", e.target.value as EstadoEspecialidad)}
                 className="form-select form-select-sm">
@@ -263,10 +324,16 @@ function ModalEspecialidad({ especialidad, onGuardar, onCerrar }: ModalEspeciali
                 <option>Inactiva</option>
               </select>
             </div>
+            <div className="col-6">
+              <label className="form-label fs-12 text-secondary mb-1">Consultorios</label>
+              <input type="number" min={0} value={form.consultorios}
+                onChange={(e) => handleChange("consultorios", Number(e.target.value))}
+                className="form-control form-control-sm" />
+            </div>
           </div>
 
           <div className="row g-3">
-            <div className="col-6">
+            <div className="col-12">
               <label className="form-label fs-12 text-secondary mb-1">Médicos asignados</label>
               <div className="d-flex align-items-center gap-2 border rounded px-2 py-1 bg-soft">
                 <span className="fs-6 text-dark flex-fill">
@@ -283,17 +350,6 @@ function ModalEspecialidad({ especialidad, onGuardar, onCerrar }: ModalEspeciali
                   +
                 </button>
               </div>
-              {esNueva && (
-                <p className="fs-11 text-secondary mt-1 mb-0">
-                  Guarda la especialidad primero; luego podrás asignarle médicos.
-                </p>
-              )}
-            </div>
-            <div className="col-6">
-              <label className="form-label fs-12 text-secondary mb-1">Consultorios</label>
-              <input type="number" min={0} value={form.consultorios}
-                onChange={(e) => handleChange("consultorios", Number(e.target.value))}
-                className="form-control form-control-sm" />
             </div>
           </div>
 
@@ -310,7 +366,9 @@ function ModalEspecialidad({ especialidad, onGuardar, onCerrar }: ModalEspeciali
               {form.tags.map((t) => (
                 <span key={t} className="d-flex align-items-center gap-1 fs-11 px-2 py-1 rounded-pill border text-secondary">
                   {t}
-                  <button onClick={() => quitarTag(t)} className="btn btn-link p-0 text-secondary lh-1 text-decoration-none">✕</button>
+                  <button onClick={() => quitarTag(t)} aria-label={`Quitar etiqueta ${t}`} className="btn btn-link p-0 text-secondary lh-1 text-decoration-none">
+                    <i className="bi bi-x" aria-hidden="true" />
+                  </button>
                 </span>
               ))}
             </div>
@@ -349,6 +407,7 @@ export default function GestionEspecialidades() {
   const [vista,           setVista]          = useState<Vista>("grid");
   const [modal,           setModal]          = useState<EspecialidadClinica | null | undefined>(undefined);
   const [modalMedicosId,  setModalMedicosId] = useState<number | null>(null);
+  const [confirmEstado,   setConfirmEstado]  = useState<EspecialidadClinica | null>(null);
 
   const medicos = usuarios.filter((u) => u.rol === "Médico");
   const medicosDe = (especialidadId: number) => medicos.filter((m) => m.especialidadId === especialidadId);
@@ -376,10 +435,17 @@ export default function GestionEspecialidades() {
     setModal(undefined);
   };
 
-  const eliminar = (id: number) => {
-    if (window.confirm("¿Eliminar esta especialidad? Los médicos asignados quedarán sin especialidad.")) {
-      clinicaStore.eliminarEspecialidad(id);
+  // Abre el modal de confirmación en vez de cambiar el estado directamente
+  const solicitarCambioEstado = (especialidad: EspecialidadClinica) => {
+    setConfirmEstado(especialidad);
+  };
+
+  // Se ejecuta al confirmar en el modal
+  const confirmarCambioEstado = () => {
+    if (confirmEstado) {
+      clinicaStore.toggleEstadoEspecialidad(confirmEstado.id);
     }
+    setConfirmEstado(null);
   };
 
   const especialidadModalMedicos = especialidades.find((e) => e.id === modalMedicosId) ?? null;
@@ -403,6 +469,14 @@ export default function GestionEspecialidades() {
           onQuitar={(medicoId) => clinicaStore.quitarEspecialidadDeMedico(medicoId)}
           onCerrar={() => setModalMedicosId(null)}
           vistaInicial="lista"
+        />
+      )}
+
+      {confirmEstado && (
+        <ModalConfirmarEstado
+          especialidad={confirmEstado}
+          onConfirmar={confirmarCambioEstado}
+          onCerrar={() => setConfirmEstado(null)}
         />
       )}
 
@@ -432,7 +506,7 @@ export default function GestionEspecialidades() {
           {/* Filtros + toggle vista */}
           <div className="d-flex flex-column flex-sm-row gap-2 mb-4">
             <div className="flex-fill d-flex align-items-center gap-2 bg-soft border rounded px-3 py-2">
-              <span className="text-secondary fs-6">🔍</span>
+              <i className="bi bi-search text-secondary fs-6" aria-hidden="true" />
               <input value={busqueda} onChange={(e) => setBusqueda(e.target.value)}
                 placeholder="Buscar especialidad…"
                 className="form-control form-control-sm border-0 bg-transparent shadow-none p-0" />
@@ -445,12 +519,12 @@ export default function GestionEspecialidades() {
             </select>
             <div className="d-flex gap-1">
               <button onClick={() => setVista("grid")}
-                className={`btn btn-sm ${vista === "grid" ? "btn-outline-primary" : "btn-outline-secondary"}`}>
-                ▦ Cuadrícula
+                className={`btn btn-sm d-flex align-items-center gap-1 ${vista === "grid" ? "btn-outline-primary" : "btn-outline-secondary"}`}>
+                <i className="bi bi-grid-3x3-gap-fill" aria-hidden="true" /> Cuadrícula
               </button>
               <button onClick={() => setVista("list")}
-                className={`btn btn-sm ${vista === "list" ? "btn-outline-primary" : "btn-outline-secondary"}`}>
-                ☰ Lista
+                className={`btn btn-sm d-flex align-items-center gap-1 ${vista === "list" ? "btn-outline-primary" : "btn-outline-secondary"}`}>
+                <i className="bi bi-list-ul" aria-hidden="true" /> Lista
               </button>
             </div>
           </div>
@@ -469,13 +543,20 @@ export default function GestionEspecialidades() {
                     <div
                       className={`position-relative bg-white border rounded-4 p-3 card-hover-primary ${e.estado === "Inactiva" ? "opacity-60" : ""}`}>
                       <div className="position-absolute top-0 end-0 mt-3 me-3 d-flex gap-1">
-                        <button onClick={() => setModal(e)} aria-label="Editar"
-                          className="btn btn-outline-secondary btn-icon-sm bg-white">✎</button>
-                        <button onClick={() => eliminar(e.id)} aria-label="Eliminar"
-                          className="btn btn-outline-secondary btn-icon-sm bg-white btn-icon-danger">🗑</button>
+                        <button onClick={() => setModal(e)} aria-label="Editar" title="Editar"
+                          className="btn btn-outline-secondary btn-icon-sm bg-white text-secondary">
+                          <i className="bi bi-pencil-square" aria-hidden="true" />
+                        </button>
+                        <button
+                          onClick={() => solicitarCambioEstado(e)}
+                          aria-label={e.estado === "Activa" ? "Desactivar" : "Activar"}
+                          title={e.estado === "Activa" ? "Desactivar" : "Activar"}
+                          className="btn btn-outline-secondary btn-icon-sm bg-white text-secondary"
+                        >
+                          <i className={`bi ${e.estado === "Activa" ? "bi-lock-fill" : "bi-unlock-fill"}`} aria-hidden="true" />
+                        </button>
                       </div>
-                      <div className={`avatar-circle ${e.colorFondo} mb-2`} style={{ width: "2.5rem", height: "2.5rem", borderRadius: ".5rem", fontSize: "1.25rem" }}>{e.icono}</div>
-                      <p className="fs-6 fw-medium text-dark mb-0">{e.nombre}</p>
+                      <p className="fs-6 fw-medium text-dark mb-0 pe-5">{e.nombre}</p>
                       <div className="d-flex align-items-center gap-2 mt-1 mb-2">
                         <span className="fs-11 text-secondary">{e.codigo}</span>
                         <span className={`badge-soft ${e.estado === "Activa" ? "badge-soft-green" : "badge-soft-gray"}`}>
@@ -487,11 +568,13 @@ export default function GestionEspecialidades() {
                           type="button"
                           onClick={() => setModalMedicosId(e.id)}
                           title="Ver médicos asignados"
-                          className="btn btn-link p-0 fs-12 text-secondary text-decoration-underline"
+                          className="btn btn-link p-0 fs-12 text-secondary text-decoration-underline d-inline-flex align-items-center gap-1"
                         >
-                          👥 {cantidadMedicos} médicos
+                          <i className="bi bi-people-fill" aria-hidden="true" /> {cantidadMedicos} médicos
                         </button>
-                        <span>🚪 {e.consultorios} consultorios</span>
+                        <span className="d-inline-flex align-items-center gap-1">
+                          <i className="bi bi-door-open-fill" aria-hidden="true" /> {e.consultorios} consultorios
+                        </span>
                       </div>
                       <div className="d-flex gap-1 flex-wrap">
                         {e.tags.map((t) => (
@@ -516,10 +599,7 @@ export default function GestionEspecialidades() {
                 return (
                   <div key={e.id}
                     className={`grid-especialidades-list px-3 py-3 border-bottom align-items-center fs-6 hover-row ${e.estado === "Inactiva" ? "opacity-60" : ""}`}>
-                    <div className="d-flex align-items-center gap-2">
-                      <span className={`avatar-circle ${e.colorFondo}`} style={{ borderRadius: ".375rem", fontSize: ".875rem" }}>{e.icono}</span>
-                      <span className="fw-medium text-dark">{e.nombre}</span>
-                    </div>
+                    <span className="fw-medium text-dark">{e.nombre}</span>
                     <span className="text-secondary fs-12">{e.codigo}</span>
                     <span className={`badge-soft w-fit-content ${e.estado === "Activa" ? "badge-soft-green" : "badge-soft-gray"}`}>{e.estado}</span>
                     <button
@@ -532,10 +612,18 @@ export default function GestionEspecialidades() {
                     </button>
                     <span className="text-secondary">{e.consultorios}</span>
                     <div className="d-flex gap-1">
-                      <button onClick={() => setModal(e)} aria-label="Editar"
-                        className="btn btn-outline-secondary btn-icon-sm bg-white">✎</button>
-                      <button onClick={() => eliminar(e.id)} aria-label="Eliminar"
-                        className="btn btn-outline-secondary btn-icon-sm bg-white btn-icon-danger">🗑</button>
+                      <button onClick={() => setModal(e)} aria-label="Editar" title="Editar"
+                        className="btn btn-outline-secondary btn-icon-sm bg-white text-secondary">
+                        <i className="bi bi-pencil-square" aria-hidden="true" />
+                      </button>
+                      <button
+                        onClick={() => solicitarCambioEstado(e)}
+                        aria-label={e.estado === "Activa" ? "Desactivar" : "Activar"}
+                        title={e.estado === "Activa" ? "Desactivar" : "Activar"}
+                        className="btn btn-outline-secondary btn-icon-sm bg-white text-secondary"
+                      >
+                        <i className={`bi ${e.estado === "Activa" ? "bi-lock-fill" : "bi-unlock-fill"}`} aria-hidden="true" />
+                      </button>
                     </div>
                   </div>
                 );
@@ -556,5 +644,3 @@ function StatCard({ label, value, color = "text-dark" }: { label: string; value:
     </div>
   );
 }
-
-
