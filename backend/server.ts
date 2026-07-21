@@ -10,7 +10,7 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-app.use('/api', apiRoutes); // 👈 agrega esta línea
+app.use('/api', apiRoutes); 
 
 app.get('/api/test-db', async (req: Request, res: Response) => {
   try {

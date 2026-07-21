@@ -24,6 +24,7 @@ import GestionInventario from "./pages/farmaceutico/GestionInventario";
 import GestionPacientes from "./pages/recepcionista/GestionPacientes";
 import GestionCitas from "./pages/recepcionista/GestionCitas";
 import GestionFacturas from "./pages/recepcionista/GestionFacturas";
+import PanelCitasMedico from "./pages/medico/PanelCitasMedico";
 import type { Credencial } from "./types/clinica.types";
 import { clinicaStore } from "./types/clinicaStore";
 
@@ -38,7 +39,8 @@ type Seccion =
   | "inventario"
   | "pacientes"
   | "citas"
-  | "facturas";
+  | "facturas"
+  | "citasMedico";
 
 interface NavItem {
   id: Seccion;
@@ -61,6 +63,9 @@ const NAV_ITEMS_POR_ROL: Record<string, NavItem[]> = {
     { id: "pacientes", label: "Pacientes", icono: "🧾" },
     { id: "citas", label: "Citas", icono: "📅" },
     { id: "facturas", label: "Facturas", icono: "🧮" },
+  ],
+  Médico: [
+    { id: "citasMedico", label: "Citas", icono: "calendar-check-fill" },
   ],
 };
 
@@ -221,6 +226,8 @@ export default function App() {
         {seccion === "citas" && <GestionCitas />}
 
         {seccion === "facturas" && <GestionFacturas />}
+
+        {seccion === "citasMedico" && <PanelCitasMedico />}
       </main>
     </div>
   );
