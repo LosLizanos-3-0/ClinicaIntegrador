@@ -7,6 +7,6 @@ router.get('/', EntregaController.getEntregas);
 router.get('/:id', EntregaController.getEntregaById);
 router.post('/', EntregaController.createEntrega);
 router.put('/:id', EntregaController.updateEntrega);
-router.delete('/:id', EntregaController.deleteEntrega);
+router.patch('/:id/estado', EntregaController.cambiarEstadoEntrega);
 
 export default router;

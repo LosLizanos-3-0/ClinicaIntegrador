@@ -26,9 +26,7 @@ export const selectUsuario = async (): Promise<Usuario[]> => {
 
 export const selectUsuarioById = async (id: number): Promise<Usuario | undefined> => {
   const pool = await poolPromise;
-  const result = await pool.request()
-    .input('IdUsuario', sql.Int, id)
-    .execute('SelectUsuarioById');
+  const result = await pool.request().input('IdUsuario', sql.Int, id).execute('SelectUsuarioById');
   return result.recordset[0];
 };
 
@@ -49,9 +47,10 @@ export const updateUsuario = async (id: number, data: Usuario) => {
     .execute('UpdateUsuario');
 };
 
-export const deleteUsuario = async (id: number) => {
+export const camEstadoUsuario = async (id: number, estado: 'A' | 'I') => {
   const pool = await poolPromise;
   await pool.request()
     .input('IdUsuario', sql.Int, id)
-    .execute('DeleteUsuario');
+    .input('Estado', sql.Char(1), estado)
+    .execute('CamEstadoUsuario');
 };

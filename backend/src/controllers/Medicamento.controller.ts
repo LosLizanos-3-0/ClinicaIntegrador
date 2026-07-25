@@ -41,12 +41,12 @@ export const updateMedicamento = async (req: Request, res: Response) => {
   }
 };
 
-export const deleteMedicamento = async (req: Request, res: Response) => {
+export const cambiarEstadoMedicamento = async (req: Request, res: Response) => {
   try {
-    await MedicamentoModel.deleteMedicamento(Number(req.params.id));
-    res.json({ mensaje: 'Medicamento eliminado correctamente' });
+    await MedicamentoModel.camEstadoMedicamento(Number(req.params.id), req.body.Estado);
+    res.json({ mensaje: 'Estado del medicamento actualizado correctamente' });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ error: 'Error al eliminar el medicamento' });
+    res.status(500).json({ error: 'Error al cambiar el estado del medicamento' });
   }
 };

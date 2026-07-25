@@ -19,9 +19,7 @@ export const selectPago = async (): Promise<Pago[]> => {
 
 export const selectPagoById = async (id: number): Promise<Pago | undefined> => {
   const pool = await poolPromise;
-  const result = await pool.request()
-    .input('IdPago', sql.Int, id)
-    .execute('SelectPagoById');
+  const result = await pool.request().input('IdPago', sql.Int, id).execute('SelectPagoById');
   return result.recordset[0];
 };
 
@@ -35,9 +33,10 @@ export const updatePago = async (id: number, data: Pago) => {
     .execute('UpdatePago');
 };
 
-export const deletePago = async (id: number) => {
+export const camEstadoPago = async (id: number, estado: 'A' | 'I') => {
   const pool = await poolPromise;
   await pool.request()
     .input('IdPago', sql.Int, id)
-    .execute('DeletePago');
+    .input('Estado', sql.Char(1), estado)
+    .execute('CamEstadoPago');
 };

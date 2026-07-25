@@ -23,9 +23,7 @@ export const selectMedicamento = async (): Promise<Medicamento[]> => {
 
 export const selectMedicamentoById = async (id: number): Promise<Medicamento | undefined> => {
   const pool = await poolPromise;
-  const result = await pool.request()
-    .input('IdMedicamento', sql.Int, id)
-    .execute('SelectMedicamentoById');
+  const result = await pool.request().input('IdMedicamento', sql.Int, id).execute('SelectMedicamentoById');
   return result.recordset[0];
 };
 
@@ -43,9 +41,10 @@ export const updateMedicamento = async (id: number, data: Medicamento) => {
     .execute('UpdateMedicamento');
 };
 
-export const deleteMedicamento = async (id: number) => {
+export const camEstadoMedicamento = async (id: number, estado: 'A' | 'I') => {
   const pool = await poolPromise;
   await pool.request()
     .input('IdMedicamento', sql.Int, id)
-    .execute('DeleteMedicamento');
+    .input('Estado', sql.Char(1), estado)
+    .execute('CamEstadoMedicamento');
 };

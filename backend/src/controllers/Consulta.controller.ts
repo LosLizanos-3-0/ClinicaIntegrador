@@ -41,12 +41,12 @@ export const updateConsulta = async (req: Request, res: Response) => {
   }
 };
 
-export const deleteConsulta = async (req: Request, res: Response) => {
+export const cambiarEstadoConsulta = async (req: Request, res: Response) => {
   try {
-    await ConsultaModel.deleteConsulta(Number(req.params.id));
-    res.json({ mensaje: 'Consulta eliminada correctamente' });
+    await ConsultaModel.camEstadoConsulta(Number(req.params.id), req.body.Estado);
+    res.json({ mensaje: 'Estado de la consulta actualizado correctamente' });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ error: 'Error al eliminar la consulta' });
+    res.status(500).json({ error: 'Error al cambiar el estado de la consulta' });
   }
 };

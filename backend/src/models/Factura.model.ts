@@ -20,9 +20,7 @@ export const selectFactura = async (): Promise<Factura[]> => {
 
 export const selectFacturaById = async (id: number): Promise<Factura | undefined> => {
   const pool = await poolPromise;
-  const result = await pool.request()
-    .input('IdFactura', sql.Int, id)
-    .execute('SelectFacturaById');
+  const result = await pool.request().input('IdFactura', sql.Int, id).execute('SelectFacturaById');
   return result.recordset[0];
 };
 
@@ -37,9 +35,10 @@ export const updateFactura = async (id: number, data: Factura) => {
     .execute('UpdateFactura');
 };
 
-export const deleteFactura = async (id: number) => {
+export const camEstadoFactura = async (id: number, estado: string) => {
   const pool = await poolPromise;
   await pool.request()
     .input('IdFactura', sql.Int, id)
-    .execute('DeleteFactura');
+    .input('Estado', sql.VarChar(20), estado)
+    .execute('CamEstadoFactura');
 };

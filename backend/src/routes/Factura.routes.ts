@@ -7,6 +7,6 @@ router.get('/', FacturaController.getFacturas);
 router.get('/:id', FacturaController.getFacturaById);
 router.post('/', FacturaController.createFactura);
 router.put('/:id', FacturaController.updateFactura);
-router.delete('/:id', FacturaController.deleteFactura);
+router.patch('/:id/estado', FacturaController.cambiarEstadoFactura);
 
 export default router;

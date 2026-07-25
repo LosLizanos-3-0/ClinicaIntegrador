@@ -41,12 +41,12 @@ export const updatePago = async (req: Request, res: Response) => {
   }
 };
 
-export const deletePago = async (req: Request, res: Response) => {
+export const cambiarEstadoPago = async (req: Request, res: Response) => {
   try {
-    await PagoModel.deletePago(Number(req.params.id));
-    res.json({ mensaje: 'Pago eliminado correctamente' });
+    await PagoModel.camEstadoPago(Number(req.params.id), req.body.Estado);
+    res.json({ mensaje: 'Estado del pago actualizado correctamente' });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ error: 'Error al eliminar el pago' });
+    res.status(500).json({ error: 'Error al cambiar el estado del pago' });
   }
 };

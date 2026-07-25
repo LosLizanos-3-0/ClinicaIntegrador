@@ -20,9 +20,7 @@ export const selectDetalleReceta = async (): Promise<DetalleReceta[]> => {
 
 export const selectDetalleRecetaById = async (id: number): Promise<DetalleReceta | undefined> => {
   const pool = await poolPromise;
-  const result = await pool.request()
-    .input('IdDetalleReceta', sql.Int, id)
-    .execute('SelectDetalleRecetaById');
+  const result = await pool.request().input('IdDetalleReceta', sql.Int, id).execute('SelectDetalleRecetaById');
   return result.recordset[0];
 };
 
@@ -37,9 +35,10 @@ export const updateDetalleReceta = async (id: number, data: DetalleReceta) => {
     .execute('UpdateDetalleReceta');
 };
 
-export const deleteDetalleReceta = async (id: number) => {
+export const camEstadoDetalleReceta = async (id: number, estado: 'A' | 'I') => {
   const pool = await poolPromise;
   await pool.request()
     .input('IdDetalleReceta', sql.Int, id)
-    .execute('DeleteDetalleReceta');
+    .input('Estado', sql.Char(1), estado)
+    .execute('CamEstadoDetalleReceta');
 };

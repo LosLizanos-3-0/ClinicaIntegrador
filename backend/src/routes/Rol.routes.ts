@@ -7,6 +7,6 @@ router.get('/', RolController.getRoles);
 router.get('/:id', RolController.getRolById);
 router.post('/', RolController.createRol);
 router.put('/:id', RolController.updateRol);
-router.delete('/:id', RolController.deleteRol);
+router.patch('/:id/estado', RolController.cambiarEstadoRol);
 
 export default router;

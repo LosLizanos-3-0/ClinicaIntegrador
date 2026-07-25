@@ -22,9 +22,7 @@ export const selectCita = async (): Promise<Cita[]> => {
 
 export const selectCitaById = async (id: number): Promise<Cita | undefined> => {
   const pool = await poolPromise;
-  const result = await pool.request()
-    .input('IdCita', sql.Int, id)
-    .execute('SelectCitaById');
+  const result = await pool.request().input('IdCita', sql.Int, id).execute('SelectCitaById');
   return result.recordset[0];
 };
 
@@ -41,9 +39,10 @@ export const updateCita = async (id: number, data: Cita) => {
     .execute('UpdateCita');
 };
 
-export const deleteCita = async (id: number) => {
+export const camEstadoCita = async (id: number, estado: string) => {
   const pool = await poolPromise;
   await pool.request()
     .input('IdCita', sql.Int, id)
-    .execute('DeleteCita');
+    .input('Estado', sql.VarChar(20), estado)
+    .execute('CamEstadoCita');
 };

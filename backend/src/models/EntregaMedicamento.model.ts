@@ -18,9 +18,7 @@ export const selectEntregaMedicamento = async (): Promise<EntregaMedicamento[]> 
 
 export const selectEntregaMedicamentoById = async (id: number): Promise<EntregaMedicamento | undefined> => {
   const pool = await poolPromise;
-  const result = await pool.request()
-    .input('IdEntrega', sql.Int, id)
-    .execute('SelectEntregaMedicamentoById');
+  const result = await pool.request().input('IdEntrega', sql.Int, id).execute('SelectEntregaMedicamentoById');
   return result.recordset[0];
 };
 
@@ -33,9 +31,10 @@ export const updateEntregaMedicamento = async (id: number, data: EntregaMedicame
     .execute('UpdateEntregaMedicamento');
 };
 
-export const deleteEntregaMedicamento = async (id: number) => {
+export const camEstadoEntregaMedicamento = async (id: number, estado: 'A' | 'I') => {
   const pool = await poolPromise;
   await pool.request()
     .input('IdEntrega', sql.Int, id)
-    .execute('DeleteEntregaMedicamento');
+    .input('Estado', sql.Char(1), estado)
+    .execute('CamEstadoEntregaMedicamento');
 };

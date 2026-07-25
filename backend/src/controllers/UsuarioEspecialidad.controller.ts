@@ -12,8 +12,7 @@ export const getUsuarioEspecialidades = async (req: Request, res: Response) => {
 
 export const getByUsuario = async (req: Request, res: Response) => {
   try {
-    const data = await UEModel.selectUsuarioEspecialidadByUsuario(Number(req.params.idUsuario));
-    res.json(data);
+    res.json(await UEModel.selectUsuarioEspecialidadByUsuario(Number(req.params.idUsuario)));
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Error al obtener especialidades del usuario' });

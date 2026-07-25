@@ -26,10 +26,14 @@ export const selectPaciente = async (): Promise<Paciente[]> => {
 
 export const selectPacienteById = async (id: number): Promise<Paciente | undefined> => {
   const pool = await poolPromise;
-  const result = await pool.request()
-    .input('IdPaciente', sql.Int, id)
-    .execute('SelectPacienteById');
+  const result = await pool.request().input('IdPaciente', sql.Int, id).execute('SelectPacienteById');
   return result.recordset[0];
+};
+
+export const buscarPacientePorNombre = async (nombre: string): Promise<Paciente[]> => {
+  const pool = await poolPromise;
+  const result = await pool.request().input('Nombre', sql.VarChar(50), nombre).execute('BuscarPacientePorNombre');
+  return result.recordset;
 };
 
 export const updatePaciente = async (id: number, data: Paciente) => {
@@ -49,9 +53,10 @@ export const updatePaciente = async (id: number, data: Paciente) => {
     .execute('UpdatePaciente');
 };
 
-export const deletePaciente = async (id: number) => {
+export const camEstadoPaciente = async (id: number, estado: 'A' | 'I') => {
   const pool = await poolPromise;
   await pool.request()
     .input('IdPaciente', sql.Int, id)
-    .execute('DeletePaciente');
+    .input('Estado', sql.Char(1), estado)
+    .execute('CamEstadoPaciente');
 };
