@@ -41,12 +41,12 @@ export const updateExpediente = async (req: Request, res: Response) => {
   }
 };
 
-export const deleteExpediente = async (req: Request, res: Response) => {
+export const cambiarEstadoExpediente = async (req: Request, res: Response) => {
   try {
-    await ExpedienteModel.deleteExpedienteMedico(Number(req.params.id));
-    res.json({ mensaje: 'Expediente eliminado correctamente' });
+    await ExpedienteModel.camEstadoExpedienteMedico(Number(req.params.id), req.body.Estado);
+    res.json({ mensaje: 'Estado del expediente actualizado correctamente' });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ error: 'Error al eliminar el expediente' });
+    res.status(500).json({ error: 'Error al cambiar el estado del expediente' });
   }
 };

@@ -18,9 +18,7 @@ export const selectUsuarioEspecialidad = async (): Promise<UsuarioEspecialidad[]
 
 export const selectUsuarioEspecialidadByUsuario = async (idUsuario: number): Promise<UsuarioEspecialidad[]> => {
   const pool = await poolPromise;
-  const result = await pool.request()
-    .input('IdUsuario', sql.Int, idUsuario)
-    .execute('SelectUsuarioEspecialidadByUsuario');
+  const result = await pool.request().input('IdUsuario', sql.Int, idUsuario).execute('SelectUsuarioEspecialidadByUsuario');
   return result.recordset;
 };
 

@@ -41,12 +41,12 @@ export const updateEspecialidad = async (req: Request, res: Response) => {
   }
 };
 
-export const deleteEspecialidad = async (req: Request, res: Response) => {
+export const cambiarEstadoEspecialidad = async (req: Request, res: Response) => {
   try {
-    await EspecialidadModel.deleteEspecialidad(Number(req.params.id));
-    res.json({ mensaje: 'Especialidad eliminada correctamente' });
+    await EspecialidadModel.camEstadoEspecialidad(Number(req.params.id), req.body.Estado);
+    res.json({ mensaje: 'Estado de la especialidad actualizado correctamente' });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ error: 'Error al eliminar la especialidad' });
+    res.status(500).json({ error: 'Error al cambiar el estado de la especialidad' });
   }
 };

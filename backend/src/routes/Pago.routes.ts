@@ -7,6 +7,6 @@ router.get('/', PagoController.getPagos);
 router.get('/:id', PagoController.getPagoById);
 router.post('/', PagoController.createPago);
 router.put('/:id', PagoController.updatePago);
-router.delete('/:id', PagoController.deletePago);
+router.patch('/:id/estado', PagoController.cambiarEstadoPago);
 
 export default router;

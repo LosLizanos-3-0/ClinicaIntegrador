@@ -7,6 +7,6 @@ router.get('/', ExpedienteController.getExpedientes);
 router.get('/:id', ExpedienteController.getExpedienteById);
 router.post('/', ExpedienteController.createExpediente);
 router.put('/:id', ExpedienteController.updateExpediente);
-router.delete('/:id', ExpedienteController.deleteExpediente);
+router.patch('/:id/estado', ExpedienteController.cambiarEstadoExpediente);
 
 export default router;

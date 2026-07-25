@@ -10,6 +10,15 @@ export const getPacientes = async (req: Request, res: Response) => {
   }
 };
 
+export const buscarPaciente = async (req: Request, res: Response) => {
+  try {
+    res.json(await PacienteModel.buscarPacientePorNombre(req.params.nombre));
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Error al buscar pacientes' });
+  }
+};
+
 export const getPacienteById = async (req: Request, res: Response) => {
   try {
     const paciente = await PacienteModel.selectPacienteById(Number(req.params.id));
@@ -41,12 +50,12 @@ export const updatePaciente = async (req: Request, res: Response) => {
   }
 };
 
-export const deletePaciente = async (req: Request, res: Response) => {
+export const cambiarEstadoPaciente = async (req: Request, res: Response) => {
   try {
-    await PacienteModel.deletePaciente(Number(req.params.id));
-    res.json({ mensaje: 'Paciente eliminado correctamente' });
+    await PacienteModel.camEstadoPaciente(Number(req.params.id), req.body.Estado);
+    res.json({ mensaje: 'Estado del paciente actualizado correctamente' });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ error: 'Error al eliminar el paciente' });
+    res.status(500).json({ error: 'Error al cambiar el estado del paciente' });
   }
 };

@@ -21,9 +21,7 @@ export const selectConsulta = async (): Promise<Consulta[]> => {
 
 export const selectConsultaById = async (id: number): Promise<Consulta | undefined> => {
   const pool = await poolPromise;
-  const result = await pool.request()
-    .input('IdConsulta', sql.Int, id)
-    .execute('SelectConsultaById');
+  const result = await pool.request().input('IdConsulta', sql.Int, id).execute('SelectConsultaById');
   return result.recordset[0];
 };
 
@@ -39,9 +37,10 @@ export const updateConsulta = async (id: number, data: Consulta) => {
     .execute('UpdateConsulta');
 };
 
-export const deleteConsulta = async (id: number) => {
+export const camEstadoConsulta = async (id: number, estado: 'A' | 'I') => {
   const pool = await poolPromise;
   await pool.request()
     .input('IdConsulta', sql.Int, id)
-    .execute('DeleteConsulta');
+    .input('Estado', sql.Char(1), estado)
+    .execute('CamEstadoConsulta');
 };

@@ -7,6 +7,6 @@ router.get('/', RecetaController.getRecetas);
 router.get('/:id', RecetaController.getRecetaById);
 router.post('/', RecetaController.createReceta);
 router.put('/:id', RecetaController.updateReceta);
-router.delete('/:id', RecetaController.deleteReceta);
+router.patch('/:id/estado', RecetaController.cambiarEstadoReceta);
 
 export default router;

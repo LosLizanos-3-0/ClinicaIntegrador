@@ -41,12 +41,12 @@ export const updateReceta = async (req: Request, res: Response) => {
   }
 };
 
-export const deleteReceta = async (req: Request, res: Response) => {
+export const cambiarEstadoReceta = async (req: Request, res: Response) => {
   try {
-    await RecetaModel.deleteReceta(Number(req.params.id));
-    res.json({ mensaje: 'Receta eliminada correctamente' });
+    await RecetaModel.camEstadoReceta(Number(req.params.id), req.body.Estado);
+    res.json({ mensaje: 'Estado de la receta actualizado correctamente' });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ error: 'Error al eliminar la receta' });
+    res.status(500).json({ error: 'Error al cambiar el estado de la receta' });
   }
 };

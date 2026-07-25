@@ -19,9 +19,7 @@ export const selectExpedienteMedico = async (): Promise<ExpedienteMedico[]> => {
 
 export const selectExpedienteMedicoById = async (id: number): Promise<ExpedienteMedico | undefined> => {
   const pool = await poolPromise;
-  const result = await pool.request()
-    .input('IdExpediente', sql.Int, id)
-    .execute('SelectExpedienteMedicoById');
+  const result = await pool.request().input('IdExpediente', sql.Int, id).execute('SelectExpedienteMedicoById');
   return result.recordset[0];
 };
 
@@ -35,9 +33,10 @@ export const updateExpedienteMedico = async (id: number, data: ExpedienteMedico)
     .execute('UpdateExpedienteMedico');
 };
 
-export const deleteExpedienteMedico = async (id: number) => {
+export const camEstadoExpedienteMedico = async (id: number, estado: 'A' | 'I') => {
   const pool = await poolPromise;
   await pool.request()
     .input('IdExpediente', sql.Int, id)
-    .execute('DeleteExpedienteMedico');
+    .input('Estado', sql.Char(1), estado)
+    .execute('CamEstadoExpedienteMedico');
 };

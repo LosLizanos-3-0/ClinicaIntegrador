@@ -7,6 +7,6 @@ router.get('/', ConsultaController.getConsultas);
 router.get('/:id', ConsultaController.getConsultaById);
 router.post('/', ConsultaController.createConsulta);
 router.put('/:id', ConsultaController.updateConsulta);
-router.delete('/:id', ConsultaController.deleteConsulta);
+router.patch('/:id/estado', ConsultaController.cambiarEstadoConsulta);
 
 export default router;

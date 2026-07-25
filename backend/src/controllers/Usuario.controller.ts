@@ -3,8 +3,7 @@ import * as UsuarioModel from '../models/Usuario.model';
 
 export const getUsuarios = async (req: Request, res: Response) => {
   try {
-    const usuarios = await UsuarioModel.selectUsuario();
-    res.json(usuarios);
+    res.json(await UsuarioModel.selectUsuario());
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Error al obtener usuarios' });
@@ -42,12 +41,12 @@ export const updateUsuario = async (req: Request, res: Response) => {
   }
 };
 
-export const deleteUsuario = async (req: Request, res: Response) => {
+export const cambiarEstadoUsuario = async (req: Request, res: Response) => {
   try {
-    await UsuarioModel.deleteUsuario(Number(req.params.id));
-    res.json({ mensaje: 'Usuario eliminado correctamente' });
+    await UsuarioModel.camEstadoUsuario(Number(req.params.id), req.body.Estado);
+    res.json({ mensaje: 'Estado del usuario actualizado correctamente' });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ error: 'Error al eliminar el usuario' });
+    res.status(500).json({ error: 'Error al cambiar el estado del usuario' });
   }
 };
