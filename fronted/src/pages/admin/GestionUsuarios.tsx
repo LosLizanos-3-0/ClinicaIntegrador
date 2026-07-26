@@ -1,35 +1,23 @@
 /**
  * GestionUsuarios.tsx
  * RF08 – Gestión de Usuarios
- *   ✔ Crear usuarios
+ *   ✔ Crear usuarios (validaciones completas por campo)
  *   ✔ Editar usuarios
- *   ✔ Asignar roles
- *   ✔ Asignar especialidad (solo rol "Médico")
+ *   ✔ Asignar roles (dinámicos, desde Gestión de roles)
  *   ✔ Desactivar / Activar usuarios (con confirmación)
  *
- * Requiere: React 18+ · TypeScript · Bootstrap 5.3 · Bootstrap Icons 1.11+
- * Agregar en el <head> del proyecto (si no está ya):
- *   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
- * (usa clases auxiliares definidas en clinica-admin.css)
- *
- * Conectado al backend real vía clinicaStore.ts / usuario.service.ts.
- * Captura Apellido1, Apellido2 (opcional) y Teléfono (opcional).
- *
- * El modal de Crear/Editar usuario ahora tiene altura máxima (90vh) con
- * scroll interno solo en el cuerpo del formulario: el header (título + X)
- * y el footer (botones Cancelar/Guardar) quedan siempre visibles, sin
- * importar cuántos campos tenga el formulario.
+ * La especialidad de un médico YA NO se asigna desde aquí: se gestiona
+ * desde "Gestión de especialidades" (un médico puede tener varias a la
+ * vez). Esta pantalla solo muestra el resultado en la columna
+ * "Especialidad", como un badge amarillo con los nombres separados por "/"
+ * cuando el médico tiene más de una (ej. "Cardiología/Urología").
  */
 
 import React, { useState, useMemo } from "react";
-import type { RolUsuario, EstadoUsuario } from "../../types/clinica.types";
-import { clinicaStore, useClinicaStore, type UsuarioClinica } from "../../types/clinicaStore";
+import type { EstadoUsuario } from "../../types/clinica.types";
+import { clinicaStore, useClinicaStore, type UsuarioClinica, type EspecialidadClinica } from "../../types/clinicaStore";
 
-type RolDisponible = Exclude<RolUsuario, "Enfermera">;
-
-const ROLES: RolDisponible[] = ["Administrador", "Médico", "Recepcionista", "Farmacéutico"];
-
-const ROL_COLOR: Record<RolDisponible, string> = {
+const ROL_COLOR: Record<string, string> = {
   Administrador: "badge-soft-purple",
   Médico:        "badge-soft-emerald",
   Recepcionista: "badge-soft-blue",
@@ -48,7 +36,7 @@ const AVATAR_COLORS: string[] = [
 const COLUMNAS_TABLA_USUARIOS = "44px 1.7fr 1.8fr 0.9fr 1.1fr 0.8fr 0.9fr";
 
 // ─── Tipos internos ───────────────────────────────────────────────────────────
-type FormUsuario = Omit<UsuarioClinica, "id"> & { id?: number };
+type FormUsuario = Omit<UsuarioClinica, "id" | "especialidadIds"> & { id?: number };
 
 interface ModalUsuarioProps {
   usuario?: UsuarioClinica;
@@ -65,6 +53,16 @@ interface ModalConfirmarEstadoUsuarioProps {
 
 function nombreCompletoDe(u: Pick<UsuarioClinica, "nombre" | "apellido1" | "apellido2">): string {
   return `${u.nombre} ${u.apellido1} ${u.apellido2 ?? ""}`.trim();
+}
+
+// Junta los nombres de todas las especialidades de un médico, ej:
+// "Cardiología/Urología". Si no es médico o no tiene ninguna, retorna "—".
+function especialidadesDe(u: UsuarioClinica, especialidades: EspecialidadClinica[]): string {
+  if (u.rol !== "Médico") return "—";
+  const nombres = (u.especialidadIds ?? [])
+    .map((id) => especialidades.find((e) => e.id === id)?.nombre)
+    .filter((n): n is string => !!n);
+  return nombres.length > 0 ? nombres.join("/") : "—";
 }
 
 // ─── Modal: confirmar activar/desactivar usuario ──────────────────────────────
@@ -121,22 +119,19 @@ function ModalConfirmarEstadoUsuario({ usuario, onConfirmar, onCerrar }: ModalCo
 // ─── Modal Crear / Editar ─────────────────────────────────────────────────────
 function ModalUsuario({ usuario, rolesActivos, onGuardar, onCerrar }: ModalUsuarioProps) {
   const esNuevo = !usuario?.id;
-  const { especialidades } = useClinicaStore();
-  const especialidadesActivas = especialidades.filter((e) => e.estado === "Activa");
 
   const [form, setForm] = useState<FormUsuario>({
-    nombre:         usuario?.nombre         ?? "",
-    apellido1:      usuario?.apellido1      ?? "",
-    apellido2:      usuario?.apellido2      ?? "",
-    telefono:       usuario?.telefono       ?? "",
-    correo:         usuario?.correo         ?? "",
-    rol:            usuario?.rol            ?? ("" as RolUsuario),
-    estado:         usuario?.estado         ?? "Activo",
-    ingreso:        usuario?.ingreso        ?? new Date().toLocaleDateString("es-CR"),
-    iniciales:      usuario?.iniciales      ?? "",
-    especialidadId: usuario?.especialidadId,
-    nombreUsuario:  usuario?.nombreUsuario  ?? "",
-    ident:          usuario?.ident          ?? "",
+    nombre:        usuario?.nombre        ?? "",
+    apellido1:     usuario?.apellido1     ?? "",
+    apellido2:     usuario?.apellido2     ?? "",
+    telefono:      usuario?.telefono      ?? "",
+    correo:        usuario?.correo        ?? "",
+    rol:           usuario?.rol           ?? "",
+    estado:        usuario?.estado        ?? "Activo",
+    ingreso:       usuario?.ingreso       ?? new Date().toLocaleDateString("es-CR"),
+    iniciales:     usuario?.iniciales     ?? "",
+    nombreUsuario: usuario?.nombreUsuario ?? "",
+    ident:         usuario?.ident         ?? "",
     ...(usuario?.id ? { id: usuario.id } : {}),
   });
   const [contrasena, setContrasena] = useState<string>("");
@@ -151,34 +146,22 @@ function ModalUsuario({ usuario, rolesActivos, onGuardar, onCerrar }: ModalUsuar
         const apellido1 = campo === "apellido1" ? (valor as string) : prev.apellido1;
         next.iniciales = `${nombre[0] ?? ""}${apellido1[0] ?? ""}`.toUpperCase();
       }
-      if (campo === "rol" && valor !== "Médico") {
-        next.especialidadId = undefined;
-      }
       return next;
     });
   };
 
   const handleSubmit = async () => {
-    if (!form.nombre.trim() || !form.apellido1.trim() || !form.correo.trim()) {
-      setError("Nombre, primer apellido y correo son obligatorios.");
-      return;
-    }
-    if (!form.nombreUsuario.trim() || !form.ident.trim()) {
-      setError("Usuario de acceso y cédula/identificación son obligatorios.");
-      return;
-    }
-    if (esNuevo && !contrasena.trim()) {
-      setError("La contraseña es obligatoria al crear un usuario.");
-      return;
-    }
-    if (!form.rol) {
-      setError("Selecciona un rol.");
-      return;
-    }
-    if (form.rol === "Médico" && !form.especialidadId) {
-      setError("Selecciona una especialidad para el médico.");
-      return;
-    }
+    // Validación de todos los campos, en el mismo orden en que aparecen en el formulario.
+    if (!form.nombre.trim())              { setError("Ingresa un nombre.");                       return; }
+    if (!form.apellido1.trim())           { setError("Ingresa un apellido 1.");                    return; }
+    if (!(form.apellido2 ?? "").trim())   { setError("Ingresa apellido 2.");                       return; }
+    if (!(form.telefono ?? "").trim())    { setError("Ingresa número telefónico.");                return; }
+    if (!form.correo.trim())              { setError("Ingresa un correo.");                        return; }
+    if (!form.nombreUsuario.trim())       { setError("Ingresa nombre usuario.");                   return; }
+    if (!form.ident.trim())               { setError("Ingresa un número de cédula/identificación.");return; }
+    if (esNuevo && !contrasena.trim())    { setError("Ingresa contraseña.");                       return; }
+    if (!form.rol)                        { setError("Ingresa rol.");                              return; }
+
     setGuardando(true);
     setError("");
     try {
@@ -234,7 +217,7 @@ function ModalUsuario({ usuario, rolesActivos, onGuardar, onCerrar }: ModalUsuar
 
           <div className="row g-3">
             <div className="col-6">
-              <Field label="Segundo apellido (opcional)">
+              <Field label="Segundo apellido">
                 <input
                   value={form.apellido2 ?? ""}
                   onChange={(e) => handleChange("apellido2", e.target.value)}
@@ -244,7 +227,7 @@ function ModalUsuario({ usuario, rolesActivos, onGuardar, onCerrar }: ModalUsuar
               </Field>
             </div>
             <div className="col-6">
-              <Field label="Teléfono (opcional)">
+              <Field label="Teléfono">
                 <input
                   value={form.telefono ?? ""}
                   onChange={(e) => handleChange("telefono", e.target.value)}
@@ -303,7 +286,7 @@ function ModalUsuario({ usuario, rolesActivos, onGuardar, onCerrar }: ModalUsuar
           <Field label="Rol">
             <select
               value={form.rol}
-              onChange={(e) => handleChange("rol", e.target.value as RolUsuario)}
+              onChange={(e) => handleChange("rol", e.target.value)}
               className="form-select form-select-sm"
             >
               <option value="">Selecciona un rol…</option>
@@ -312,26 +295,6 @@ function ModalUsuario({ usuario, rolesActivos, onGuardar, onCerrar }: ModalUsuar
               ))}
             </select>
           </Field>
-
-          {form.rol === "Médico" && (
-            <Field label="Especialidad">
-              <select
-                value={form.especialidadId ?? ""}
-                onChange={(e) => handleChange("especialidadId", e.target.value ? Number(e.target.value) : undefined)}
-                className="form-select form-select-sm"
-              >
-                <option value="">Selecciona una especialidad…</option>
-                {especialidadesActivas.map((esp) => (
-                  <option key={esp.id} value={esp.id}>{esp.nombre}</option>
-                ))}
-              </select>
-              {especialidadesActivas.length === 0 && (
-                <p className="fs-11 text-secondary mt-1 mb-0">
-                  No hay especialidades activas registradas. Crea una en "Gestión de especialidades" primero.
-                </p>
-              )}
-            </Field>
-          )}
 
           <Field label="Estado">
             <select
@@ -374,14 +337,13 @@ export default function GestionUsuarios() {
   const [pagina, setPagina]             = useState<number>(1);
   const [modalUsuario, setModalUsuario] = useState<UsuarioClinica | null | undefined>(undefined);
   const [confirmEstadoUsuario, setConfirmEstadoUsuario] = useState<UsuarioClinica | null>(null);
-  
+
   const POR_PAGINA = 5;
 
   const stats = useMemo(() => ({
     total:     usuarios.length,
     activos:   usuarios.filter((u) => u.estado === "Activo").length,
     inactivos: usuarios.filter((u) => u.estado === "Inactivo").length,
-    admins:    usuarios.filter((u) => u.rol === "Administrador").length,
   }), [usuarios]);
 
   const filtrados = useMemo(() => {
@@ -408,7 +370,6 @@ export default function GestionUsuarios() {
         correo: form.correo,
         rol: form.rol,
         estado: form.estado,
-        especialidadId: form.especialidadId,
         nombreUsuario: form.nombreUsuario,
         ident: form.ident,
         contrasena: form.contrasena ?? "",
@@ -426,12 +387,6 @@ export default function GestionUsuarios() {
       await clinicaStore.toggleEstadoUsuario(confirmEstadoUsuario.id);
     }
     setConfirmEstadoUsuario(null);
-  };
-
-  const especialidadDe = (u: UsuarioClinica): string => {
-    if (u.rol !== "Médico") return "—";
-    const esp = especialidades.find((e) => e.id === u.especialidadId);
-    return esp ? esp.nombre : "—";
   };
 
   return (
@@ -475,11 +430,10 @@ export default function GestionUsuarios() {
           ) : (
             <>
               {/* Stats */}
-              <div className="row row-cols-2 row-cols-md-4 g-3 mb-4">
+              <div className="row row-cols-1 row-cols-sm-3 g-3 mb-4">
                 <div className="col"><StatCard label="Total usuarios"  value={stats.total} /></div>
                 <div className="col"><StatCard label="Activos"         value={stats.activos}   color="text-success" /></div>
                 <div className="col"><StatCard label="Inactivos"       value={stats.inactivos} color="text-secondary" /></div>
-                <div className="col"><StatCard label="Administradores" value={stats.admins}    color="text-purple" /></div>
               </div>
 
               {/* Filtros */}
@@ -529,44 +483,53 @@ export default function GestionUsuarios() {
                   <p className="px-3 py-5 text-center fs-6 text-secondary mb-0">No se encontraron usuarios.</p>
                 )}
 
-                {paginados.map((u, i) => (
-                  <div
-                    key={u.id}
-                    className={`grid-usuarios px-3 py-3 border-bottom align-items-center fs-6 hover-row ${u.estado === "Inactivo" ? "opacity-60" : ""}`}
-                    style={{ gridTemplateColumns: COLUMNAS_TABLA_USUARIOS }}
-                  >
-                    <div className={`avatar-circle ${AVATAR_COLORS[i % AVATAR_COLORS.length]}`}>
-                      {u.iniciales}
+                {paginados.map((u, i) => {
+                  const especialidadTexto = especialidadesDe(u, especialidades);
+                  return (
+                    <div
+                      key={u.id}
+                      className={`grid-usuarios px-3 py-3 border-bottom align-items-center fs-6 hover-row ${u.estado === "Inactivo" ? "opacity-60" : ""}`}
+                      style={{ gridTemplateColumns: COLUMNAS_TABLA_USUARIOS }}
+                    >
+                      <div className={`avatar-circle ${AVATAR_COLORS[i % AVATAR_COLORS.length]}`}>
+                        {u.iniciales}
+                      </div>
+                      <div>
+                        <p className="fw-medium text-dark mb-0">{nombreCompletoDe(u)}</p>
+                        <p className="fs-11 text-secondary mb-0">Desde {u.ingreso}</p>
+                      </div>
+                      <p className="text-secondary fs-12 text-truncate mb-0">{u.correo}</p>
+                      <div>
+                        <span className={`badge-soft ${ROL_COLOR[u.rol] ?? "badge-soft-gray"}`}>
+                          {u.rol}
+                        </span>
+                      </div>
+                      <div>
+                        {especialidadTexto === "—" ? (
+                          <span className="text-secondary fs-12">—</span>
+                        ) : (
+                          <span className="badge-soft badge-soft-amber">{especialidadTexto}</span>
+                        )}
+                      </div>
+                      <div>
+                        <span className={`badge-soft ${u.estado === "Activo" ? "badge-soft-green" : "badge-soft-gray"}`}>
+                          {u.estado}
+                        </span>
+                      </div>
+                      <div className="d-flex align-items-center justify-content-center gap-1">
+                        <IconBtn label="Editar" onClick={() => setModalUsuario(u)}>
+                          <i className="bi bi-pencil-square" aria-hidden="true" />
+                        </IconBtn>
+                        <IconBtn
+                          label={u.estado === "Activo" ? "Desactivar" : "Activar"}
+                          onClick={() => solicitarCambioEstado(u)}
+                        >
+                          <i className={`bi ${u.estado === "Activo" ? "bi-lock-fill" : "bi-unlock-fill"}`} aria-hidden="true" />
+                        </IconBtn>
+                      </div>
                     </div>
-                    <div>
-                      <p className="fw-medium text-dark mb-0">{nombreCompletoDe(u)}</p>
-                      <p className="fs-11 text-secondary mb-0">Desde {u.ingreso}</p>
-                    </div>
-                    <p className="text-secondary fs-12 text-truncate mb-0">{u.correo}</p>
-                    <div>
-                      <span className={`badge-soft ${ROL_COLOR[u.rol as RolDisponible] ?? "badge-soft-gray"}`}>
-                        {u.rol}
-                      </span>
-                    </div>
-                    <p className="text-secondary fs-12 mb-0">{especialidadDe(u)}</p>
-                    <div>
-                      <span className={`badge-soft ${u.estado === "Activo" ? "badge-soft-green" : "badge-soft-gray"}`}>
-                        {u.estado}
-                      </span>
-                    </div>
-                    <div className="d-flex align-items-center justify-content-center gap-1">
-                      <IconBtn label="Editar" onClick={() => setModalUsuario(u)}>
-                        <i className="bi bi-pencil-square" aria-hidden="true" />
-                      </IconBtn>
-                      <IconBtn
-                        label={u.estado === "Activo" ? "Desactivar" : "Activar"}
-                        onClick={() => solicitarCambioEstado(u)}
-                      >
-                        <i className={`bi ${u.estado === "Activo" ? "bi-lock-fill" : "bi-unlock-fill"}`} aria-hidden="true" />
-                      </IconBtn>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
 
               {/* Paginación */}

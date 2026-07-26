@@ -13,10 +13,21 @@ export const rolService = {
     return data;
   },
 
-  // "cita" y "NombreRol" coinciden exactamente con lo que lee tu modelo
-  // insertRol/updateRol en el backend (data.cita, data.NombreRol).
-  async crear(nombreRol: string, cita: boolean = false) {
+  // El sproc InsertRol solo acepta Cita y NombreRol (el Estado siempre nace
+  // en 'A' por el DEFAULT de la tabla). Si el usuario eligió "Inactivo" en
+  // el formulario, aplicamos un segundo paso con CamEstadoRol justo después.
+  async crear(nombreRol: string, cita: boolean = false, estado: "A" | "I" = "A") {
     await api.post("/roles", { cita, NombreRol: nombreRol });
+
+    if (estado === "I") {
+      const roles = await rolService.listar();
+      const creado = roles
+        .filter((r) => r.NombreRol === nombreRol)
+        .sort((a, b) => b.IdRol - a.IdRol)[0];
+      if (creado) {
+        await api.patch(`/roles/${creado.IdRol}/estado`, { Estado: "I" });
+      }
+    }
   },
 
   async actualizar(id: number, nombreRol: string, cita: boolean = false) {

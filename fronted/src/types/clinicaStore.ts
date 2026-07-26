@@ -28,21 +28,23 @@ export interface UsuarioClinica {
   estado: EstadoUsuario;
   ingreso: string;
   iniciales: string;
-  especialidadId?: number;
+  // Un médico puede estar asignado a varias especialidades a la vez.
+  // La asignación/desasignación se hace desde Gestión de especialidades,
+  // no desde Gestión de usuarios (que solo muestra el resultado).
+  especialidadIds?: number[];
   nombreUsuario: string;
   ident: string;
 }
 
+// Codigo, medicos, consultorios y tags eliminados: no existen en la tabla
+// Especialidad de la base de datos (solo IdEspecialidad, Estado,
+// NombreEspecialidad). Ver especialidad.service.ts.
 export type EspecialidadClinica = {
   id: number;
   nombre: string;
-  codigo: string;
   icono: string;
   colorFondo: string;
   estado: "Activa" | "Inactiva";
-  medicos: number;
-  consultorios: number;
-  tags: string[];
 };
 
 interface ClinicaState {
@@ -176,15 +178,24 @@ async function refrescarRoles() {
   patch({ roles });
 }
 
-async function crearRol(nombreRol: string, cita: boolean = false) {
-  await rolService.crear(nombreRol, cita);
+async function crearRol(nombreRol: string, cita: boolean = false, estado: "A" | "I" = "A") {
+  await rolService.crear(nombreRol, cita, estado);
   await refrescarRoles();
 }
+
 
 async function toggleEstadoRol(id: number) {
   const actual = state.roles.find((r) => r.IdRol === id);
   if (!actual) return;
   await rolService.cambiarEstado(id, actual.Estado ?? "A");
+  await refrescarRoles();
+}
+
+async function actualizarRol(rol: RolBD, cambios: { nombreRol: string; cita: boolean; estado: "A" | "I" }) {
+  await rolService.actualizar(rol.IdRol, cambios.nombreRol, cambios.cita);
+  if ((rol.Estado ?? "A") !== cambios.estado) {
+    await rolService.cambiarEstado(rol.IdRol, rol.Estado ?? "A");
+  }
   await refrescarRoles();
 }
 
@@ -198,6 +209,8 @@ async function crearUsuario(datos: DatosUsuarioForm & { contrasena: string }) {
   await refrescarUsuarios();
 }
 
+// La especialidad NO se envía aquí: se asigna/quita desde Gestión de
+// especialidades (asignarEspecialidadAMedico / quitarEspecialidadDeMedico).
 async function actualizarUsuario(usuario: UsuarioClinica) {
   await usuarioService.actualizar(usuario.id, {
     nombre: usuario.nombre,
@@ -207,7 +220,6 @@ async function actualizarUsuario(usuario: UsuarioClinica) {
     correo: usuario.correo,
     rol: usuario.rol,
     estado: usuario.estado,
-    especialidadId: usuario.especialidadId,
     nombreUsuario: usuario.nombreUsuario,
     ident: usuario.ident,
   });
@@ -221,18 +233,21 @@ async function toggleEstadoUsuario(id: number) {
   await refrescarUsuarios();
 }
 
+// Un médico puede tener varias especialidades: solo agrega la relación,
+// sin eliminar las que ya tenía.
 async function asignarEspecialidadAMedico(usuarioId: number, especialidadId: number) {
   await usuarioService.asignarEspecialidad(usuarioId, especialidadId);
   await refrescarUsuarios();
 }
 
-async function quitarEspecialidadDeMedico(usuarioId: number) {
-  await usuarioService.quitarEspecialidad(usuarioId);
+// Quita SOLO la relación con esa especialidad puntual (no todas).
+async function quitarEspecialidadDeMedico(usuarioId: number, especialidadId: number) {
+  await usuarioService.quitarEspecialidad(usuarioId, especialidadId);
   await refrescarUsuarios();
 }
 
 function medicosDeEspecialidad(s: ClinicaState, especialidadId: number): UsuarioClinica[] {
-  return s.usuarios.filter((u) => u.rol === "Médico" && u.especialidadId === especialidadId);
+  return s.usuarios.filter((u) => u.rol === "Médico" && (u.especialidadIds ?? []).includes(especialidadId));
 }
 
 function nombreEspecialidad(s: ClinicaState, especialidadId?: number): string {
@@ -368,6 +383,7 @@ export const clinicaStore = {
   toggleEstadoEspecialidad,
 
   crearRol,
+  actualizarRol,
   toggleEstadoRol,
 
   crearUsuario,
