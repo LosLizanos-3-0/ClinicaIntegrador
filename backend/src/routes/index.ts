@@ -15,6 +15,7 @@ import entregaRoutes from './EntregaMedicamento.routes';
 import facturaRoutes from './Factura.routes';
 import detalleFacturaRoutes from './DetalleFactura.routes';
 import pagoRoutes from './Pago.routes';
+import authRoutes from './Auth.routes';
 
 const router = Router();
 
@@ -33,5 +34,6 @@ router.use('/entregas', entregaRoutes);
 router.use('/facturas', facturaRoutes);
 router.use('/detalle-factura', detalleFacturaRoutes);
 router.use('/pagos', pagoRoutes);
+router.use('/auth', authRoutes);
 
 export default router;

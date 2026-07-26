@@ -13,6 +13,12 @@
  * (usa clases auxiliares definidas en clinica-admin.css)
  *
  * Conectado al backend real vía clinicaStore.ts / usuario.service.ts.
+ * Captura Apellido1, Apellido2 (opcional) y Teléfono (opcional).
+ *
+ * El modal de Crear/Editar usuario ahora tiene altura máxima (90vh) con
+ * scroll interno solo en el cuerpo del formulario: el header (título + X)
+ * y el footer (botones Cancelar/Guardar) quedan siempre visibles, sin
+ * importar cuántos campos tenga el formulario.
  */
 
 import React, { useState, useMemo } from "react";
@@ -46,6 +52,7 @@ type FormUsuario = Omit<UsuarioClinica, "id"> & { id?: number };
 
 interface ModalUsuarioProps {
   usuario?: UsuarioClinica;
+  rolesActivos: { IdRol: number; NombreRol: string }[];
   onGuardar: (form: FormUsuario & { contrasena?: string }) => Promise<void>;
   onCerrar: () => void;
 }
@@ -54,6 +61,10 @@ interface ModalConfirmarEstadoUsuarioProps {
   usuario: UsuarioClinica;
   onConfirmar: () => void;
   onCerrar: () => void;
+}
+
+function nombreCompletoDe(u: Pick<UsuarioClinica, "nombre" | "apellido1" | "apellido2">): string {
+  return `${u.nombre} ${u.apellido1} ${u.apellido2 ?? ""}`.trim();
 }
 
 // ─── Modal: confirmar activar/desactivar usuario ──────────────────────────────
@@ -84,7 +95,7 @@ function ModalConfirmarEstadoUsuario({ usuario, onConfirmar, onCerrar }: ModalCo
           </h3>
 
           <p className="fs-6 text-secondary mb-0">
-            ¿Deseas {accion} a <strong>{usuario.nombre}</strong>?
+            ¿Deseas {accion} a <strong>{nombreCompletoDe(usuario)}</strong>?
             {vaADesactivar && (
               <> No podrá iniciar sesión ni realizar acciones en el sistema mientras esté inactivo.</>
             )}
@@ -108,15 +119,18 @@ function ModalConfirmarEstadoUsuario({ usuario, onConfirmar, onCerrar }: ModalCo
 }
 
 // ─── Modal Crear / Editar ─────────────────────────────────────────────────────
-function ModalUsuario({ usuario, onGuardar, onCerrar }: ModalUsuarioProps) {
+function ModalUsuario({ usuario, rolesActivos, onGuardar, onCerrar }: ModalUsuarioProps) {
   const esNuevo = !usuario?.id;
   const { especialidades } = useClinicaStore();
   const especialidadesActivas = especialidades.filter((e) => e.estado === "Activa");
 
   const [form, setForm] = useState<FormUsuario>({
     nombre:         usuario?.nombre         ?? "",
+    apellido1:      usuario?.apellido1      ?? "",
+    apellido2:      usuario?.apellido2      ?? "",
+    telefono:       usuario?.telefono       ?? "",
     correo:         usuario?.correo         ?? "",
-    rol:            usuario?.rol            ?? "Médico",
+    rol:            usuario?.rol            ?? ("" as RolUsuario),
     estado:         usuario?.estado         ?? "Activo",
     ingreso:        usuario?.ingreso        ?? new Date().toLocaleDateString("es-CR"),
     iniciales:      usuario?.iniciales      ?? "",
@@ -132,9 +146,10 @@ function ModalUsuario({ usuario, onGuardar, onCerrar }: ModalUsuarioProps) {
   const handleChange = <K extends keyof FormUsuario>(campo: K, valor: FormUsuario[K]) => {
     setForm((prev) => {
       const next = { ...prev, [campo]: valor };
-      if (campo === "nombre") {
-        const partes = (valor as string).trim().split(" ").filter(Boolean);
-        next.iniciales = partes.map((p) => p[0]?.toUpperCase() ?? "").slice(0, 2).join("");
+      if (campo === "nombre" || campo === "apellido1") {
+        const nombre = campo === "nombre" ? (valor as string) : prev.nombre;
+        const apellido1 = campo === "apellido1" ? (valor as string) : prev.apellido1;
+        next.iniciales = `${nombre[0] ?? ""}${apellido1[0] ?? ""}`.toUpperCase();
       }
       if (campo === "rol" && valor !== "Médico") {
         next.especialidadId = undefined;
@@ -144,8 +159,8 @@ function ModalUsuario({ usuario, onGuardar, onCerrar }: ModalUsuarioProps) {
   };
 
   const handleSubmit = async () => {
-    if (!form.nombre.trim() || !form.correo.trim()) {
-      setError("Nombre y correo son obligatorios.");
+    if (!form.nombre.trim() || !form.apellido1.trim() || !form.correo.trim()) {
+      setError("Nombre, primer apellido y correo son obligatorios.");
       return;
     }
     if (!form.nombreUsuario.trim() || !form.ident.trim()) {
@@ -154,6 +169,10 @@ function ModalUsuario({ usuario, onGuardar, onCerrar }: ModalUsuarioProps) {
     }
     if (esNuevo && !contrasena.trim()) {
       setError("La contraseña es obligatoria al crear un usuario.");
+      return;
+    }
+    if (!form.rol) {
+      setError("Selecciona un rol.");
       return;
     }
     if (form.rol === "Médico" && !form.especialidadId) {
@@ -174,8 +193,12 @@ function ModalUsuario({ usuario, onGuardar, onCerrar }: ModalUsuarioProps) {
 
   return (
     <div className="modal-overlay d-flex align-items-center justify-content-center p-3">
-      <div className="bg-white rounded-4 shadow w-100" style={{ maxWidth: 448 }}>
-        <div className="px-4 py-3 border-bottom d-flex align-items-center justify-content-between">
+      <div
+        className="bg-white rounded-4 shadow w-100 d-flex flex-column"
+        style={{ maxWidth: 448, maxHeight: "90vh" }}
+      >
+        {/* Header — fijo arriba */}
+        <div className="px-4 py-3 border-bottom d-flex align-items-center justify-content-between flex-shrink-0">
           <h3 className="fs-6 fw-medium text-dark mb-0">
             {esNuevo ? "Crear nuevo usuario" : "Editar usuario"}
           </h3>
@@ -184,15 +207,53 @@ function ModalUsuario({ usuario, onGuardar, onCerrar }: ModalUsuarioProps) {
           </button>
         </div>
 
-        <div className="p-4 d-flex flex-column gap-3">
-          <Field label="Nombre completo">
-            <input
-              value={form.nombre}
-              onChange={(e) => handleChange("nombre", e.target.value)}
-              placeholder="Nombre completo"
-              className="form-control form-control-sm"
-            />
-          </Field>
+        {/* Body — con scroll interno cuando el contenido no cabe */}
+        <div className="p-4 d-flex flex-column gap-3 overflow-auto">
+          <div className="row g-3">
+            <div className="col-6">
+              <Field label="Nombre">
+                <input
+                  value={form.nombre}
+                  onChange={(e) => handleChange("nombre", e.target.value)}
+                  placeholder="Nombre"
+                  className="form-control form-control-sm"
+                />
+              </Field>
+            </div>
+            <div className="col-6">
+              <Field label="Primer apellido">
+                <input
+                  value={form.apellido1}
+                  onChange={(e) => handleChange("apellido1", e.target.value)}
+                  placeholder="Primer apellido"
+                  className="form-control form-control-sm"
+                />
+              </Field>
+            </div>
+          </div>
+
+          <div className="row g-3">
+            <div className="col-6">
+              <Field label="Segundo apellido (opcional)">
+                <input
+                  value={form.apellido2 ?? ""}
+                  onChange={(e) => handleChange("apellido2", e.target.value)}
+                  placeholder="Segundo apellido"
+                  className="form-control form-control-sm"
+                />
+              </Field>
+            </div>
+            <div className="col-6">
+              <Field label="Teléfono (opcional)">
+                <input
+                  value={form.telefono ?? ""}
+                  onChange={(e) => handleChange("telefono", e.target.value)}
+                  placeholder="8888-0000"
+                  className="form-control form-control-sm"
+                />
+              </Field>
+            </div>
+          </div>
 
           <Field label="Correo electrónico">
             <input
@@ -245,7 +306,10 @@ function ModalUsuario({ usuario, onGuardar, onCerrar }: ModalUsuarioProps) {
               onChange={(e) => handleChange("rol", e.target.value as RolUsuario)}
               className="form-select form-select-sm"
             >
-              {ROLES.map((r) => <option key={r}>{r}</option>)}
+              <option value="">Selecciona un rol…</option>
+              {rolesActivos.map((r) => (
+                <option key={r.IdRol} value={r.NombreRol}>{r.NombreRol}</option>
+              ))}
             </select>
           </Field>
 
@@ -285,7 +349,8 @@ function ModalUsuario({ usuario, onGuardar, onCerrar }: ModalUsuarioProps) {
           )}
         </div>
 
-        <div className="px-4 py-3 border-top d-flex justify-content-end gap-2">
+        {/* Footer — fijo abajo */}
+        <div className="px-4 py-3 border-top d-flex justify-content-end gap-2 flex-shrink-0">
           <button onClick={onCerrar} className="btn btn-outline-secondary btn-sm" disabled={guardando}>
             Cancelar
           </button>
@@ -300,7 +365,8 @@ function ModalUsuario({ usuario, onGuardar, onCerrar }: ModalUsuarioProps) {
 
 // ─── Componente principal ─────────────────────────────────────────────────────
 export default function GestionUsuarios() {
-  const { usuarios, especialidades, cargando } = useClinicaStore();
+  const { usuarios, especialidades, roles, cargando } = useClinicaStore();
+  const rolesActivos = useMemo(() => roles.filter((r) => r.Estado !== "I"), [roles]);
 
   const [busqueda, setBusqueda]         = useState<string>("");
   const [filtroRol, setFiltroRol]       = useState<string>("Todos");
@@ -308,6 +374,7 @@ export default function GestionUsuarios() {
   const [pagina, setPagina]             = useState<number>(1);
   const [modalUsuario, setModalUsuario] = useState<UsuarioClinica | null | undefined>(undefined);
   const [confirmEstadoUsuario, setConfirmEstadoUsuario] = useState<UsuarioClinica | null>(null);
+  
   const POR_PAGINA = 5;
 
   const stats = useMemo(() => ({
@@ -320,7 +387,7 @@ export default function GestionUsuarios() {
   const filtrados = useMemo(() => {
     const q = busqueda.toLowerCase();
     return usuarios.filter((u) =>
-      (u.nombre.toLowerCase().includes(q) || u.correo.toLowerCase().includes(q)) &&
+      (nombreCompletoDe(u).toLowerCase().includes(q) || u.correo.toLowerCase().includes(q)) &&
       (filtroRol === "Todos" || u.rol === filtroRol) &&
       (filtroEstado === "Todos" || u.estado === filtroEstado)
     );
@@ -335,6 +402,9 @@ export default function GestionUsuarios() {
     } else {
       await clinicaStore.crearUsuario({
         nombre: form.nombre,
+        apellido1: form.apellido1,
+        apellido2: form.apellido2 || undefined,
+        telefono: form.telefono || undefined,
         correo: form.correo,
         rol: form.rol,
         estado: form.estado,
@@ -369,6 +439,7 @@ export default function GestionUsuarios() {
       {modalUsuario !== undefined && (
         <ModalUsuario
           usuario={modalUsuario ?? undefined}
+          rolesActivos={rolesActivos}
           onGuardar={guardarUsuario}
           onCerrar={() => setModalUsuario(undefined)}
         />
@@ -429,7 +500,9 @@ export default function GestionUsuarios() {
                   style={{ maxWidth: 220 }}
                 >
                   <option value="Todos">Todos los roles</option>
-                  {ROLES.map((r) => <option key={r}>{r}</option>)}
+                  {roles.map((r) => (
+                    <option key={r.IdRol} value={r.NombreRol}>{r.NombreRol}</option>
+                  ))}
                 </select>
                 <select
                   value={filtroEstado}
@@ -466,7 +539,7 @@ export default function GestionUsuarios() {
                       {u.iniciales}
                     </div>
                     <div>
-                      <p className="fw-medium text-dark mb-0">{u.nombre}</p>
+                      <p className="fw-medium text-dark mb-0">{nombreCompletoDe(u)}</p>
                       <p className="fs-11 text-secondary mb-0">Desde {u.ingreso}</p>
                     </div>
                     <p className="text-secondary fs-12 text-truncate mb-0">{u.correo}</p>

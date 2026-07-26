@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import * as UsuarioModel from '../models/Usuario.model';
+import bcrypt from 'bcryptjs';
 
 export const getUsuarios = async (req: Request, res: Response) => {
   try {
@@ -23,7 +24,8 @@ export const getUsuarioById = async (req: Request, res: Response) => {
 
 export const createUsuario = async (req: Request, res: Response) => {
   try {
-    await UsuarioModel.insertUsuario(req.body);
+    const hash = await bcrypt.hash(req.body.Contrasena, 10);
+    await UsuarioModel.insertUsuario({ ...req.body, Contrasena: hash });
     res.status(201).json({ mensaje: 'Usuario creado correctamente' });
   } catch (error) {
     console.error(error);
@@ -33,7 +35,16 @@ export const createUsuario = async (req: Request, res: Response) => {
 
 export const updateUsuario = async (req: Request, res: Response) => {
   try {
-    await UsuarioModel.updateUsuario(Number(req.params.id), req.body);
+    const datos = { ...req.body };
+    console.log('Contraseña recibida:', datos.Contrasena); // 👈 temporal
+
+    if (datos.Contrasena && !datos.Contrasena.startsWith('$2a$') && !datos.Contrasena.startsWith('$2b$')) {
+      datos.Contrasena = await bcrypt.hash(datos.Contrasena, 10);
+      console.log('Contraseña cifrada:', datos.Contrasena); // 👈 temporal
+    }
+
+    console.log('Datos que se van a guardar:', datos); // 👈 temporal
+    await UsuarioModel.updateUsuario(Number(req.params.id), datos);
     res.json({ mensaje: 'Usuario actualizado correctamente' });
   } catch (error) {
     console.error(error);
