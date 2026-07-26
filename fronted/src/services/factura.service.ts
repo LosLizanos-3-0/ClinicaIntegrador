@@ -7,12 +7,6 @@ const METODO_A_BD: Record<MetodoPago, string> = {
   Transferencia: "Transferencia",
   "Sinpe Móvil": "SINPE",
 };
-const METODO_A_FRONT: Record<string, MetodoPago> = {
-  Efectivo: "Efectivo",
-  Tarjeta: "Tarjeta",
-  Transferencia: "Transferencia",
-  SINPE: "Sinpe Móvil",
-};
 
 interface FacturaBD {
   IdFactura: number;
@@ -26,15 +20,13 @@ interface FacturaBD {
 export const facturaService = {
   async listar(pacientesMap: Map<number, { nombre: string; cedula: string }>): Promise<Factura[]> {
     const { data } = await api.get<FacturaBD[]>("/facturas");
-    const detalles = await Promise.all(data.map((f) => api.get(`/detalle-factura`)));
-    // Nota: idealmente el backend debería filtrar por IdFactura; por ahora traemos todo y filtramos en cliente
-    const todosDetalles = detalles[0]?.data ?? [];
+    const { data: todosDetalles } = await api.get<any[]>("/detalle-factura");
 
     return data.map((f) => {
       const paciente = pacientesMap.get(f.IdPaciente);
       const items = todosDetalles
-        .filter((d: any) => d.IdFactura === f.IdFactura)
-        .map((d: any) => ({ concepto: d.Concepto, cantidad: d.Cantidad, precioUnitario: d.PrecioUnitario }));
+        .filter((d) => d.IdFactura === f.IdFactura)
+        .map((d) => ({ concepto: d.Concepto, cantidad: d.Cantidad, precioUnitario: d.PrecioUnitario }));
       return {
         id: f.IdFactura,
         pacienteId: f.IdPaciente,
@@ -59,15 +51,14 @@ export const facturaService = {
     cantidad: number;
     precioUnitario: number;
   }) {
-    const { data: facturaRes } = await api.post("/facturas", {
+    await api.post("/facturas", {
       IdPaciente: datos.IdPaciente,
       IdCita: datos.IdCita,
       Total: datos.total,
       Estado: "Pendiente",
     });
-    // El backend no devuelve el Id insertado en este endpoint; ver nota abajo
-    const facturas = await api.get<FacturaBD[]>("/facturas");
-    const nueva = facturas.data.sort((a, b) => b.IdFactura - a.IdFactura)[0];
+    const { data: facturas } = await api.get<FacturaBD[]>("/facturas");
+    const nueva = facturas.sort((a, b) => b.IdFactura - a.IdFactura)[0];
 
     await api.post("/detalle-factura", {
       IdFactura: nueva.IdFactura,
@@ -78,14 +69,17 @@ export const facturaService = {
     });
   },
 
-  async cambiarEstado(id: number, base: FacturaBD, nuevoEstado: "Pagada" | "Anulada", metodoPago?: MetodoPago) {
-    await api.put(`/facturas/${id}`, { ...base, Estado: nuevoEstado });
-    if (nuevoEstado === "Pagada" && metodoPago) {
+  async cambiarEstado(id: number, nuevoEstado: "Pagada" | "Anulada", montoTotal?: number, metodoPago?: MetodoPago) {
+    if (nuevoEstado === "Pagada" && metodoPago && montoTotal != null) {
+      // El trigger TR_Pago_ActualizarFactura marca la factura como "Pagada"
+      // automáticamente cuando el monto pagado cubre el total.
       await api.post("/pagos", {
         IdFactura: id,
-        Monto: base.Total,
+        Monto: montoTotal,
         MetodoPago: METODO_A_BD[metodoPago],
       });
+    } else {
+      await api.patch(`/facturas/${id}/estado`, { Estado: nuevoEstado });
     }
   },
 };

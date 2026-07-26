@@ -49,8 +49,8 @@ export const citaService = {
     await api.post("/citas", { ...datos, Estado: "Agendada" });
   },
 
-  async actualizarEstado(id: number, base: CitaBD, nuevoEstado: string) {
-    await api.put(`/citas/${id}`, { ...base, Estado: estadoABackend(nuevoEstado) });
+  async actualizarEstado(id: number, nuevoEstado: string) {
+    await api.patch(`/citas/${id}/estado`, { Estado: estadoABackend(nuevoEstado) });
   },
 
   async reprogramar(id: number, base: CitaBD, cambios: { FechaCita: string; HoraCita: string; Motivo: string; IdUsuario: number }) {

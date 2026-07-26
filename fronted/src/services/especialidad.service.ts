@@ -38,7 +38,9 @@ export const especialidadService = {
     });
   },
 
-  async toggleEstado(id: number, estadoActual: "Activa" | "Inactiva", nombre: string) {
-    await especialidadService.actualizar(id, nombre, estadoActual === "Activa" ? "Inactiva" : "Activa");
+  async toggleEstado(id: number, estadoActual: "Activa" | "Inactiva") {
+    await api.patch(`/especialidades/${id}/estado`, {
+      Estado: estadoActual === "Activa" ? "I" : "A",
+    });
   },
 };

@@ -24,21 +24,15 @@ interface UsuarioEspecialidadBD {
 
 export interface DatosUsuarioForm {
   nombre: string;
+  apellido1: string;
+  apellido2?: string;
+  telefono?: string;
   correo: string;
   rol: string;
   estado: "Activo" | "Inactivo";
   especialidadId?: number;
   nombreUsuario: string;
   ident: string;
-}
-
-function separarNombre(nombreCompleto: string) {
-  const partes = nombreCompleto.trim().split(" ").filter(Boolean);
-  return {
-    Nombre: partes[0] ?? "",
-    Apellido1: partes[1] ?? "",
-    Apellido2: partes.slice(2).join(" ") || null,
-  };
 }
 
 export const usuarioService = {
@@ -53,10 +47,12 @@ export const usuarioService = {
     return usuariosRes.data.map((u) => {
       const rolNombre = roles.find((r) => r.IdRol === u.IdRol)?.NombreRol ?? "Sin rol";
       const especialidadId = relaciones.find((r) => r.IdUsuario === u.IdUsuario)?.IdEspecialidad;
-      const nombreCompleto = `${u.Nombre} ${u.Apellido1} ${u.Apellido2 ?? ""}`.trim();
       return {
         id: u.IdUsuario,
-        nombre: nombreCompleto,
+        nombre: u.Nombre,
+        apellido1: u.Apellido1,
+        apellido2: u.Apellido2 ?? undefined,
+        telefono: u.Telefono ?? undefined,
         correo: u.Correo,
         rol: rolNombre as UsuarioClinica["rol"],
         estado: u.Estado === "A" ? "Activo" : "Inactivo",
@@ -73,12 +69,13 @@ export const usuarioService = {
     const roles = await rolService.listar();
     const rolBD = roles.find((r) => r.NombreRol === datos.rol);
     if (!rolBD) throw new Error(`No existe el rol "${datos.rol}" en la base de datos.`);
-    const { Nombre, Apellido1, Apellido2 } = separarNombre(datos.nombre);
 
     await api.post("/usuarios", {
-      Nombre, Apellido1, Apellido2,
+      Nombre: datos.nombre,
+      Apellido1: datos.apellido1,
+      Apellido2: datos.apellido2 || null,
       Ident: datos.ident,
-      Telefono: null,
+      Telefono: datos.telefono || null,
       Correo: datos.correo,
       NombreUsuario: datos.nombreUsuario,
       Contrasena: datos.contrasena,
@@ -100,24 +97,24 @@ export const usuarioService = {
     ]);
     const rolBD = roles.find((r) => r.NombreRol === datos.rol);
     if (!rolBD) throw new Error(`No existe el rol "${datos.rol}" en la base de datos.`);
-    const { Nombre, Apellido1, Apellido2 } = separarNombre(datos.nombre);
 
     await api.put(`/usuarios/${id}`, {
-      Nombre, Apellido1, Apellido2,
+      Nombre: datos.nombre,
+      Apellido1: datos.apellido1,
+      Apellido2: datos.apellido2 || null,
       Ident: datos.ident,
-      Telefono: actualRes.data.Telefono,
+      Telefono: datos.telefono || null,
       Correo: datos.correo,
       NombreUsuario: datos.nombreUsuario,
-      Contrasena: actualRes.data.Contrasena, // se mantiene la actual
+      Contrasena: actualRes.data.Contrasena,
       Estado: datos.estado === "Activo" ? "A" : "I",
       IdRol: rolBD.IdRol,
     });
   },
 
-  async cambiarEstado(id: number, datosActuales: DatosUsuarioForm) {
-    await usuarioService.actualizar(id, {
-      ...datosActuales,
-      estado: datosActuales.estado === "Activo" ? "Inactivo" : "Activo",
+  async cambiarEstado(id: number, estadoActual: "Activo" | "Inactivo") {
+    await api.patch(`/usuarios/${id}/estado`, {
+      Estado: estadoActual === "Activo" ? "I" : "A",
     });
   },
 

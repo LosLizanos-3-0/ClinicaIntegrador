@@ -12,12 +12,17 @@ import type {
 import { pacienteService } from "../services/paciente.service";
 import { especialidadService } from "../services/especialidad.service";
 import { usuarioService, type DatosUsuarioForm } from "../services/usuario.service";
+import { rolService, type RolBD } from "../services/rol.service";
 import { citaService } from "../services/cita.service";
 import { facturaService } from "../services/factura.service";
+import { authService } from "../services/auth.service";
 
 export interface UsuarioClinica {
   id: number;
   nombre: string;
+  apellido1: string;
+  apellido2?: string;
+  telefono?: string;
   correo: string;
   rol: string;
   estado: EstadoUsuario;
@@ -43,6 +48,7 @@ export type EspecialidadClinica = {
 interface ClinicaState {
   usuarios: UsuarioClinica[];
   especialidades: EspecialidadClinica[];
+  roles: RolBD[];
   pacientes: Paciente[];
   medicamentos: Medicamento[];
   recetas: Receta[];
@@ -52,20 +58,19 @@ interface ClinicaState {
   cargando: boolean;
 }
 
-// Medicamentos y recetas siguen mock por ahora — no conectados aún al backend
 const MEDICAMENTOS_INICIALES: Medicamento[] = [];
 const RECETAS_INICIALES: Receta[] = [];
 
+// Admin de respaldo para poder entrar siempre al sistema, incluso si el
+// login real contra la BD falla o aún no tienes usuarios creados.
 const CREDENCIALES_INICIALES: Credencial[] = [
-  { usuario: "admin",         contrasena: "123", rol: "Administrador", nombreCompleto: "Andrea Salas",       iniciales: "AS" },
-  { usuario: "medico",        contrasena: "123", rol: "Médico",        nombreCompleto: "Dr. Rafael Morales", iniciales: "RM" },
-  { usuario: "recepcionista", contrasena: "123", rol: "Recepcionista", nombreCompleto: "Lucía Vargas",       iniciales: "LV" },
-  { usuario: "farmaceutico",  contrasena: "123", rol: "Farmacéutico",  nombreCompleto: "Carlos Ramírez",     iniciales: "CR" },
+  { usuario: "admin", contrasena: "123", rol: "Administrador", nombreCompleto: "Andrea Salas", iniciales: "AS" },
 ];
 
 let state: ClinicaState = {
   usuarios: [],
   especialidades: [],
+  roles: [],
   pacientes: [],
   medicamentos: MEDICAMENTOS_INICIALES,
   recetas: RECETAS_INICIALES,
@@ -91,16 +96,16 @@ function patch(partial: Partial<ClinicaState>) {
   emitChange();
 }
 
-// ─── Carga inicial desde el backend ────────────────────────────────────────
 let yaCargado = false;
 async function cargarTodo() {
   if (yaCargado) return;
   yaCargado = true;
   try {
-    const [pacientes, especialidades, usuarios] = await Promise.all([
+    const [pacientes, especialidades, usuarios, roles] = await Promise.all([
       pacienteService.listar(),
       especialidadService.listar(),
       usuarioService.listarConEspecialidad(),
+      rolService.listar(),
     ]);
     const citas = await citaService.listar(pacientes, usuarios);
     const pacientesMap = new Map(
@@ -108,14 +113,13 @@ async function cargarTodo() {
     );
     const facturas = await facturaService.listar(pacientesMap);
 
-    patch({ pacientes, especialidades, usuarios, citas, facturas, cargando: false });
+    patch({ pacientes, especialidades, usuarios, roles, citas, facturas, cargando: false });
   } catch (error) {
     console.error("Error cargando datos del backend:", error);
     patch({ cargando: false });
   }
 }
 
-// ─── Pacientes ──────────────────────────────────────────────────────────────
 async function registrarPaciente(datos: Omit<Paciente, "id" | "registro">) {
   await pacienteService.crear(datos);
   const pacientes = await pacienteService.listar();
@@ -131,7 +135,7 @@ async function actualizarPaciente(paciente: Paciente) {
 async function toggleEstadoPaciente(id: number) {
   const actual = state.pacientes.find((p) => p.id === id);
   if (!actual) return;
-  await pacienteService.cambiarEstado(id, actual);
+  await pacienteService.cambiarEstado(id, actual.estado);
   const pacientes = await pacienteService.listar();
   patch({ pacientes });
 }
@@ -144,7 +148,6 @@ function medicosActivos(s: ClinicaState): UsuarioClinica[] {
   return s.usuarios.filter((u) => (u.rol === "Medico" || u.rol === "Médico") && u.estado === "Activo");
 }
 
-// ─── Especialidades ─────────────────────────────────────────────────────────
 async function refrescarEspecialidades() {
   const especialidades = await especialidadService.listar();
   patch({ especialidades });
@@ -163,11 +166,28 @@ async function actualizarEspecialidad(especialidad: EspecialidadClinica) {
 async function toggleEstadoEspecialidad(id: number) {
   const actual = state.especialidades.find((e) => e.id === id);
   if (!actual) return;
-  await especialidadService.toggleEstado(id, actual.estado, actual.nombre);
+  await especialidadService.toggleEstado(id, actual.estado);
   await refrescarEspecialidades();
 }
 
-// ─── Usuarios ───────────────────────────────────────────────────────────────
+// ─── Roles ──────────────────────────────────────────────────────────────────
+async function refrescarRoles() {
+  const roles = await rolService.listar();
+  patch({ roles });
+}
+
+async function crearRol(nombreRol: string, cita: boolean = false) {
+  await rolService.crear(nombreRol, cita);
+  await refrescarRoles();
+}
+
+async function toggleEstadoRol(id: number) {
+  const actual = state.roles.find((r) => r.IdRol === id);
+  if (!actual) return;
+  await rolService.cambiarEstado(id, actual.Estado ?? "A");
+  await refrescarRoles();
+}
+
 async function refrescarUsuarios() {
   const usuarios = await usuarioService.listarConEspecialidad();
   patch({ usuarios });
@@ -181,6 +201,9 @@ async function crearUsuario(datos: DatosUsuarioForm & { contrasena: string }) {
 async function actualizarUsuario(usuario: UsuarioClinica) {
   await usuarioService.actualizar(usuario.id, {
     nombre: usuario.nombre,
+    apellido1: usuario.apellido1,
+    apellido2: usuario.apellido2,
+    telefono: usuario.telefono,
     correo: usuario.correo,
     rol: usuario.rol,
     estado: usuario.estado,
@@ -194,15 +217,7 @@ async function actualizarUsuario(usuario: UsuarioClinica) {
 async function toggleEstadoUsuario(id: number) {
   const actual = state.usuarios.find((u) => u.id === id);
   if (!actual) return;
-  await usuarioService.cambiarEstado(id, {
-    nombre: actual.nombre,
-    correo: actual.correo,
-    rol: actual.rol,
-    estado: actual.estado,
-    especialidadId: actual.especialidadId,
-    nombreUsuario: actual.nombreUsuario,
-    ident: actual.ident,
-  });
+  await usuarioService.cambiarEstado(id, actual.estado);
   await refrescarUsuarios();
 }
 
@@ -225,7 +240,6 @@ function nombreEspecialidad(s: ClinicaState, especialidadId?: number): string {
   return s.especialidades.find((e) => e.id === especialidadId)?.nombre ?? "—";
 }
 
-// ─── Citas ──────────────────────────────────────────────────────────────────
 async function crearCita(datos: { pacienteId: number; medicoId: number; fecha: string; hora: string; motivo: string }) {
   await citaService.crear({
     IdPaciente: datos.pacienteId,
@@ -253,21 +267,7 @@ async function marcarCitaAtendida(id: number) {
   await cambiarEstadoCita(id, "Atendida");
 }
 async function cambiarEstadoCita(id: number, estado: string) {
-  const cita = state.citas.find((c) => c.id === id);
-  if (!cita) return;
-  await citaService.actualizarEstado(
-    id,
-    {
-      IdCita: id,
-      IdPaciente: cita.pacienteId,
-      IdUsuario: cita.medicoId,
-      FechaCita: cita.fecha,
-      HoraCita: cita.hora,
-      Estado: cita.estado,
-      Motivo: cita.motivo,
-    },
-    estado
-  );
+  await citaService.actualizarEstado(id, estado);
   await refrescarCitas();
 }
 
@@ -288,7 +288,6 @@ async function actualizarCita(cita: Cita) {
   await refrescarCitas();
 }
 
-// ─── Facturas ─────────────────────────────────────────────────────────────
 async function crearFactura(datos: {
   pacienteId: number;
   citaId?: number;
@@ -318,49 +317,37 @@ async function refrescarFacturas() {
 async function marcarFacturaPagada(id: number, metodoPago: MetodoPago) {
   const factura = state.facturas.find((f) => f.id === id);
   if (!factura) return;
-  await facturaService.cambiarEstado(
-    id,
-    {
-      IdFactura: id,
-      IdPaciente: factura.pacienteId,
-      IdCita: factura.citaId ?? 0,
-      FechaEmision: factura.fecha,
-      Total: factura.total,
-      Estado: factura.estado,
-    },
-    "Pagada",
-    metodoPago
-  );
+  await facturaService.cambiarEstado(id, "Pagada", factura.total, metodoPago);
   await refrescarFacturas();
 }
 
 async function anularFactura(id: number) {
-  const factura = state.facturas.find((f) => f.id === id);
-  if (!factura) return;
-  await facturaService.cambiarEstado(
-    id,
-    {
-      IdFactura: id,
-      IdPaciente: factura.pacienteId,
-      IdCita: factura.citaId ?? 0,
-      FechaEmision: factura.fecha,
-      Total: factura.total,
-      Estado: factura.estado,
-    },
-    "Anulada"
-  );
+  await facturaService.cambiarEstado(id, "Anulada");
   await refrescarFacturas();
 }
 
-// ─── Sesión (se mantiene mock por ahora) ───────────────────────────────────
-function iniciarSesion(usuario: string, contrasena: string): Credencial | null {
-  const encontrado = CREDENCIALES_INICIALES.find(
+// ─── Sesión ─────────────────────────────────────────────────────────────────
+async function iniciarSesion(usuario: string, contrasena: string): Promise<Credencial | null> {
+  // 1. Revisa primero el admin mock (respaldo para siempre poder entrar)
+  const mock = CREDENCIALES_INICIALES.find(
     (c) => c.usuario.toLowerCase() === usuario.trim().toLowerCase() && c.contrasena === contrasena
   );
-  if (!encontrado) return null;
-  patch({ usuarioActual: encontrado });
-  return encontrado;
+  if (mock) {
+    patch({ usuarioActual: mock });
+    return mock;
+  }
+
+  // 2. Si no coincide con el mock, intenta el login real contra la BD
+  try {
+    const credencial = await authService.login(usuario, contrasena);
+    patch({ usuarioActual: credencial });
+    return credencial;
+  } catch (error) {
+    console.error("Error al iniciar sesión:", error);
+    return null;
+  }
 }
+
 function cerrarSesion() {
   patch({ usuarioActual: null });
 }
@@ -379,6 +366,9 @@ export const clinicaStore = {
   crearEspecialidad,
   actualizarEspecialidad,
   toggleEstadoEspecialidad,
+
+  crearRol,
+  toggleEstadoRol,
 
   crearUsuario,
   actualizarUsuario,
