@@ -1,26 +1,22 @@
 /**
  * GestionEspecialidades.tsx
  * RF03 – Gestión de Médicos / Especialidades
- *   ✔ Registrar especialidades
- *   ✔ Asignar / quitar médicos a especialidades
- *   ✔ Editar especialidades
+ *   ✔ Registrar especialidades (solo Nombre — el Estado inicial y el ID
+ *     se controlan en el backend)
+ *   ✔ Asignar / quitar médicos a especialidades (un médico puede tener varias)
+ *   ✔ Editar especialidades (Nombre, Estado, Médicos asignados)
  *   ✔ Activar / Desactivar especialidades (con confirmación)
  *   ✔ Vista cuadrícula y lista
  *
- * Requiere: React 18+ · TypeScript · Bootstrap 5.3 · Bootstrap Icons 1.11+
- * Agregar en el <head> del proyecto (si no está ya, p. ej. por GestionRoles.tsx):
- *   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
- * (usa clases auxiliares definidas en clinica-admin.css)
+ * Se eliminaron Código, Etiquetas y Consultorios de toda la pantalla: esos
+ * campos no existen en la tabla Especialidad de la base de datos (que solo
+ * tiene IdEspecialidad, Estado y NombreEspecialidad). El "código" que se
+ * veía antes (ESP-1, ESP-2...) era un valor generado en el frontend, no un
+ * dato real almacenado.
  *
- * Los datos de usuarios y especialidades viven en `clinicaStore.ts`, un store
- * compartido con GestionUsuarios.tsx. Los "médicos" de una especialidad ya NO
- * son una lista aparte: son los usuarios con rol "Médico" cuyo
- * `especialidadId` coincide con esta especialidad. Así, cualquier médico
- * creado/editado desde la pantalla de Usuarios aparece aquí automáticamente,
- * y viceversa.
- *
- * Activar/desactivar usa `clinicaStore.toggleEstadoEspecialidad(id)`, el
- * mismo patrón que `toggleEstadoUsuario` en GestionUsuarios.tsx.
+ * "Médicos asignados" solo aparece en el modal de Editar (no en Nueva
+ * especialidad), porque para asignar médicos primero debe existir la
+ * especialidad guardada con su id real.
  */
 
 import React, { useState, useMemo } from "react";
@@ -29,7 +25,7 @@ import { clinicaStore, useClinicaStore, type UsuarioClinica, type EspecialidadCl
 
 // ─── Tipos internos ───────────────────────────────────────────────────────────
 type Vista = "grid" | "list";
-type FormEspecialidad = Omit<EspecialidadClinica, "id"> & { id?: number };
+type FormEspecialidad = { nombre: string; estado: EstadoEspecialidad; id?: number };
 
 interface ModalEspecialidadProps {
   especialidad?: EspecialidadClinica;
@@ -52,6 +48,8 @@ interface ModalConfirmarEstadoProps {
   onConfirmar: () => void;
   onCerrar: () => void;
 }
+
+const COLUMNAS_TABLA_ESPECIALIDADES = "1.6fr 0.8fr 0.8fr 0.9fr";
 
 // ─── Modal: confirmar activar/desactivar especialidad ─────────────────────────
 function ModalConfirmarEstado({ especialidad, onConfirmar, onCerrar }: ModalConfirmarEstadoProps) {
@@ -105,8 +103,6 @@ function ModalConfirmarEstado({ especialidad, onConfirmar, onCerrar }: ModalConf
 }
 
 // ─── Modal: gestionar médicos de una especialidad ─────────────────────────────
-// Los médicos que aparecen aquí son los usuarios con rol "Médico" registrados
-// en Gestión de usuarios. Asignar/quitar aquí actualiza ese mismo usuario.
 function ModalGestionMedicos({
   titulo,
   todosMedicos,
@@ -166,7 +162,7 @@ function ModalGestionMedicos({
                   {medicosAsignados.map((m) => (
                     <div key={m.id} className="d-flex align-items-center justify-content-between border rounded px-3 py-2">
                       <div className="d-flex flex-column">
-                        <span className="fs-6 text-dark">{m.nombre}</span>
+                        <span className="fs-6 text-dark">{m.nombre} {m.apellido1}</span>
                         <span className="fs-11 text-secondary">{m.correo}</span>
                       </div>
                       <button
@@ -205,7 +201,7 @@ function ModalGestionMedicos({
                   {medicosDisponibles.map((m) => (
                     <div key={m.id} className="d-flex align-items-center justify-content-between border rounded px-3 py-2">
                       <div className="d-flex flex-column">
-                        <span className="fs-6 text-dark">{m.nombre}</span>
+                        <span className="fs-6 text-dark">{m.nombre} {m.apellido1}</span>
                         <span className="fs-11 text-secondary">{m.correo}</span>
                       </div>
                       <button
@@ -247,41 +243,24 @@ function ModalEspecialidad({ especialidad, onGuardar, onCerrar }: ModalEspeciali
   const { usuarios } = useClinicaStore();
 
   const [form, setForm] = useState<FormEspecialidad>({
-    nombre:      especialidad?.nombre      ?? "",
-    codigo:      especialidad?.codigo      ?? "",
-    icono:       especialidad?.icono       ?? "🏥",
-    colorFondo:  especialidad?.colorFondo  ?? "avatar-blue",
-    estado:      especialidad?.estado      ?? "Activa",
-    medicos:     especialidad?.medicos     ?? 0,
-    consultorios:especialidad?.consultorios ?? 1,
-    tags:        especialidad?.tags        ?? [],
+    nombre: especialidad?.nombre ?? "",
+    estado: especialidad?.estado ?? "Activa",
     ...(especialidad?.id ? { id: especialidad.id } : {}),
   });
-  const [tagInput, setTagInput] = useState<string>("");
   const [gestionMedicosAbierta, setGestionMedicosAbierta] = useState(false);
 
   const todosMedicos = usuarios.filter((u) => u.rol === "Médico");
-  const medicosAsignados = especialidad ? todosMedicos.filter((m) => m.especialidadId === especialidad.id) : [];
+  const medicosAsignados = especialidad
+    ? todosMedicos.filter((m) => (m.especialidadIds ?? []).includes(especialidad.id))
+    : [];
 
   const handleChange = <K extends keyof FormEspecialidad>(campo: K, valor: FormEspecialidad[K]) => {
     setForm((prev) => ({ ...prev, [campo]: valor }));
   };
 
-  const agregarTag = () => {
-    const t = tagInput.trim();
-    if (t && !form.tags.includes(t)) {
-      setForm((prev) => ({ ...prev, tags: [...prev.tags, t] }));
-    }
-    setTagInput("");
-  };
-
-  const quitarTag = (tag: string) => {
-    setForm((prev) => ({ ...prev, tags: prev.tags.filter((t) => t !== tag) }));
-  };
-
   const handleSubmit = () => {
-    if (!form.nombre.trim() || !form.codigo.trim()) {
-      alert("Nombre y código son obligatorios.");
+    if (!form.nombre.trim()) {
+      alert("El nombre es obligatorio.");
       return;
     }
     onGuardar(form);
@@ -289,7 +268,7 @@ function ModalEspecialidad({ especialidad, onGuardar, onCerrar }: ModalEspeciali
 
   return (
     <div className="modal-overlay d-flex align-items-center justify-content-center p-3">
-      <div className="bg-white rounded-4 shadow w-100" style={{ maxWidth: 448 }}>
+      <div className="bg-white rounded-4 shadow w-100" style={{ maxWidth: 420 }}>
         <div className="px-4 py-3 border-bottom d-flex align-items-center justify-content-between">
           <h3 className="fs-6 fw-medium text-dark mb-0">
             {esNueva ? "Nueva especialidad" : "Editar especialidad"}
@@ -300,40 +279,24 @@ function ModalEspecialidad({ especialidad, onGuardar, onCerrar }: ModalEspeciali
         </div>
 
         <div className="p-4 d-flex flex-column gap-3">
-          <div className="row g-3">
-            <div className="col-6">
-              <label className="form-label fs-12 text-secondary mb-1">Nombre</label>
-              <input value={form.nombre} onChange={(e) => handleChange("nombre", e.target.value)}
-                placeholder="Ej: Cardiología"
-                className="form-control form-control-sm" />
-            </div>
-            <div className="col-6">
-              <label className="form-label fs-12 text-secondary mb-1">Código</label>
-              <input value={form.codigo} onChange={(e) => handleChange("codigo", e.target.value)}
-                placeholder="COD-001"
-                className="form-control form-control-sm" />
-            </div>
+          <div>
+            <label className="form-label fs-12 text-secondary mb-1">Nombre</label>
+            <input value={form.nombre} onChange={(e) => handleChange("nombre", e.target.value)}
+              placeholder="Ej: Cardiología"
+              className="form-control form-control-sm" />
           </div>
 
-          <div className="row g-3">
-            <div className="col-6">
-              <label className="form-label fs-12 text-secondary mb-1">Estado</label>
-              <select value={form.estado} onChange={(e) => handleChange("estado", e.target.value as EstadoEspecialidad)}
-                className="form-select form-select-sm">
-                <option>Activa</option>
-                <option>Inactiva</option>
-              </select>
-            </div>
-            <div className="col-6">
-              <label className="form-label fs-12 text-secondary mb-1">Consultorios</label>
-              <input type="number" min={0} value={form.consultorios}
-                onChange={(e) => handleChange("consultorios", Number(e.target.value))}
-                className="form-control form-control-sm" />
-            </div>
+          <div>
+            <label className="form-label fs-12 text-secondary mb-1">Estado</label>
+            <select value={form.estado} onChange={(e) => handleChange("estado", e.target.value as EstadoEspecialidad)}
+              className="form-select form-select-sm">
+              <option>Activa</option>
+              <option>Inactiva</option>
+            </select>
           </div>
 
-          <div className="row g-3">
-            <div className="col-12">
+          {!esNueva && (
+            <div>
               <label className="form-label fs-12 text-secondary mb-1">Médicos asignados</label>
               <div className="d-flex align-items-center gap-2 border rounded px-2 py-1 bg-soft">
                 <span className="fs-6 text-dark flex-fill">
@@ -342,37 +305,15 @@ function ModalEspecialidad({ especialidad, onGuardar, onCerrar }: ModalEspeciali
                 <button
                   type="button"
                   onClick={() => setGestionMedicosAbierta(true)}
-                  disabled={esNueva}
                   aria-label="Agregar médicos a la especialidad"
-                  title={esNueva ? "Guarda la especialidad primero para poder asignar médicos" : "Agregar médicos"}
+                  title="Agregar médicos"
                   className="btn btn-outline-primary btn-icon-sm bg-white"
                 >
                   +
                 </button>
               </div>
             </div>
-          </div>
-
-          <div>
-            <label className="form-label fs-12 text-secondary mb-1">Etiquetas</label>
-            <div className="d-flex gap-2 mb-2">
-              <input value={tagInput} onChange={(e) => setTagInput(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), agregarTag())}
-                placeholder="Agregar etiqueta…"
-                className="form-control form-control-sm" />
-              <button onClick={agregarTag} className="btn btn-light btn-sm">+</button>
-            </div>
-            <div className="d-flex gap-1 flex-wrap">
-              {form.tags.map((t) => (
-                <span key={t} className="d-flex align-items-center gap-1 fs-11 px-2 py-1 rounded-pill border text-secondary">
-                  {t}
-                  <button onClick={() => quitarTag(t)} aria-label={`Quitar etiqueta ${t}`} className="btn btn-link p-0 text-secondary lh-1 text-decoration-none">
-                    <i className="bi bi-x" aria-hidden="true" />
-                  </button>
-                </span>
-              ))}
-            </div>
-          </div>
+          )}
         </div>
 
         <div className="px-4 py-3 border-top d-flex justify-content-end gap-2">
@@ -389,7 +330,7 @@ function ModalEspecialidad({ especialidad, onGuardar, onCerrar }: ModalEspeciali
           todosMedicos={todosMedicos}
           medicosAsignados={medicosAsignados}
           onAgregar={(medicoId) => clinicaStore.asignarEspecialidadAMedico(medicoId, especialidad.id)}
-          onQuitar={(medicoId) => clinicaStore.quitarEspecialidadDeMedico(medicoId)}
+          onQuitar={(medicoId) => clinicaStore.quitarEspecialidadDeMedico(medicoId, especialidad.id)}
           onCerrar={() => setGestionMedicosAbierta(false)}
           vistaInicial="agregar"
         />
@@ -410,13 +351,13 @@ export default function GestionEspecialidades() {
   const [confirmEstado,   setConfirmEstado]  = useState<EspecialidadClinica | null>(null);
 
   const medicos = usuarios.filter((u) => u.rol === "Médico");
-  const medicosDe = (especialidadId: number) => medicos.filter((m) => m.especialidadId === especialidadId);
+  const medicosDe = (especialidadId: number) =>
+    medicos.filter((m) => (m.especialidadIds ?? []).includes(especialidadId));
 
   const stats = useMemo(() => ({
-    total:        especialidades.length,
-    activas:      especialidades.filter((e) => e.estado === "Activa").length,
-    medicos:      medicos.filter((m) => !!m.especialidadId).length,
-    consultorios: especialidades.reduce((a, e) => a + e.consultorios, 0),
+    total:   especialidades.length,
+    activas: especialidades.filter((e) => e.estado === "Activa").length,
+    medicos: medicos.filter((m) => (m.especialidadIds ?? []).length > 0).length,
   }), [especialidades, medicos]);
 
   const filtradas = useMemo(() => {
@@ -428,19 +369,19 @@ export default function GestionEspecialidades() {
 
   const guardar = (form: FormEspecialidad) => {
     if (form.id) {
-      clinicaStore.actualizarEspecialidad(form as EspecialidadClinica);
+      const original = especialidades.find((e) => e.id === form.id);
+      if (!original) return;
+      clinicaStore.actualizarEspecialidad({ ...original, nombre: form.nombre, estado: form.estado });
     } else {
-      clinicaStore.crearEspecialidad(form);
+      clinicaStore.crearEspecialidad({ nombre: form.nombre });
     }
     setModal(undefined);
   };
 
-  // Abre el modal de confirmación en vez de cambiar el estado directamente
   const solicitarCambioEstado = (especialidad: EspecialidadClinica) => {
     setConfirmEstado(especialidad);
   };
 
-  // Se ejecuta al confirmar en el modal
   const confirmarCambioEstado = () => {
     if (confirmEstado) {
       clinicaStore.toggleEstadoEspecialidad(confirmEstado.id);
@@ -466,7 +407,7 @@ export default function GestionEspecialidades() {
           todosMedicos={medicos}
           medicosAsignados={medicosDe(especialidadModalMedicos.id)}
           onAgregar={(medicoId) => clinicaStore.asignarEspecialidadAMedico(medicoId, especialidadModalMedicos.id)}
-          onQuitar={(medicoId) => clinicaStore.quitarEspecialidadDeMedico(medicoId)}
+          onQuitar={(medicoId) => clinicaStore.quitarEspecialidadDeMedico(medicoId, especialidadModalMedicos.id)}
           onCerrar={() => setModalMedicosId(null)}
           vistaInicial="lista"
         />
@@ -496,11 +437,10 @@ export default function GestionEspecialidades() {
 
         <div className="p-4">
           {/* Stats */}
-          <div className="row row-cols-2 row-cols-md-4 g-3 mb-4">
-            <div className="col"><StatCard label="Especialidades"      value={stats.total} /></div>
-            <div className="col"><StatCard label="Activas"             value={stats.activas}      color="text-success" /></div>
-            <div className="col"><StatCard label="Médicos asignados"   value={stats.medicos}      color="text-primary" /></div>
-            <div className="col"><StatCard label="Consultorios activos" value={stats.consultorios} /></div>
+          <div className="row row-cols-1 row-cols-sm-3 g-3 mb-4">
+            <div className="col"><StatCard label="Especialidades"    value={stats.total} /></div>
+            <div className="col"><StatCard label="Activas"           value={stats.activas} color="text-success" /></div>
+            <div className="col"><StatCard label="Médicos asignados" value={stats.medicos} color="text-primary" /></div>
           </div>
 
           {/* Filtros + toggle vista */}
@@ -558,12 +498,11 @@ export default function GestionEspecialidades() {
                       </div>
                       <p className="fs-6 fw-medium text-dark mb-0 pe-5">{e.nombre}</p>
                       <div className="d-flex align-items-center gap-2 mt-1 mb-2">
-                        <span className="fs-11 text-secondary">{e.codigo}</span>
                         <span className={`badge-soft ${e.estado === "Activa" ? "badge-soft-green" : "badge-soft-gray"}`}>
                           {e.estado}
                         </span>
                       </div>
-                      <div className="d-flex gap-3 mb-2 fs-12 text-secondary">
+                      <div className="d-flex gap-3 fs-12 text-secondary">
                         <button
                           type="button"
                           onClick={() => setModalMedicosId(e.id)}
@@ -572,14 +511,6 @@ export default function GestionEspecialidades() {
                         >
                           <i className="bi bi-people-fill" aria-hidden="true" /> {cantidadMedicos} médicos
                         </button>
-                        <span className="d-inline-flex align-items-center gap-1">
-                          <i className="bi bi-door-open-fill" aria-hidden="true" /> {e.consultorios} consultorios
-                        </span>
-                      </div>
-                      <div className="d-flex gap-1 flex-wrap">
-                        {e.tags.map((t) => (
-                          <span key={t} className="fs-10 px-2 py-1 rounded-pill border text-secondary">{t}</span>
-                        ))}
                       </div>
                     </div>
                   </div>
@@ -591,16 +522,19 @@ export default function GestionEspecialidades() {
           {/* Vista lista */}
           {vista === "list" && (
             <div className="border rounded overflow-hidden">
-              <div className="grid-especialidades-list d-none d-md-grid px-3 py-2 bg-soft fs-11 text-uppercase text-secondary fw-medium border-bottom" style={{ letterSpacing: ".03em" }}>
-                <span>Especialidad</span><span>Código</span><span>Estado</span><span>Médicos</span><span>Consultorios</span><span>Acciones</span>
+              <div
+                className="d-none d-md-grid px-3 py-2 bg-soft fs-11 text-uppercase text-secondary fw-medium border-bottom"
+                style={{ letterSpacing: ".03em", gridTemplateColumns: COLUMNAS_TABLA_ESPECIALIDADES }}
+              >
+                <span>Especialidad</span><span>Estado</span><span>Médicos</span><span>Acciones</span>
               </div>
               {filtradas.map((e) => {
                 const cantidadMedicos = medicosDe(e.id).length;
                 return (
                   <div key={e.id}
-                    className={`grid-especialidades-list px-3 py-3 border-bottom align-items-center fs-6 hover-row ${e.estado === "Inactiva" ? "opacity-60" : ""}`}>
+                    className={`d-grid px-3 py-3 border-bottom align-items-center fs-6 hover-row ${e.estado === "Inactiva" ? "opacity-60" : ""}`}
+                    style={{ gridTemplateColumns: COLUMNAS_TABLA_ESPECIALIDADES }}>
                     <span className="fw-medium text-dark">{e.nombre}</span>
-                    <span className="text-secondary fs-12">{e.codigo}</span>
                     <span className={`badge-soft w-fit-content ${e.estado === "Activa" ? "badge-soft-green" : "badge-soft-gray"}`}>{e.estado}</span>
                     <button
                       type="button"
@@ -610,7 +544,6 @@ export default function GestionEspecialidades() {
                     >
                       {cantidadMedicos}
                     </button>
-                    <span className="text-secondary">{e.consultorios}</span>
                     <div className="d-flex gap-1">
                       <button onClick={() => setModal(e)} aria-label="Editar" title="Editar"
                         className="btn btn-outline-secondary btn-icon-sm bg-white text-secondary">

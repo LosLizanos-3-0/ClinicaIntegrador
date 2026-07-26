@@ -1,11 +1,6 @@
 export type EstadoUsuario = "Activo" | "Inactivo";
 
-export type RolUsuario =
-  | "Administrador"
-  | "Médico"
-  | "Enfermera"
-  | "Recepcionista"
-  | "Farmacéutico";
+export type RolUsuario = string;
 
 export interface Usuario {
   id: number;
@@ -46,16 +41,16 @@ export interface Reporte {
 
 export type EstadoEspecialidad = "Activa" | "Inactiva";
 
+// Codigo, medicos, consultorios y tags NO existen en la tabla Especialidad
+// de la base de datos (ver especialidad.model.ts: solo IdEspecialidad,
+// Estado, NombreEspecialidad). Se eliminaron del tipo para reflejar
+// exactamente lo que el sistema realmente persiste.
 export interface Especialidad {
   id: number;
   nombre: string;
-  codigo: string;
   icono: string;
   colorFondo: string;
   estado: EstadoEspecialidad;
-  medicos: number;
-  consultorios: number;
-  tags: string[];
 }
 
 export interface Rol {
@@ -88,7 +83,7 @@ export interface Paciente {
   telefono: string;
   registro: string;
   estado: EstadoUsuario;
-  sexo: "Masculino" | "Femenino"; // 👈 nuevo
+  sexo: "Masculino" | "Femenino";
 }
 
 export type CategoriaMedicamento =

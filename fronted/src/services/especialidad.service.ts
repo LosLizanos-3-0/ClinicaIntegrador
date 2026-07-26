@@ -7,17 +7,15 @@ interface EspecialidadBD {
   NombreEspecialidad: string;
 }
 
+// icono y colorFondo son valores fijos de presentación (no vienen de la BD,
+// que solo tiene IdEspecialidad, Estado y NombreEspecialidad).
 function aFrontend(e: EspecialidadBD): Especialidad {
   return {
     id: e.IdEspecialidad,
     nombre: e.NombreEspecialidad,
-    codigo: `ESP-${e.IdEspecialidad}`,
     icono: "🏥",
     colorFondo: "avatar-blue",
     estado: e.Estado === "A" ? "Activa" : "Inactiva",
-    medicos: 0,
-    consultorios: 0,
-    tags: [],
   };
 }
 

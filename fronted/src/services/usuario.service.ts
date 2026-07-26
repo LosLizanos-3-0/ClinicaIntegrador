@@ -30,7 +30,6 @@ export interface DatosUsuarioForm {
   correo: string;
   rol: string;
   estado: "Activo" | "Inactivo";
-  especialidadId?: number;
   nombreUsuario: string;
   ident: string;
 }
@@ -46,7 +45,11 @@ export const usuarioService = {
 
     return usuariosRes.data.map((u) => {
       const rolNombre = roles.find((r) => r.IdRol === u.IdRol)?.NombreRol ?? "Sin rol";
-      const especialidadId = relaciones.find((r) => r.IdUsuario === u.IdUsuario)?.IdEspecialidad;
+      // Un médico puede tener varias especialidades: se recogen TODAS
+      // las relaciones que le correspondan, no solo la primera.
+      const especialidadIds = relaciones
+        .filter((r) => r.IdUsuario === u.IdUsuario)
+        .map((r) => r.IdEspecialidad);
       return {
         id: u.IdUsuario,
         nombre: u.Nombre,
@@ -58,7 +61,7 @@ export const usuarioService = {
         estado: u.Estado === "A" ? "Activo" : "Inactivo",
         ingreso: new Date(u.FechaCreacion).toLocaleDateString("es-CR"),
         iniciales: `${u.Nombre[0] ?? ""}${u.Apellido1[0] ?? ""}`.toUpperCase(),
-        especialidadId,
+        especialidadIds,
         nombreUsuario: u.NombreUsuario,
         ident: u.Ident,
       };
@@ -82,12 +85,8 @@ export const usuarioService = {
       Estado: datos.estado === "Activo" ? "A" : "I",
       IdRol: rolBD.IdRol,
     });
-
-    if (datos.especialidadId) {
-      const { data: usuarios } = await api.get<UsuarioBD[]>("/usuarios");
-      const creado = usuarios.sort((a, b) => b.IdUsuario - a.IdUsuario)[0];
-      await api.post("/usuario-especialidad", { IdUsuario: creado.IdUsuario, IdEspecialidad: datos.especialidadId });
-    }
+    // La asignación de especialidad(es) del médico se hace después,
+    // desde Gestión de especialidades — no en este formulario.
   },
 
   async actualizar(id: number, datos: DatosUsuarioForm) {
@@ -118,12 +117,19 @@ export const usuarioService = {
     });
   },
 
+  // Solo agrega la relación — NO borra las especialidades que el médico
+  // ya tenía, para permitir que tenga varias a la vez.
   async asignarEspecialidad(idUsuario: number, idEspecialidad: number) {
-    await usuarioService.quitarEspecialidad(idUsuario);
     await api.post("/usuario-especialidad", { IdUsuario: idUsuario, IdEspecialidad: idEspecialidad });
   },
 
-  async quitarEspecialidad(idUsuario: number) {
+  // Si se pasa idEspecialidad, quita solo esa relación puntual.
+  // Si se omite, quita todas (comportamiento heredado, por compatibilidad).
+  async quitarEspecialidad(idUsuario: number, idEspecialidad?: number) {
+    if (idEspecialidad !== undefined) {
+      await api.delete(`/usuario-especialidad/${idUsuario}/${idEspecialidad}`);
+      return;
+    }
     const { data: relaciones } = await api.get<UsuarioEspecialidadBD[]>(`/usuario-especialidad/usuario/${idUsuario}`);
     for (const rel of relaciones) {
       await api.delete(`/usuario-especialidad/${idUsuario}/${rel.IdEspecialidad}`);
