@@ -35,18 +35,21 @@ export const updateFactura = async (req: Request, res: Response) => {
   try {
     await FacturaModel.updateFactura(Number(req.params.id), req.body);
     res.json({ mensaje: 'Factura actualizada correctamente' });
-  } catch (error) {
+  } catch (error: any) {
     console.error(error);
+    if (error?.message?.includes('No se puede modificar una factura ya pagada')) {
+      return res.status(400).json({ error: 'No se puede modificar una factura ya pagada' });
+    }
     res.status(500).json({ error: 'Error al actualizar la factura' });
   }
 };
 
-export const deleteFactura = async (req: Request, res: Response) => {
+export const cambiarEstadoFactura = async (req: Request, res: Response) => {
   try {
-    await FacturaModel.deleteFactura(Number(req.params.id));
-    res.json({ mensaje: 'Factura eliminada correctamente' });
+    await FacturaModel.camEstadoFactura(Number(req.params.id), req.body.Estado);
+    res.json({ mensaje: 'Estado de la factura actualizado correctamente' });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ error: 'Error al eliminar la factura' });
+    res.status(500).json({ error: 'Error al cambiar el estado de la factura' });
   }
 };

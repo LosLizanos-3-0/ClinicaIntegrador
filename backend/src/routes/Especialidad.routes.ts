@@ -7,6 +7,6 @@ router.get('/', EspecialidadController.getEspecialidades);
 router.get('/:id', EspecialidadController.getEspecialidadById);
 router.post('/', EspecialidadController.createEspecialidad);
 router.put('/:id', EspecialidadController.updateEspecialidad);
-router.delete('/:id', EspecialidadController.deleteEspecialidad);
+router.patch('/:id/estado', EspecialidadController.cambiarEstadoEspecialidad);
 
 export default router;

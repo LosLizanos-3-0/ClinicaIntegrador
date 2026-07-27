@@ -18,9 +18,7 @@ export const selectEspecialidad = async (): Promise<Especialidad[]> => {
 
 export const selectEspecialidadById = async (id: number): Promise<Especialidad | undefined> => {
   const pool = await poolPromise;
-  const result = await pool.request()
-    .input('IdEspecialidad', sql.Int, id)
-    .execute('SelectEspecialidadById');
+  const result = await pool.request().input('IdEspecialidad', sql.Int, id).execute('SelectEspecialidadById');
   return result.recordset[0];
 };
 
@@ -33,9 +31,10 @@ export const updateEspecialidad = async (id: number, data: Especialidad) => {
     .execute('UpdateEspecialidad');
 };
 
-export const deleteEspecialidad = async (id: number) => {
+export const camEstadoEspecialidad = async (id: number, estado: 'A' | 'I') => {
   const pool = await poolPromise;
   await pool.request()
     .input('IdEspecialidad', sql.Int, id)
-    .execute('DeleteEspecialidad');
+    .input('Estado', sql.Char(1), estado)
+    .execute('CamEstadoEspecialidad');
 };

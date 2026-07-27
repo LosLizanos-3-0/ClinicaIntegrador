@@ -28,7 +28,7 @@ function aFrontend(p: PacienteBD): Paciente {
     telefono: p.Telefono ?? "",
     registro: new Date(p.FechaRegistro).toLocaleDateString("es-CR"),
     estado: p.Estado === "A" ? "Activo" : "Inactivo",
-    sexo: p.Sexo, // 👈 nuevo
+    sexo: p.Sexo,
   };
 }
 
@@ -52,6 +52,11 @@ export const pacienteService = {
     return data.map(aFrontend);
   },
 
+  async buscarPorNombre(nombre: string): Promise<Paciente[]> {
+    const { data } = await api.get<PacienteBD[]>(`/pacientes/buscar/${encodeURIComponent(nombre)}`);
+    return data.map(aFrontend);
+  },
+
   async crear(p: Omit<Paciente, "id" | "registro">) {
     await api.post("/pacientes", aBackend(p));
   },
@@ -60,10 +65,9 @@ export const pacienteService = {
     await api.put(`/pacientes/${id}`, aBackend(p));
   },
 
-  async cambiarEstado(id: number, actual: Paciente) {
-    await api.put(`/pacientes/${id}`, {
-      ...aBackend(actual),
-      Estado: actual.estado === "Activo" ? "I" : "A",
+  async cambiarEstado(id: number, estadoActual: Paciente["estado"]) {
+    await api.patch(`/pacientes/${id}/estado`, {
+      Estado: estadoActual === "Activo" ? "I" : "A",
     });
   },
 };

@@ -7,6 +7,6 @@ router.get('/', MedicamentoController.getMedicamentos);
 router.get('/:id', MedicamentoController.getMedicamentoById);
 router.post('/', MedicamentoController.createMedicamento);
 router.put('/:id', MedicamentoController.updateMedicamento);
-router.delete('/:id', MedicamentoController.deleteMedicamento);
+router.patch('/:id/estado', MedicamentoController.cambiarEstadoMedicamento);
 
 export default router;

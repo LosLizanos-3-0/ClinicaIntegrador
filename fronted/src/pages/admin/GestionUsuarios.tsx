@@ -1,29 +1,23 @@
 /**
  * GestionUsuarios.tsx
  * RF08 – Gestión de Usuarios
- *   ✔ Crear usuarios
+ *   ✔ Crear usuarios (validaciones completas por campo)
  *   ✔ Editar usuarios
- *   ✔ Asignar roles
- *   ✔ Asignar especialidad (solo rol "Médico")
+ *   ✔ Asignar roles (dinámicos, desde Gestión de roles)
  *   ✔ Desactivar / Activar usuarios (con confirmación)
  *
- * Requiere: React 18+ · TypeScript · Bootstrap 5.3 · Bootstrap Icons 1.11+
- * Agregar en el <head> del proyecto (si no está ya):
- *   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
- * (usa clases auxiliares definidas en clinica-admin.css)
- *
- * Conectado al backend real vía clinicaStore.ts / usuario.service.ts.
+ * La especialidad de un médico YA NO se asigna desde aquí: se gestiona
+ * desde "Gestión de especialidades" (un médico puede tener varias a la
+ * vez). Esta pantalla solo muestra el resultado en la columna
+ * "Especialidad", como un badge amarillo con los nombres separados por "/"
+ * cuando el médico tiene más de una (ej. "Cardiología/Urología").
  */
 
 import React, { useState, useMemo } from "react";
-import type { RolUsuario, EstadoUsuario } from "../../types/clinica.types";
-import { clinicaStore, useClinicaStore, type UsuarioClinica } from "../../types/clinicaStore";
+import type { EstadoUsuario } from "../../types/clinica.types";
+import { clinicaStore, useClinicaStore, type UsuarioClinica, type EspecialidadClinica } from "../../types/clinicaStore";
 
-type RolDisponible = Exclude<RolUsuario, "Enfermera">;
-
-const ROLES: RolDisponible[] = ["Administrador", "Médico", "Recepcionista", "Farmacéutico"];
-
-const ROL_COLOR: Record<RolDisponible, string> = {
+const ROL_COLOR: Record<string, string> = {
   Administrador: "badge-soft-purple",
   Médico:        "badge-soft-emerald",
   Recepcionista: "badge-soft-blue",
@@ -42,10 +36,11 @@ const AVATAR_COLORS: string[] = [
 const COLUMNAS_TABLA_USUARIOS = "44px 1.7fr 1.8fr 0.9fr 1.1fr 0.8fr 0.9fr";
 
 // ─── Tipos internos ───────────────────────────────────────────────────────────
-type FormUsuario = Omit<UsuarioClinica, "id"> & { id?: number };
+type FormUsuario = Omit<UsuarioClinica, "id" | "especialidadIds"> & { id?: number };
 
 interface ModalUsuarioProps {
   usuario?: UsuarioClinica;
+  rolesActivos: { IdRol: number; NombreRol: string }[];
   onGuardar: (form: FormUsuario & { contrasena?: string }) => Promise<void>;
   onCerrar: () => void;
 }
@@ -54,6 +49,20 @@ interface ModalConfirmarEstadoUsuarioProps {
   usuario: UsuarioClinica;
   onConfirmar: () => void;
   onCerrar: () => void;
+}
+
+function nombreCompletoDe(u: Pick<UsuarioClinica, "nombre" | "apellido1" | "apellido2">): string {
+  return `${u.nombre} ${u.apellido1} ${u.apellido2 ?? ""}`.trim();
+}
+
+// Junta los nombres de todas las especialidades de un médico, ej:
+// "Cardiología/Urología". Si no es médico o no tiene ninguna, retorna "—".
+function especialidadesDe(u: UsuarioClinica, especialidades: EspecialidadClinica[]): string {
+  if (u.rol !== "Médico") return "—";
+  const nombres = (u.especialidadIds ?? [])
+    .map((id) => especialidades.find((e) => e.id === id)?.nombre)
+    .filter((n): n is string => !!n);
+  return nombres.length > 0 ? nombres.join("/") : "—";
 }
 
 // ─── Modal: confirmar activar/desactivar usuario ──────────────────────────────
@@ -84,7 +93,7 @@ function ModalConfirmarEstadoUsuario({ usuario, onConfirmar, onCerrar }: ModalCo
           </h3>
 
           <p className="fs-6 text-secondary mb-0">
-            ¿Deseas {accion} a <strong>{usuario.nombre}</strong>?
+            ¿Deseas {accion} a <strong>{nombreCompletoDe(usuario)}</strong>?
             {vaADesactivar && (
               <> No podrá iniciar sesión ni realizar acciones en el sistema mientras esté inactivo.</>
             )}
@@ -108,21 +117,21 @@ function ModalConfirmarEstadoUsuario({ usuario, onConfirmar, onCerrar }: ModalCo
 }
 
 // ─── Modal Crear / Editar ─────────────────────────────────────────────────────
-function ModalUsuario({ usuario, onGuardar, onCerrar }: ModalUsuarioProps) {
+function ModalUsuario({ usuario, rolesActivos, onGuardar, onCerrar }: ModalUsuarioProps) {
   const esNuevo = !usuario?.id;
-  const { especialidades } = useClinicaStore();
-  const especialidadesActivas = especialidades.filter((e) => e.estado === "Activa");
 
   const [form, setForm] = useState<FormUsuario>({
-    nombre:         usuario?.nombre         ?? "",
-    correo:         usuario?.correo         ?? "",
-    rol:            usuario?.rol            ?? "Médico",
-    estado:         usuario?.estado         ?? "Activo",
-    ingreso:        usuario?.ingreso        ?? new Date().toLocaleDateString("es-CR"),
-    iniciales:      usuario?.iniciales      ?? "",
-    especialidadId: usuario?.especialidadId,
-    nombreUsuario:  usuario?.nombreUsuario  ?? "",
-    ident:          usuario?.ident          ?? "",
+    nombre:        usuario?.nombre        ?? "",
+    apellido1:     usuario?.apellido1     ?? "",
+    apellido2:     usuario?.apellido2     ?? "",
+    telefono:      usuario?.telefono      ?? "",
+    correo:        usuario?.correo        ?? "",
+    rol:           usuario?.rol           ?? "",
+    estado:        usuario?.estado        ?? "Activo",
+    ingreso:       usuario?.ingreso       ?? new Date().toLocaleDateString("es-CR"),
+    iniciales:     usuario?.iniciales     ?? "",
+    nombreUsuario: usuario?.nombreUsuario ?? "",
+    ident:         usuario?.ident         ?? "",
     ...(usuario?.id ? { id: usuario.id } : {}),
   });
   const [contrasena, setContrasena] = useState<string>("");
@@ -132,34 +141,27 @@ function ModalUsuario({ usuario, onGuardar, onCerrar }: ModalUsuarioProps) {
   const handleChange = <K extends keyof FormUsuario>(campo: K, valor: FormUsuario[K]) => {
     setForm((prev) => {
       const next = { ...prev, [campo]: valor };
-      if (campo === "nombre") {
-        const partes = (valor as string).trim().split(" ").filter(Boolean);
-        next.iniciales = partes.map((p) => p[0]?.toUpperCase() ?? "").slice(0, 2).join("");
-      }
-      if (campo === "rol" && valor !== "Médico") {
-        next.especialidadId = undefined;
+      if (campo === "nombre" || campo === "apellido1") {
+        const nombre = campo === "nombre" ? (valor as string) : prev.nombre;
+        const apellido1 = campo === "apellido1" ? (valor as string) : prev.apellido1;
+        next.iniciales = `${nombre[0] ?? ""}${apellido1[0] ?? ""}`.toUpperCase();
       }
       return next;
     });
   };
 
   const handleSubmit = async () => {
-    if (!form.nombre.trim() || !form.correo.trim()) {
-      setError("Nombre y correo son obligatorios.");
-      return;
-    }
-    if (!form.nombreUsuario.trim() || !form.ident.trim()) {
-      setError("Usuario de acceso y cédula/identificación son obligatorios.");
-      return;
-    }
-    if (esNuevo && !contrasena.trim()) {
-      setError("La contraseña es obligatoria al crear un usuario.");
-      return;
-    }
-    if (form.rol === "Médico" && !form.especialidadId) {
-      setError("Selecciona una especialidad para el médico.");
-      return;
-    }
+    // Validación de todos los campos, en el mismo orden en que aparecen en el formulario.
+    if (!form.nombre.trim())              { setError("Ingresa un nombre.");                       return; }
+    if (!form.apellido1.trim())           { setError("Ingresa un apellido 1.");                    return; }
+    if (!(form.apellido2 ?? "").trim())   { setError("Ingresa apellido 2.");                       return; }
+    if (!(form.telefono ?? "").trim())    { setError("Ingresa número telefónico.");                return; }
+    if (!form.correo.trim())              { setError("Ingresa un correo.");                        return; }
+    if (!form.nombreUsuario.trim())       { setError("Ingresa nombre usuario.");                   return; }
+    if (!form.ident.trim())               { setError("Ingresa un número de cédula/identificación.");return; }
+    if (esNuevo && !contrasena.trim())    { setError("Ingresa contraseña.");                       return; }
+    if (!form.rol)                        { setError("Ingresa rol.");                              return; }
+
     setGuardando(true);
     setError("");
     try {
@@ -174,8 +176,12 @@ function ModalUsuario({ usuario, onGuardar, onCerrar }: ModalUsuarioProps) {
 
   return (
     <div className="modal-overlay d-flex align-items-center justify-content-center p-3">
-      <div className="bg-white rounded-4 shadow w-100" style={{ maxWidth: 448 }}>
-        <div className="px-4 py-3 border-bottom d-flex align-items-center justify-content-between">
+      <div
+        className="bg-white rounded-4 shadow w-100 d-flex flex-column"
+        style={{ maxWidth: 448, maxHeight: "90vh" }}
+      >
+        {/* Header — fijo arriba */}
+        <div className="px-4 py-3 border-bottom d-flex align-items-center justify-content-between flex-shrink-0">
           <h3 className="fs-6 fw-medium text-dark mb-0">
             {esNuevo ? "Crear nuevo usuario" : "Editar usuario"}
           </h3>
@@ -184,15 +190,53 @@ function ModalUsuario({ usuario, onGuardar, onCerrar }: ModalUsuarioProps) {
           </button>
         </div>
 
-        <div className="p-4 d-flex flex-column gap-3">
-          <Field label="Nombre completo">
-            <input
-              value={form.nombre}
-              onChange={(e) => handleChange("nombre", e.target.value)}
-              placeholder="Nombre completo"
-              className="form-control form-control-sm"
-            />
-          </Field>
+        {/* Body — con scroll interno cuando el contenido no cabe */}
+        <div className="p-4 d-flex flex-column gap-3 overflow-auto">
+          <div className="row g-3">
+            <div className="col-6">
+              <Field label="Nombre">
+                <input
+                  value={form.nombre}
+                  onChange={(e) => handleChange("nombre", e.target.value)}
+                  placeholder="Nombre"
+                  className="form-control form-control-sm"
+                />
+              </Field>
+            </div>
+            <div className="col-6">
+              <Field label="Primer apellido">
+                <input
+                  value={form.apellido1}
+                  onChange={(e) => handleChange("apellido1", e.target.value)}
+                  placeholder="Primer apellido"
+                  className="form-control form-control-sm"
+                />
+              </Field>
+            </div>
+          </div>
+
+          <div className="row g-3">
+            <div className="col-6">
+              <Field label="Segundo apellido">
+                <input
+                  value={form.apellido2 ?? ""}
+                  onChange={(e) => handleChange("apellido2", e.target.value)}
+                  placeholder="Segundo apellido"
+                  className="form-control form-control-sm"
+                />
+              </Field>
+            </div>
+            <div className="col-6">
+              <Field label="Teléfono">
+                <input
+                  value={form.telefono ?? ""}
+                  onChange={(e) => handleChange("telefono", e.target.value)}
+                  placeholder="8888-0000"
+                  className="form-control form-control-sm"
+                />
+              </Field>
+            </div>
+          </div>
 
           <Field label="Correo electrónico">
             <input
@@ -242,32 +286,15 @@ function ModalUsuario({ usuario, onGuardar, onCerrar }: ModalUsuarioProps) {
           <Field label="Rol">
             <select
               value={form.rol}
-              onChange={(e) => handleChange("rol", e.target.value as RolUsuario)}
+              onChange={(e) => handleChange("rol", e.target.value)}
               className="form-select form-select-sm"
             >
-              {ROLES.map((r) => <option key={r}>{r}</option>)}
+              <option value="">Selecciona un rol…</option>
+              {rolesActivos.map((r) => (
+                <option key={r.IdRol} value={r.NombreRol}>{r.NombreRol}</option>
+              ))}
             </select>
           </Field>
-
-          {form.rol === "Médico" && (
-            <Field label="Especialidad">
-              <select
-                value={form.especialidadId ?? ""}
-                onChange={(e) => handleChange("especialidadId", e.target.value ? Number(e.target.value) : undefined)}
-                className="form-select form-select-sm"
-              >
-                <option value="">Selecciona una especialidad…</option>
-                {especialidadesActivas.map((esp) => (
-                  <option key={esp.id} value={esp.id}>{esp.nombre}</option>
-                ))}
-              </select>
-              {especialidadesActivas.length === 0 && (
-                <p className="fs-11 text-secondary mt-1 mb-0">
-                  No hay especialidades activas registradas. Crea una en "Gestión de especialidades" primero.
-                </p>
-              )}
-            </Field>
-          )}
 
           <Field label="Estado">
             <select
@@ -285,7 +312,8 @@ function ModalUsuario({ usuario, onGuardar, onCerrar }: ModalUsuarioProps) {
           )}
         </div>
 
-        <div className="px-4 py-3 border-top d-flex justify-content-end gap-2">
+        {/* Footer — fijo abajo */}
+        <div className="px-4 py-3 border-top d-flex justify-content-end gap-2 flex-shrink-0">
           <button onClick={onCerrar} className="btn btn-outline-secondary btn-sm" disabled={guardando}>
             Cancelar
           </button>
@@ -300,7 +328,8 @@ function ModalUsuario({ usuario, onGuardar, onCerrar }: ModalUsuarioProps) {
 
 // ─── Componente principal ─────────────────────────────────────────────────────
 export default function GestionUsuarios() {
-  const { usuarios, especialidades, cargando } = useClinicaStore();
+  const { usuarios, especialidades, roles, cargando } = useClinicaStore();
+  const rolesActivos = useMemo(() => roles.filter((r) => r.Estado !== "I"), [roles]);
 
   const [busqueda, setBusqueda]         = useState<string>("");
   const [filtroRol, setFiltroRol]       = useState<string>("Todos");
@@ -308,19 +337,19 @@ export default function GestionUsuarios() {
   const [pagina, setPagina]             = useState<number>(1);
   const [modalUsuario, setModalUsuario] = useState<UsuarioClinica | null | undefined>(undefined);
   const [confirmEstadoUsuario, setConfirmEstadoUsuario] = useState<UsuarioClinica | null>(null);
+
   const POR_PAGINA = 5;
 
   const stats = useMemo(() => ({
     total:     usuarios.length,
     activos:   usuarios.filter((u) => u.estado === "Activo").length,
     inactivos: usuarios.filter((u) => u.estado === "Inactivo").length,
-    admins:    usuarios.filter((u) => u.rol === "Administrador").length,
   }), [usuarios]);
 
   const filtrados = useMemo(() => {
     const q = busqueda.toLowerCase();
     return usuarios.filter((u) =>
-      (u.nombre.toLowerCase().includes(q) || u.correo.toLowerCase().includes(q)) &&
+      (nombreCompletoDe(u).toLowerCase().includes(q) || u.correo.toLowerCase().includes(q)) &&
       (filtroRol === "Todos" || u.rol === filtroRol) &&
       (filtroEstado === "Todos" || u.estado === filtroEstado)
     );
@@ -335,10 +364,12 @@ export default function GestionUsuarios() {
     } else {
       await clinicaStore.crearUsuario({
         nombre: form.nombre,
+        apellido1: form.apellido1,
+        apellido2: form.apellido2 || undefined,
+        telefono: form.telefono || undefined,
         correo: form.correo,
         rol: form.rol,
         estado: form.estado,
-        especialidadId: form.especialidadId,
         nombreUsuario: form.nombreUsuario,
         ident: form.ident,
         contrasena: form.contrasena ?? "",
@@ -358,17 +389,12 @@ export default function GestionUsuarios() {
     setConfirmEstadoUsuario(null);
   };
 
-  const especialidadDe = (u: UsuarioClinica): string => {
-    if (u.rol !== "Médico") return "—";
-    const esp = especialidades.find((e) => e.id === u.especialidadId);
-    return esp ? esp.nombre : "—";
-  };
-
   return (
     <>
       {modalUsuario !== undefined && (
         <ModalUsuario
           usuario={modalUsuario ?? undefined}
+          rolesActivos={rolesActivos}
           onGuardar={guardarUsuario}
           onCerrar={() => setModalUsuario(undefined)}
         />
@@ -404,11 +430,10 @@ export default function GestionUsuarios() {
           ) : (
             <>
               {/* Stats */}
-              <div className="row row-cols-2 row-cols-md-4 g-3 mb-4">
+              <div className="row row-cols-1 row-cols-sm-3 g-3 mb-4">
                 <div className="col"><StatCard label="Total usuarios"  value={stats.total} /></div>
                 <div className="col"><StatCard label="Activos"         value={stats.activos}   color="text-success" /></div>
                 <div className="col"><StatCard label="Inactivos"       value={stats.inactivos} color="text-secondary" /></div>
-                <div className="col"><StatCard label="Administradores" value={stats.admins}    color="text-purple" /></div>
               </div>
 
               {/* Filtros */}
@@ -429,7 +454,9 @@ export default function GestionUsuarios() {
                   style={{ maxWidth: 220 }}
                 >
                   <option value="Todos">Todos los roles</option>
-                  {ROLES.map((r) => <option key={r}>{r}</option>)}
+                  {roles.map((r) => (
+                    <option key={r.IdRol} value={r.NombreRol}>{r.NombreRol}</option>
+                  ))}
                 </select>
                 <select
                   value={filtroEstado}
@@ -456,44 +483,53 @@ export default function GestionUsuarios() {
                   <p className="px-3 py-5 text-center fs-6 text-secondary mb-0">No se encontraron usuarios.</p>
                 )}
 
-                {paginados.map((u, i) => (
-                  <div
-                    key={u.id}
-                    className={`grid-usuarios px-3 py-3 border-bottom align-items-center fs-6 hover-row ${u.estado === "Inactivo" ? "opacity-60" : ""}`}
-                    style={{ gridTemplateColumns: COLUMNAS_TABLA_USUARIOS }}
-                  >
-                    <div className={`avatar-circle ${AVATAR_COLORS[i % AVATAR_COLORS.length]}`}>
-                      {u.iniciales}
+                {paginados.map((u, i) => {
+                  const especialidadTexto = especialidadesDe(u, especialidades);
+                  return (
+                    <div
+                      key={u.id}
+                      className={`grid-usuarios px-3 py-3 border-bottom align-items-center fs-6 hover-row ${u.estado === "Inactivo" ? "opacity-60" : ""}`}
+                      style={{ gridTemplateColumns: COLUMNAS_TABLA_USUARIOS }}
+                    >
+                      <div className={`avatar-circle ${AVATAR_COLORS[i % AVATAR_COLORS.length]}`}>
+                        {u.iniciales}
+                      </div>
+                      <div>
+                        <p className="fw-medium text-dark mb-0">{nombreCompletoDe(u)}</p>
+                        <p className="fs-11 text-secondary mb-0">Desde {u.ingreso}</p>
+                      </div>
+                      <p className="text-secondary fs-12 text-truncate mb-0">{u.correo}</p>
+                      <div>
+                        <span className={`badge-soft ${ROL_COLOR[u.rol] ?? "badge-soft-gray"}`}>
+                          {u.rol}
+                        </span>
+                      </div>
+                      <div>
+                        {especialidadTexto === "—" ? (
+                          <span className="text-secondary fs-12">—</span>
+                        ) : (
+                          <span className="badge-soft badge-soft-amber">{especialidadTexto}</span>
+                        )}
+                      </div>
+                      <div>
+                        <span className={`badge-soft ${u.estado === "Activo" ? "badge-soft-green" : "badge-soft-gray"}`}>
+                          {u.estado}
+                        </span>
+                      </div>
+                      <div className="d-flex align-items-center justify-content-center gap-1">
+                        <IconBtn label="Editar" onClick={() => setModalUsuario(u)}>
+                          <i className="bi bi-pencil-square" aria-hidden="true" />
+                        </IconBtn>
+                        <IconBtn
+                          label={u.estado === "Activo" ? "Desactivar" : "Activar"}
+                          onClick={() => solicitarCambioEstado(u)}
+                        >
+                          <i className={`bi ${u.estado === "Activo" ? "bi-lock-fill" : "bi-unlock-fill"}`} aria-hidden="true" />
+                        </IconBtn>
+                      </div>
                     </div>
-                    <div>
-                      <p className="fw-medium text-dark mb-0">{u.nombre}</p>
-                      <p className="fs-11 text-secondary mb-0">Desde {u.ingreso}</p>
-                    </div>
-                    <p className="text-secondary fs-12 text-truncate mb-0">{u.correo}</p>
-                    <div>
-                      <span className={`badge-soft ${ROL_COLOR[u.rol as RolDisponible] ?? "badge-soft-gray"}`}>
-                        {u.rol}
-                      </span>
-                    </div>
-                    <p className="text-secondary fs-12 mb-0">{especialidadDe(u)}</p>
-                    <div>
-                      <span className={`badge-soft ${u.estado === "Activo" ? "badge-soft-green" : "badge-soft-gray"}`}>
-                        {u.estado}
-                      </span>
-                    </div>
-                    <div className="d-flex align-items-center justify-content-center gap-1">
-                      <IconBtn label="Editar" onClick={() => setModalUsuario(u)}>
-                        <i className="bi bi-pencil-square" aria-hidden="true" />
-                      </IconBtn>
-                      <IconBtn
-                        label={u.estado === "Activo" ? "Desactivar" : "Activar"}
-                        onClick={() => solicitarCambioEstado(u)}
-                      >
-                        <i className={`bi ${u.estado === "Activo" ? "bi-lock-fill" : "bi-unlock-fill"}`} aria-hidden="true" />
-                      </IconBtn>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
 
               {/* Paginación */}

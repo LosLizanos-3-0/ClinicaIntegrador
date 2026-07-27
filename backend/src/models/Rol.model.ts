@@ -18,9 +18,7 @@ export const selectRol = async (): Promise<Rol[]> => {
 
 export const selectRolById = async (id: number): Promise<Rol | undefined> => {
   const pool = await poolPromise;
-  const result = await pool.request()
-    .input('IdRol', sql.Int, id)
-    .execute('SelectRolById');
+  const result = await pool.request().input('IdRol', sql.Int, id).execute('SelectRolById');
   return result.recordset[0];
 };
 
@@ -33,9 +31,10 @@ export const updateRol = async (id: number, data: Rol) => {
     .execute('UpdateRol');
 };
 
-export const deleteRol = async (id: number) => {
+export const camEstadoRol = async (id: number, estado: 'A' | 'I') => {
   const pool = await poolPromise;
   await pool.request()
     .input('IdRol', sql.Int, id)
-    .execute('DeleteRol');
+    .input('Estado', sql.Char(1), estado)
+    .execute('CamEstadoRol');
 };

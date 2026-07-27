@@ -41,12 +41,12 @@ export const updateDetalle = async (req: Request, res: Response) => {
   }
 };
 
-export const deleteDetalle = async (req: Request, res: Response) => {
+export const cambiarEstadoDetalle = async (req: Request, res: Response) => {
   try {
-    await DetalleModel.deleteDetalleFactura(Number(req.params.id));
-    res.json({ mensaje: 'Detalle eliminado correctamente' });
+    await DetalleModel.camEstadoDetalleFactura(Number(req.params.id), req.body.Estado);
+    res.json({ mensaje: 'Estado del detalle actualizado correctamente' });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ error: 'Error al eliminar el detalle' });
+    res.status(500).json({ error: 'Error al cambiar el estado del detalle' });
   }
 };

@@ -3,8 +3,7 @@ import * as RolModel from '../models/Rol.model';
 
 export const getRoles = async (req: Request, res: Response) => {
   try {
-    const roles = await RolModel.selectRol();
-    res.json(roles);
+    res.json(await RolModel.selectRol());
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Error al obtener roles' });
@@ -42,12 +41,12 @@ export const updateRol = async (req: Request, res: Response) => {
   }
 };
 
-export const deleteRol = async (req: Request, res: Response) => {
+export const cambiarEstadoRol = async (req: Request, res: Response) => {
   try {
-    await RolModel.deleteRol(Number(req.params.id));
-    res.json({ mensaje: 'Rol eliminado correctamente' });
+    await RolModel.camEstadoRol(Number(req.params.id), req.body.Estado);
+    res.json({ mensaje: 'Estado del rol actualizado correctamente' });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ error: 'Error al eliminar el rol' });
+    res.status(500).json({ error: 'Error al cambiar el estado del rol' });
   }
 };

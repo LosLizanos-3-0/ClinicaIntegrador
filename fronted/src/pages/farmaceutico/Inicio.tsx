@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import type { Credencial, RolUsuario } from "../../types/clinica.types";
 
 interface ModuloInicio {
@@ -37,11 +37,61 @@ interface InicioProps {
   onCerrarSesion: () => void;
 }
 
+// ─── Modal: confirmar cierre de sesión ────────────────────────────────────────
+function ModalConfirmarCerrarSesion({
+  onConfirmar,
+  onCerrar,
+}: {
+  onConfirmar: () => void;
+  onCerrar: () => void;
+}) {
+  return (
+    <div className="modal-overlay d-flex align-items-center justify-content-center p-3" style={{ zIndex: 1070 }}>
+      <div className="bg-white rounded-4 shadow w-100" style={{ maxWidth: 420 }}>
+        <div className="p-4 d-flex flex-column align-items-center text-center">
+          <div
+            className="d-flex align-items-center justify-content-center rounded-circle mb-3 bg-danger-subtle"
+            style={{ width: 56, height: 56 }}
+          >
+            <i className="bi bi-box-arrow-right fs-3 text-danger" aria-hidden="true" />
+          </div>
+
+          <h3 className="fs-6 fw-semibold text-dark mb-2">¿Deseas cerrar sesión?</h3>
+
+          <p className="fs-6 text-secondary mb-0">
+            Tendrás que volver a ingresar tu usuario y contraseña para acceder de nuevo al sistema.
+          </p>
+        </div>
+
+        <div className="px-4 py-3 border-top d-flex justify-content-end gap-2">
+          <button onClick={onCerrar} className="btn btn-outline-secondary btn-sm">
+            Cancelar
+          </button>
+          <button onClick={onConfirmar} className="btn btn-danger btn-sm">
+            Cerrar sesión
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function Inicio({ credencial, onSeleccionarModulo, onCerrarSesion }: InicioProps) {
   const modulos = MODULOS_POR_ROL[credencial.rol] ?? [];
+  const [confirmCerrarSesion, setConfirmCerrarSesion] = useState(false);
 
   return (
     <div className="min-vh-100 bg-light">
+      {confirmCerrarSesion && (
+        <ModalConfirmarCerrarSesion
+          onConfirmar={() => {
+            setConfirmCerrarSesion(false);
+            onCerrarSesion();
+          }}
+          onCerrar={() => setConfirmCerrarSesion(false)}
+        />
+      )}
+
       <div className="bg-white border-bottom px-4 py-3 d-flex align-items-center justify-content-between">
         <div className="d-flex align-items-center gap-3">
           <div>
@@ -54,7 +104,7 @@ export default function Inicio({ credencial, onSeleccionarModulo, onCerrarSesion
             <div className="avatar-circle avatar-blue">{credencial.iniciales}</div>
             <p className="fs-12 text-dark mb-0">{credencial.nombreCompleto}</p>
           </div>
-          <button onClick={onCerrarSesion} className="btn btn-outline-secondary btn-sm">
+          <button onClick={() => setConfirmCerrarSesion(true)} className="btn btn-outline-secondary btn-sm">
             Cerrar sesión
           </button>
         </div>

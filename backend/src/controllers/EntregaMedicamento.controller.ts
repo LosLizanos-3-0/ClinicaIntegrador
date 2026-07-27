@@ -25,8 +25,11 @@ export const createEntrega = async (req: Request, res: Response) => {
   try {
     await EntregaModel.insertEntregaMedicamento(req.body);
     res.status(201).json({ mensaje: 'Entrega registrada correctamente' });
-  } catch (error) {
+  } catch (error: any) {
     console.error(error);
+    if (error?.message?.includes('Stock insuficiente')) {
+      return res.status(400).json({ error: 'Stock insuficiente para completar la entrega' });
+    }
     res.status(500).json({ error: 'Error al registrar la entrega' });
   }
 };
@@ -41,12 +44,12 @@ export const updateEntrega = async (req: Request, res: Response) => {
   }
 };
 
-export const deleteEntrega = async (req: Request, res: Response) => {
+export const cambiarEstadoEntrega = async (req: Request, res: Response) => {
   try {
-    await EntregaModel.deleteEntregaMedicamento(Number(req.params.id));
-    res.json({ mensaje: 'Entrega eliminada correctamente' });
+    await EntregaModel.camEstadoEntregaMedicamento(Number(req.params.id), req.body.Estado);
+    res.json({ mensaje: 'Estado de la entrega actualizado correctamente' });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ error: 'Error al eliminar la entrega' });
+    res.status(500).json({ error: 'Error al cambiar el estado de la entrega' });
   }
 };

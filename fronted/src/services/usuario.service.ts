@@ -24,21 +24,14 @@ interface UsuarioEspecialidadBD {
 
 export interface DatosUsuarioForm {
   nombre: string;
+  apellido1: string;
+  apellido2?: string;
+  telefono?: string;
   correo: string;
   rol: string;
   estado: "Activo" | "Inactivo";
-  especialidadId?: number;
   nombreUsuario: string;
   ident: string;
-}
-
-function separarNombre(nombreCompleto: string) {
-  const partes = nombreCompleto.trim().split(" ").filter(Boolean);
-  return {
-    Nombre: partes[0] ?? "",
-    Apellido1: partes[1] ?? "",
-    Apellido2: partes.slice(2).join(" ") || null,
-  };
 }
 
 export const usuarioService = {
@@ -52,17 +45,23 @@ export const usuarioService = {
 
     return usuariosRes.data.map((u) => {
       const rolNombre = roles.find((r) => r.IdRol === u.IdRol)?.NombreRol ?? "Sin rol";
-      const especialidadId = relaciones.find((r) => r.IdUsuario === u.IdUsuario)?.IdEspecialidad;
-      const nombreCompleto = `${u.Nombre} ${u.Apellido1} ${u.Apellido2 ?? ""}`.trim();
+      // Un médico puede tener varias especialidades: se recogen TODAS
+      // las relaciones que le correspondan, no solo la primera.
+      const especialidadIds = relaciones
+        .filter((r) => r.IdUsuario === u.IdUsuario)
+        .map((r) => r.IdEspecialidad);
       return {
         id: u.IdUsuario,
-        nombre: nombreCompleto,
+        nombre: u.Nombre,
+        apellido1: u.Apellido1,
+        apellido2: u.Apellido2 ?? undefined,
+        telefono: u.Telefono ?? undefined,
         correo: u.Correo,
         rol: rolNombre as UsuarioClinica["rol"],
         estado: u.Estado === "A" ? "Activo" : "Inactivo",
         ingreso: new Date(u.FechaCreacion).toLocaleDateString("es-CR"),
         iniciales: `${u.Nombre[0] ?? ""}${u.Apellido1[0] ?? ""}`.toUpperCase(),
-        especialidadId,
+        especialidadIds,
         nombreUsuario: u.NombreUsuario,
         ident: u.Ident,
       };
@@ -73,24 +72,21 @@ export const usuarioService = {
     const roles = await rolService.listar();
     const rolBD = roles.find((r) => r.NombreRol === datos.rol);
     if (!rolBD) throw new Error(`No existe el rol "${datos.rol}" en la base de datos.`);
-    const { Nombre, Apellido1, Apellido2 } = separarNombre(datos.nombre);
 
     await api.post("/usuarios", {
-      Nombre, Apellido1, Apellido2,
+      Nombre: datos.nombre,
+      Apellido1: datos.apellido1,
+      Apellido2: datos.apellido2 || null,
       Ident: datos.ident,
-      Telefono: null,
+      Telefono: datos.telefono || null,
       Correo: datos.correo,
       NombreUsuario: datos.nombreUsuario,
       Contrasena: datos.contrasena,
       Estado: datos.estado === "Activo" ? "A" : "I",
       IdRol: rolBD.IdRol,
     });
-
-    if (datos.especialidadId) {
-      const { data: usuarios } = await api.get<UsuarioBD[]>("/usuarios");
-      const creado = usuarios.sort((a, b) => b.IdUsuario - a.IdUsuario)[0];
-      await api.post("/usuario-especialidad", { IdUsuario: creado.IdUsuario, IdEspecialidad: datos.especialidadId });
-    }
+    // La asignación de especialidad(es) del médico se hace después,
+    // desde Gestión de especialidades — no en este formulario.
   },
 
   async actualizar(id: number, datos: DatosUsuarioForm) {
@@ -100,33 +96,40 @@ export const usuarioService = {
     ]);
     const rolBD = roles.find((r) => r.NombreRol === datos.rol);
     if (!rolBD) throw new Error(`No existe el rol "${datos.rol}" en la base de datos.`);
-    const { Nombre, Apellido1, Apellido2 } = separarNombre(datos.nombre);
 
     await api.put(`/usuarios/${id}`, {
-      Nombre, Apellido1, Apellido2,
+      Nombre: datos.nombre,
+      Apellido1: datos.apellido1,
+      Apellido2: datos.apellido2 || null,
       Ident: datos.ident,
-      Telefono: actualRes.data.Telefono,
+      Telefono: datos.telefono || null,
       Correo: datos.correo,
       NombreUsuario: datos.nombreUsuario,
-      Contrasena: actualRes.data.Contrasena, // se mantiene la actual
+      Contrasena: actualRes.data.Contrasena,
       Estado: datos.estado === "Activo" ? "A" : "I",
       IdRol: rolBD.IdRol,
     });
   },
 
-  async cambiarEstado(id: number, datosActuales: DatosUsuarioForm) {
-    await usuarioService.actualizar(id, {
-      ...datosActuales,
-      estado: datosActuales.estado === "Activo" ? "Inactivo" : "Activo",
+  async cambiarEstado(id: number, estadoActual: "Activo" | "Inactivo") {
+    await api.patch(`/usuarios/${id}/estado`, {
+      Estado: estadoActual === "Activo" ? "I" : "A",
     });
   },
 
+  // Solo agrega la relación — NO borra las especialidades que el médico
+  // ya tenía, para permitir que tenga varias a la vez.
   async asignarEspecialidad(idUsuario: number, idEspecialidad: number) {
-    await usuarioService.quitarEspecialidad(idUsuario);
     await api.post("/usuario-especialidad", { IdUsuario: idUsuario, IdEspecialidad: idEspecialidad });
   },
 
-  async quitarEspecialidad(idUsuario: number) {
+  // Si se pasa idEspecialidad, quita solo esa relación puntual.
+  // Si se omite, quita todas (comportamiento heredado, por compatibilidad).
+  async quitarEspecialidad(idUsuario: number, idEspecialidad?: number) {
+    if (idEspecialidad !== undefined) {
+      await api.delete(`/usuario-especialidad/${idUsuario}/${idEspecialidad}`);
+      return;
+    }
     const { data: relaciones } = await api.get<UsuarioEspecialidadBD[]>(`/usuario-especialidad/usuario/${idUsuario}`);
     for (const rel of relaciones) {
       await api.delete(`/usuario-especialidad/${idUsuario}/${rel.IdEspecialidad}`);
