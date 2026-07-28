@@ -52,10 +52,10 @@ function ModalCita({ cita, onGuardar, onCerrar }: ModalCitaProps) {
   );
 
   const especialidadInicial = (): number | "" => {
-    if (!cita) return "";
-    const medico = medicos.find((m) => m.id === cita.medicoId);
-    return medico?.especialidadId ?? "";
-  };
+  if (!cita) return "";
+  const medico = medicos.find((m) => m.id === cita.medicoId);
+  return medico?.especialidadId?.[0] ?? "";
+};
 
   const [form, setForm] = useState<FormCita>(
     cita
@@ -73,9 +73,9 @@ function ModalCita({ cita, onGuardar, onCerrar }: ModalCitaProps) {
   const [error, setError] = useState<string>("");
 
   const medicosDeEspecialidad = useMemo(() => {
-    if (!form.especialidadId) return [];
-    return medicos.filter((m) => m.especialidadId === form.especialidadId);
-  }, [medicos, form.especialidadId]);
+  if (!form.especialidadId) return [];
+  return medicos.filter((m) => m.especialidadId?.includes(form.especialidadId as number));
+}, [medicos, form.especialidadId]);
 
   const handleChange = <K extends keyof FormCita>(campo: K, valor: FormCita[K]) => {
     setForm((prev) => ({ ...prev, [campo]: valor }));
@@ -263,7 +263,7 @@ export default function GestionCitas() {
     if (!paciente || !medico) return "Selecciona un paciente y un médico válidos.";
 
     const { especialidades } = clinicaStore.getSnapshot();
-    const especialidad = especialidades.find((e) => e.id === medico.especialidadId)?.nombre ?? "General";
+    const especialidad = especialidades.find((e) => e.id === form.especialidadId)?.nombre ?? "General";
     const fechaFormateada = new Date(form.fecha + "T00:00:00").toLocaleDateString("es-CR");
 
     if (form.id) {
@@ -280,16 +280,12 @@ export default function GestionCitas() {
       });
     } else {
       clinicaStore.crearCita({
-        pacienteId: paciente.id,
-        paciente: `${paciente.nombre} ${paciente.apellido1} ${paciente.apellido2}`,
-        cedulaPaciente: paciente.cedula,
-        medicoId: medico.id,
-        medico: medico.nombre,
-        especialidad,
-        fecha: fechaFormateada,
-        hora: form.hora,
-        motivo: form.motivo,
-      });
+  pacienteId: paciente.id,
+  medicoId: medico.id,
+  fecha: fechaFormateada,
+  hora: form.hora,
+  motivo: form.motivo,
+});
     }
     setModalCita(undefined);
   };

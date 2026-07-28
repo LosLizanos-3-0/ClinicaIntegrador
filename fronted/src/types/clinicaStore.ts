@@ -31,7 +31,7 @@ export interface UsuarioClinica {
   // Un médico puede estar asignado a varias especialidades a la vez.
   // La asignación/desasignación se hace desde Gestión de especialidades,
   // no desde Gestión de usuarios (que solo muestra el resultado).
-  especialidadIds?: number[];
+  especialidadId?: number[];
   nombreUsuario: string;
   ident: string;
 }
@@ -247,7 +247,7 @@ async function quitarEspecialidadDeMedico(usuarioId: number, especialidadId: num
 }
 
 function medicosDeEspecialidad(s: ClinicaState, especialidadId: number): UsuarioClinica[] {
-  return s.usuarios.filter((u) => u.rol === "Médico" && (u.especialidadIds ?? []).includes(especialidadId));
+  return s.usuarios.filter((u) => u.rol === "Médico" && (u.especialidadId ?? []).includes(especialidadId));
 }
 
 function nombreEspecialidad(s: ClinicaState, especialidadId?: number): string {
