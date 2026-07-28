@@ -1,6 +1,6 @@
 import api from "./api";
 import type { Cita } from "../types/clinica.types";
-import type { UsuarioClinica } from "../types/clinicaStore";
+import type { UsuarioClinica, EspecialidadClinica } from "../types/clinicaStore";
 import type { Paciente } from "../types/clinica.types";
 
 interface CitaBD {
@@ -23,8 +23,17 @@ function estadoABackend(e: string) {
   return ESTADO_A_BD[e] ?? e;
 }
 
+// Junta los nombres de las especialidades del médico, ej: "Cardiología/Urología"
+function especialidadDelMedico(medico: UsuarioClinica | undefined, especialidades: EspecialidadClinica[]): string {
+  if (!medico) return "";
+  const nombres = (medico.especialidadId ?? [])
+    .map((id) => especialidades.find((e) => e.id === id)?.nombre)
+    .filter((n): n is string => !!n);
+  return nombres.join("/");
+}
+
 export const citaService = {
-  async listar(pacientes: Paciente[], medicos: UsuarioClinica[]): Promise<Cita[]> {
+  async listar(pacientes: Paciente[], medicos: UsuarioClinica[], especialidades: EspecialidadClinica[]): Promise<Cita[]> {
     const { data } = await api.get<CitaBD[]>("/citas");
     return data.map((c) => {
       const paciente = pacientes.find((p) => p.id === c.IdPaciente);
@@ -36,7 +45,7 @@ export const citaService = {
         cedulaPaciente: paciente?.cedula ?? "",
         medicoId: c.IdUsuario,
         medico: medico?.nombre ?? "",
-        especialidad: "",
+        especialidad: especialidadDelMedico(medico, especialidades),
         fecha: c.FechaCita?.split("T")[0] ?? "",
         hora: c.HoraCita,
         motivo: c.Motivo ?? "",
