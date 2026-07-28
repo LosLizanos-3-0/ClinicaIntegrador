@@ -86,25 +86,20 @@ export interface Paciente {
   sexo: "Masculino" | "Femenino";
 }
 
-export type CategoriaMedicamento =
-  | "Analgésico"
-  | "Antibiótico"
-  | "Antiinflamatorio"
-  | "Antialérgico"
-  | "Antihipertensivo"
-  | "Vitaminas"
-  | "Otro";
-
+// Ajustado a las columnas reales de la tabla Medicamento en SQL Server:
+// IdMedicamento, NombreMedicamento, Descripcion, Presentacion, Ubicacion,
+// StockActual, StockMinimo, PrecioUnitario, Estado. No existen Unidad,
+// Laboratorio ni Categoría en la base de datos.
 export interface Medicamento {
   id: number;
   nombre: string;
-  presentacion: string;
-  unidad: string;
-  laboratorio: string;
-  categoria: CategoriaMedicamento;
-  stock: number;
+  descripcion?: string;
+  presentacion?: string;
+  ubicacion: string;
+  stockActual: number;
   stockMinimo: number;
-  precio: number;
+  precioUnitario: number;
+  estado: "A" | "I";
 }
 
 export type EstadoCita = "Programada" | "Confirmada" | "Atendida" | "Cancelada";
