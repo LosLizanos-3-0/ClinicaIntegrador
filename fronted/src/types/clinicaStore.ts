@@ -31,7 +31,7 @@ export interface UsuarioClinica {
   // Un médico puede estar asignado a varias especialidades a la vez.
   // La asignación/desasignación se hace desde Gestión de especialidades,
   // no desde Gestión de usuarios (que solo muestra el resultado).
-  especialidadId?: number[];
+  especialidadIds?: number[];
   nombreUsuario: string;
   ident: string;
 }
@@ -109,7 +109,7 @@ async function cargarTodo() {
       usuarioService.listarConEspecialidad(),
       rolService.listar(),
     ]);
-    const citas = await citaService.listar(pacientes, usuarios);
+    const citas = await citaService.listar(pacientes, usuarios, especialidades);
     const pacientesMap = new Map(
       pacientes.map((p) => [p.id, { nombre: `${p.nombre} ${p.apellido1} ${p.apellido2}`, cedula: p.cedula }])
     );
@@ -247,7 +247,7 @@ async function quitarEspecialidadDeMedico(usuarioId: number, especialidadId: num
 }
 
 function medicosDeEspecialidad(s: ClinicaState, especialidadId: number): UsuarioClinica[] {
-  return s.usuarios.filter((u) => u.rol === "Médico" && (u.especialidadId ?? []).includes(especialidadId));
+  return s.usuarios.filter((u) => u.rol === "Médico" && (u.especialidadIds ?? []).includes(especialidadId));
 }
 
 function nombreEspecialidad(s: ClinicaState, especialidadId?: number): string {
@@ -263,12 +263,12 @@ async function crearCita(datos: { pacienteId: number; medicoId: number; fecha: s
     HoraCita: datos.hora,
     Motivo: datos.motivo,
   });
-  const citas = await citaService.listar(state.pacientes, state.usuarios);
+  const citas = await citaService.listar(state.pacientes, state.usuarios, state.especialidades);
   patch({ citas });
 }
 
 async function refrescarCitas() {
-  const citas = await citaService.listar(state.pacientes, state.usuarios);
+const citas = await citaService.listar(state.pacientes, state.usuarios, state.especialidades);
   patch({ citas });
 }
 

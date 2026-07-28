@@ -30,14 +30,14 @@ const FORM_VACIO: FormCita = { pacienteId: "", especialidadId: "", medicoId: "",
 
 interface ModalCitaProps {
   cita?: Cita;
-  onGuardar: (form: FormCita) => string | void;
+  onGuardar: (form: FormCita) => Promise<string | void>;
   onCerrar: () => void;
 }
 
 // ─── Modal Agendar / Reprogramar ──────────────────────────────────────────────
 function ModalCita({ cita, onGuardar, onCerrar }: ModalCitaProps) {
   const esNueva = !cita?.id;
-  const { pacientes, especialidades } = useClinicaStore();
+  const { pacientes, especialidades, usuarios } = useClinicaStore();
   const medicos = clinicaStore.medicosActivos(clinicaStore.getSnapshot());
 
   const especialidadesActivas = useMemo(
@@ -52,10 +52,10 @@ function ModalCita({ cita, onGuardar, onCerrar }: ModalCitaProps) {
   );
 
   const especialidadInicial = (): number | "" => {
-  if (!cita) return "";
-  const medico = medicos.find((m) => m.id === cita.medicoId);
-  return medico?.especialidadId?.[0] ?? "";
-};
+    if (!cita) return "";
+    const medico = usuarios.find((m) => m.id === cita.medicoId);
+    return medico?.especialidadIds?.[0] ?? "";
+  };
 
   const [form, setForm] = useState<FormCita>(
     cita
@@ -71,11 +71,12 @@ function ModalCita({ cita, onGuardar, onCerrar }: ModalCitaProps) {
       : { ...FORM_VACIO }
   );
   const [error, setError] = useState<string>("");
+  const [guardando, setGuardando] = useState<boolean>(false);
 
   const medicosDeEspecialidad = useMemo(() => {
-  if (!form.especialidadId) return [];
-  return medicos.filter((m) => m.especialidadId?.includes(form.especialidadId as number));
-}, [medicos, form.especialidadId]);
+    if (!form.especialidadId) return [];
+    return medicos.filter((m) => (m.especialidadIds ?? []).includes(form.especialidadId as number));
+  }, [medicos, form.especialidadId]);
 
   const handleChange = <K extends keyof FormCita>(campo: K, valor: FormCita[K]) => {
     setForm((prev) => ({ ...prev, [campo]: valor }));
@@ -85,7 +86,7 @@ function ModalCita({ cita, onGuardar, onCerrar }: ModalCitaProps) {
     setForm((prev) => ({ ...prev, especialidadId, medicoId: "" }));
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!form.pacienteId) {
       setError("Selecciona un paciente.");
       return;
@@ -106,8 +107,17 @@ function ModalCita({ cita, onGuardar, onCerrar }: ModalCitaProps) {
       setError("Describe el motivo de la consulta.");
       return;
     }
-    const resultado = onGuardar(form);
-    if (resultado) setError(resultado);
+    setGuardando(true);
+    setError("");
+    try {
+      const resultado = await onGuardar(form);
+      if (resultado) setError(resultado);
+    } catch (err) {
+      console.error(err);
+      setError("Ocurrió un error al guardar la cita. Intenta de nuevo.");
+    } finally {
+      setGuardando(false);
+    }
   };
 
   return (
@@ -166,7 +176,7 @@ function ModalCita({ cita, onGuardar, onCerrar }: ModalCitaProps) {
                 {form.especialidadId ? "Selecciona un médico…" : "Primero selecciona una especialidad"}
               </option>
               {medicosDeEspecialidad.map((m) => (
-                <option key={m.id} value={m.id}>{m.nombre}</option>
+                <option key={m.id} value={m.id}>{m.nombre} {m.apellido1}</option>
               ))}
             </select>
             {form.especialidadId !== "" && medicosDeEspecialidad.length === 0 && (
@@ -215,11 +225,11 @@ function ModalCita({ cita, onGuardar, onCerrar }: ModalCitaProps) {
         </div>
 
         <div className="px-4 py-3 border-top d-flex justify-content-end gap-2">
-          <button onClick={onCerrar} className="btn btn-outline-secondary btn-sm">
+          <button onClick={onCerrar} className="btn btn-outline-secondary btn-sm" disabled={guardando}>
             Cancelar
           </button>
-          <button onClick={handleSubmit} className="btn btn-primary btn-sm">
-            {esNueva ? "Agendar cita" : "Guardar cambios"}
+          <button onClick={handleSubmit} className="btn btn-primary btn-sm" disabled={guardando}>
+            {guardando ? "Guardando…" : esNueva ? "Agendar cita" : "Guardar cambios"}
           </button>
         </div>
       </div>
@@ -229,7 +239,7 @@ function ModalCita({ cita, onGuardar, onCerrar }: ModalCitaProps) {
 
 // ─── Componente principal ─────────────────────────────────────────────────────
 export default function GestionCitas() {
-  const { citas } = useClinicaStore();
+  const { citas, cargando } = useClinicaStore();
 
   const [busqueda, setBusqueda] = useState<string>("");
   const [filtroEstado, setFiltroEstado] = useState<string>("Todos");
@@ -255,37 +265,34 @@ export default function GestionCitas() {
     canceladas: citas.filter((c) => c.estado === "Cancelada").length,
   };
 
-  const guardarCita = (form: FormCita): string | void => {
+  const guardarCita = async (form: FormCita): Promise<string | void> => {
     const { pacientes } = clinicaStore.getSnapshot();
     const medicos = clinicaStore.medicosActivos(clinicaStore.getSnapshot());
     const paciente = pacientes.find((p) => p.id === form.pacienteId);
     const medico = medicos.find((m) => m.id === form.medicoId);
     if (!paciente || !medico) return "Selecciona un paciente y un médico válidos.";
 
-    const { especialidades } = clinicaStore.getSnapshot();
-    const especialidad = especialidades.find((e) => e.id === form.especialidadId)?.nombre ?? "General";
-    const fechaFormateada = new Date(form.fecha + "T00:00:00").toLocaleDateString("es-CR");
+    const fechaISO = form.fecha; // el backend espera YYYY-MM-DD
 
     if (form.id) {
       const citaExistente = citas.find((c) => c.id === form.id);
       if (!citaExistente) return "No se encontró la cita a editar.";
-      clinicaStore.actualizarCita({
+      await clinicaStore.actualizarCita({
         ...citaExistente,
         medicoId: medico.id,
-        medico: medico.nombre,
-        especialidad,
-        fecha: fechaFormateada,
+        medico: nombreCompleto(medico),
+        fecha: fechaISO,
         hora: form.hora,
         motivo: form.motivo,
       });
     } else {
-      clinicaStore.crearCita({
-  pacienteId: paciente.id,
-  medicoId: medico.id,
-  fecha: fechaFormateada,
-  hora: form.hora,
-  motivo: form.motivo,
-});
+      await clinicaStore.crearCita({
+        pacienteId: paciente.id,
+        medicoId: medico.id,
+        fecha: fechaISO,
+        hora: form.hora,
+        motivo: form.motivo,
+      });
     }
     setModalCita(undefined);
   };
@@ -313,76 +320,82 @@ export default function GestionCitas() {
         </div>
 
         <div className="p-4">
-          {/* Stats */}
-          <div className="row row-cols-2 row-cols-md-4 g-3 mb-4">
-            <div className="col"><StatCard label="Programadas" value={stats.programadas} color="text-primary" /></div>
-            <div className="col"><StatCard label="Confirmadas" value={stats.confirmadas} color="text-success" /></div>
-            <div className="col"><StatCard label="Atendidas" value={stats.atendidas} color="text-info" /></div>
-            <div className="col"><StatCard label="Canceladas" value={stats.canceladas} color="text-secondary" /></div>
-          </div>
-
-          {/* Filtros */}
-          <div className="d-flex flex-column flex-sm-row gap-2 mb-3">
-            <div className="flex-fill d-flex align-items-center gap-2 bg-soft border rounded px-3 py-2">
-              <span className="text-secondary fs-6">🔍</span>
-              <input
-                value={busqueda}
-                onChange={(e) => setBusqueda(e.target.value)}
-                placeholder="Buscar por paciente, cédula o médico…"
-                className="form-control form-control-sm border-0 bg-transparent shadow-none p-0"
-              />
-            </div>
-            <select
-              value={filtroEstado}
-              onChange={(e) => setFiltroEstado(e.target.value)}
-              className="form-select form-select-sm bg-soft"
-              style={{ maxWidth: 200 }}
-            >
-              <option value="Todos">Todos los estados</option>
-              {ESTADOS.map((e) => <option key={e}>{e}</option>)}
-            </select>
-          </div>
-
-          {citasFiltradas.length === 0 && (
-            <p className="fs-6 text-secondary text-center py-4 mb-0">No hay citas para este filtro.</p>
-          )}
-
-          <div className="d-flex flex-column gap-2">
-            {citasFiltradas.map((c) => (
-              <div key={c.id} className="border rounded p-3 d-flex flex-wrap align-items-center justify-content-between gap-2 hover-row">
-                <div>
-                  <p className="fs-12 text-secondary mb-0">Cita #{c.id} · {c.fecha} · {c.hora}</p>
-                  <p className="fw-medium text-dark mb-0">{c.paciente}</p>
-                  <p className="fs-11 text-secondary mb-0">{c.medico} · {c.especialidad}</p>
-                  <p className="fs-11 text-secondary mb-0">Motivo: {c.motivo}</p>
-                </div>
-                <div className="d-flex align-items-center gap-2 flex-shrink-0">
-                  <span className={`badge-soft ${ESTADO_COLOR[c.estado]}`}>{c.estado}</span>
-
-                  {(c.estado === "Programada" || c.estado === "Confirmada") && (
-                    <>
-                      <button onClick={() => setModalCita(c)} className="btn btn-outline-secondary btn-sm">
-                        Reprogramar
-                      </button>
-                      {c.estado === "Programada" && (
-                        <button onClick={() => clinicaStore.confirmarCita(c.id)} className="btn btn-outline-success btn-sm">
-                          Confirmar
-                        </button>
-                      )}
-                      {c.estado === "Confirmada" && (
-                        <button onClick={() => clinicaStore.marcarCitaAtendida(c.id)} className="btn btn-success btn-sm">
-                          Marcar atendida
-                        </button>
-                      )}
-                      <button onClick={() => clinicaStore.cancelarCita(c.id)} className="btn btn-outline-danger btn-sm">
-                        Cancelar
-                      </button>
-                    </>
-                  )}
-                </div>
+          {cargando ? (
+            <p className="fs-6 text-secondary text-center py-5 mb-0">Cargando citas…</p>
+          ) : (
+            <>
+              {/* Stats */}
+              <div className="row row-cols-2 row-cols-md-4 g-3 mb-4">
+                <div className="col"><StatCard label="Programadas" value={stats.programadas} color="text-primary" /></div>
+                <div className="col"><StatCard label="Confirmadas" value={stats.confirmadas} color="text-success" /></div>
+                <div className="col"><StatCard label="Atendidas" value={stats.atendidas} color="text-info" /></div>
+                <div className="col"><StatCard label="Canceladas" value={stats.canceladas} color="text-secondary" /></div>
               </div>
-            ))}
-          </div>
+
+              {/* Filtros */}
+              <div className="d-flex flex-column flex-sm-row gap-2 mb-3">
+                <div className="flex-fill d-flex align-items-center gap-2 bg-soft border rounded px-3 py-2">
+                  <span className="text-secondary fs-6">🔍</span>
+                  <input
+                    value={busqueda}
+                    onChange={(e) => setBusqueda(e.target.value)}
+                    placeholder="Buscar por paciente, cédula o médico…"
+                    className="form-control form-control-sm border-0 bg-transparent shadow-none p-0"
+                  />
+                </div>
+                <select
+                  value={filtroEstado}
+                  onChange={(e) => setFiltroEstado(e.target.value)}
+                  className="form-select form-select-sm bg-soft"
+                  style={{ maxWidth: 200 }}
+                >
+                  <option value="Todos">Todos los estados</option>
+                  {ESTADOS.map((e) => <option key={e}>{e}</option>)}
+                </select>
+              </div>
+
+              {citasFiltradas.length === 0 && (
+                <p className="fs-6 text-secondary text-center py-4 mb-0">No hay citas para este filtro.</p>
+              )}
+
+              <div className="d-flex flex-column gap-2">
+                {citasFiltradas.map((c) => (
+                  <div key={c.id} className="border rounded p-3 d-flex flex-wrap align-items-center justify-content-between gap-2 hover-row">
+                    <div>
+                      <p className="fs-12 text-secondary mb-0">Cita #{c.id} · {c.fecha} · {c.hora}</p>
+                      <p className="fw-medium text-dark mb-0">{c.paciente}</p>
+                      <p className="fs-11 text-secondary mb-0">{c.medico} · {c.especialidad}</p>
+                      <p className="fs-11 text-secondary mb-0">Motivo: {c.motivo}</p>
+                    </div>
+                    <div className="d-flex align-items-center gap-2 flex-shrink-0">
+                      <span className={`badge-soft ${ESTADO_COLOR[c.estado]}`}>{c.estado}</span>
+
+                      {(c.estado === "Programada" || c.estado === "Confirmada") && (
+                        <>
+                          <button onClick={() => setModalCita(c)} className="btn btn-outline-secondary btn-sm">
+                            Reprogramar
+                          </button>
+                          {c.estado === "Programada" && (
+                            <button onClick={() => clinicaStore.confirmarCita(c.id)} className="btn btn-outline-success btn-sm">
+                              Confirmar
+                            </button>
+                          )}
+                          {c.estado === "Confirmada" && (
+                            <button onClick={() => clinicaStore.marcarCitaAtendida(c.id)} className="btn btn-success btn-sm">
+                              Marcar atendida
+                            </button>
+                          )}
+                          <button onClick={() => clinicaStore.cancelarCita(c.id)} className="btn btn-outline-danger btn-sm">
+                            Cancelar
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
         </div>
       </div>
     </>
@@ -390,6 +403,10 @@ export default function GestionCitas() {
 }
 
 // ─── Subcomponentes ───────────────────────────────────────────────────────────
+function nombreCompleto(u: { nombre: string; apellido1: string; apellido2?: string }): string {
+  return `${u.nombre} ${u.apellido1} ${u.apellido2 ?? ""}`.trim();
+}
+
 function StatCard({ label, value, color = "text-dark" }: { label: string; value: number; color?: string }) {
   return (
     <div className="bg-soft border rounded px-3 py-3">

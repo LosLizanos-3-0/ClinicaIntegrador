@@ -202,8 +202,8 @@ export default function PanelCitasMedico() {
           <h4 className="mb-0">Panel de citas</h4>
           <p className="text-secondary mb-0 small">
             {credencial?.nombreCompleto ?? "Médico"}
-            {medico?.especialidadId && medico.especialidadId.length > 0
-  ? ` — ${medico.especialidadId
+            {medico?.especialidadIds && medico.especialidadIds.length > 0
+  ? ` — ${medico.especialidadIds
       .map((id) => clinicaStore.nombreEspecialidad(snap, id))
       .join(", ")}`
   : ""}
