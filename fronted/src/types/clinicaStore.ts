@@ -16,6 +16,7 @@ import { rolService, type RolBD } from "../services/rol.service";
 import { citaService } from "../services/cita.service";
 import { facturaService } from "../services/factura.service";
 import { authService } from "../services/auth.service";
+import { medicamentoService } from "../services/medicamento.service";
 
 export interface UsuarioClinica {
   id: number;
@@ -60,7 +61,6 @@ interface ClinicaState {
   cargando: boolean;
 }
 
-const MEDICAMENTOS_INICIALES: Medicamento[] = [];
 const RECETAS_INICIALES: Receta[] = [];
 
 // Admin de respaldo para poder entrar siempre al sistema, incluso si el
@@ -74,7 +74,7 @@ let state: ClinicaState = {
   especialidades: [],
   roles: [],
   pacientes: [],
-  medicamentos: MEDICAMENTOS_INICIALES,
+  medicamentos: [],
   recetas: RECETAS_INICIALES,
   citas: [],
   facturas: [],
@@ -103,19 +103,20 @@ async function cargarTodo() {
   if (yaCargado) return;
   yaCargado = true;
   try {
-    const [pacientes, especialidades, usuarios, roles] = await Promise.all([
-      pacienteService.listar(),
-      especialidadService.listar(),
-      usuarioService.listarConEspecialidad(),
-      rolService.listar(),
-    ]);
+    const [pacientes, especialidades, usuarios, roles, medicamentos] = await Promise.all([
+  pacienteService.listar(),
+  especialidadService.listar(),
+  usuarioService.listarConEspecialidad(),
+  rolService.listar(),
+  medicamentoService.listar(),
+]);
     const citas = await citaService.listar(pacientes, usuarios, especialidades);
     const pacientesMap = new Map(
       pacientes.map((p) => [p.id, { nombre: `${p.nombre} ${p.apellido1} ${p.apellido2}`, cedula: p.cedula }])
     );
     const facturas = await facturaService.listar(pacientesMap);
 
-    patch({ pacientes, especialidades, usuarios, roles, citas, facturas, cargando: false });
+    patch({ pacientes, especialidades, usuarios, roles, medicamentos, citas, facturas, cargando: false });
   } catch (error) {
     console.error("Error cargando datos del backend:", error);
     patch({ cargando: false });
@@ -170,6 +171,29 @@ async function toggleEstadoEspecialidad(id: number) {
   if (!actual) return;
   await especialidadService.toggleEstado(id, actual.estado);
   await refrescarEspecialidades();
+}
+
+// ─── Medicamentos ───────────────────────────────────────────────────────────
+async function refrescarMedicamentos() {
+  const medicamentos = await medicamentoService.listar();
+  patch({ medicamentos });
+}
+
+async function crearMedicamento(datos: Omit<Medicamento, "id" | "estado">) {
+  await medicamentoService.crear(datos);
+  await refrescarMedicamentos();
+}
+
+async function actualizarMedicamento(medicamento: Medicamento) {
+  await medicamentoService.actualizar(medicamento.id, medicamento);
+  await refrescarMedicamentos();
+}
+
+async function toggleEstadoMedicamento(id: number) {
+  const actual = state.medicamentos.find((m) => m.id === id);
+  if (!actual) return;
+  await medicamentoService.cambiarEstado(id, actual.estado);
+  await refrescarMedicamentos();
 }
 
 // ─── Roles ──────────────────────────────────────────────────────────────────
@@ -381,6 +405,10 @@ export const clinicaStore = {
   crearEspecialidad,
   actualizarEspecialidad,
   toggleEstadoEspecialidad,
+
+  crearMedicamento,
+  actualizarMedicamento,
+  toggleEstadoMedicamento,
 
   crearRol,
   actualizarRol,
