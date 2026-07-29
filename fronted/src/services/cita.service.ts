@@ -6,7 +6,7 @@ import type { Paciente } from "../types/clinica.types";
 interface CitaBD {
   IdCita: number;
   IdPaciente: number;
-  IdUsuario: number;
+  Idusuario: number;
   FechaCita: string;
   HoraCita: string;
   Estado: string;
@@ -26,7 +26,7 @@ function estadoABackend(e: string) {
 // Junta los nombres de las especialidades del médico, ej: "Cardiología/Urología"
 function especialidadDelMedico(medico: UsuarioClinica | undefined, especialidades: EspecialidadClinica[]): string {
   if (!medico) return "";
-  const nombres = (medico.especialidadId ?? [])
+  const nombres = (medico.especialidadIds ?? [])
     .map((id) => especialidades.find((e) => e.id === id)?.nombre)
     .filter((n): n is string => !!n);
   return nombres.join("/");
@@ -37,13 +37,13 @@ export const citaService = {
     const { data } = await api.get<CitaBD[]>("/citas");
     return data.map((c) => {
       const paciente = pacientes.find((p) => p.id === c.IdPaciente);
-      const medico = medicos.find((m) => m.id === c.IdUsuario);
+      const medico = medicos.find((m) => m.id === c.Idusuario);
       return {
         id: c.IdCita,
         pacienteId: c.IdPaciente,
         paciente: paciente ? `${paciente.nombre} ${paciente.apellido1} ${paciente.apellido2}` : "",
         cedulaPaciente: paciente?.cedula ?? "",
-        medicoId: c.IdUsuario,
+        medicoId: c.Idusuario,
         medico: medico?.nombre ?? "",
         especialidad: especialidadDelMedico(medico, especialidades),
         fecha: c.FechaCita?.split("T")[0] ?? "",

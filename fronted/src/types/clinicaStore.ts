@@ -292,7 +292,7 @@ async function actualizarCita(cita: Cita) {
     {
       IdCita: cita.id,
       IdPaciente: cita.pacienteId,
-      IdUsuario: cita.medicoId,
+      Idusuario: cita.medicoId,
       FechaCita: cita.fecha,
       HoraCita: cita.hora,
       Estado: cita.estado,
