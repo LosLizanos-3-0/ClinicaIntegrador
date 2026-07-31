@@ -1,19 +1,3 @@
-/**
- * GestionReportes.tsx
- * RF09 – Reportes
- *   ✔ Generar reportes de citas
- *   ✔ Generar reportes financieros
- *   ✔ KPIs del período
- *   ✔ Gráfica por especialidad
- *   ✔ Estado de citas (dona SVG)
- *   ✔ Listado de reportes con descarga
- *
- * Requiere: React 18+ · TypeScript · Bootstrap 5.3 · Bootstrap Icons 1.11+
- * Agregar en el <head> del proyecto (si no está ya):
- *   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
- * (usa clases auxiliares definidas en clinica-admin.css)
- */
-
 import React, { useState } from "react";
 import type { KPI, BarraEspecialidad, Reporte, TipoReporte } from "../../types/clinica.types";
 

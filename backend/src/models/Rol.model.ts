@@ -5,8 +5,9 @@ import { Rol } from '../types';
 export const insertRol = async (data: Rol) => {
   const pool = await poolPromise;
   await pool.request()
-    .input('cita', sql.Bit, data.cita)
+    .input('Cita', sql.Bit, data.cita)
     .input('NombreRol', sql.VarChar(50), data.NombreRol)
+    .input('Estado', sql.Char(1), data.Estado ?? 'A')
     .execute('InsertRol');
 };
 
@@ -28,6 +29,7 @@ export const updateRol = async (id: number, data: Rol) => {
     .input('IdRol', sql.Int, id)
     .input('Cita', sql.Bit, data.cita)
     .input('NombreRol', sql.VarChar(50), data.NombreRol)
+    .input('Estado', sql.Char(1), data.Estado ?? 'A')
     .execute('UpdateRol');
 };
 

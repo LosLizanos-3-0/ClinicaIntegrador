@@ -1,18 +1,3 @@
-/**
- * GestionUsuarios.tsx
- * RF08 – Gestión de Usuarios
- *   ✔ Crear usuarios (validaciones completas por campo)
- *   ✔ Editar usuarios
- *   ✔ Asignar roles (dinámicos, desde Gestión de roles)
- *   ✔ Desactivar / Activar usuarios (con confirmación)
- *
- * La especialidad de un médico YA NO se asigna desde aquí: se gestiona
- * desde "Gestión de especialidades" (un médico puede tener varias a la
- * vez). Esta pantalla solo muestra el resultado en la columna
- * "Especialidad", como un badge amarillo con los nombres separados por "/"
- * cuando el médico tiene más de una (ej. "Cardiología/Urología").
- */
-
 import React, { useState, useMemo } from "react";
 import type { EstadoUsuario } from "../../types/clinica.types";
 import { clinicaStore, useClinicaStore, type UsuarioClinica, type EspecialidadClinica } from "../../types/clinicaStore";

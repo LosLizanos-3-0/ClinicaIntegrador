@@ -29,17 +29,11 @@ export interface UsuarioClinica {
   estado: EstadoUsuario;
   ingreso: string;
   iniciales: string;
-  // Un médico puede estar asignado a varias especialidades a la vez.
-  // La asignación/desasignación se hace desde Gestión de especialidades,
-  // no desde Gestión de usuarios (que solo muestra el resultado).
   especialidadIds?: number[];
   nombreUsuario: string;
   ident: string;
 }
 
-// Codigo, medicos, consultorios y tags eliminados: no existen en la tabla
-// Especialidad de la base de datos (solo IdEspecialidad, Estado,
-// NombreEspecialidad). Ver especialidad.service.ts.
 export type EspecialidadClinica = {
   id: number;
   nombre: string;
@@ -63,8 +57,6 @@ interface ClinicaState {
 
 const RECETAS_INICIALES: Receta[] = [];
 
-// Admin de respaldo para poder entrar siempre al sistema, incluso si el
-// login real contra la BD falla o aún no tienes usuarios creados.
 const CREDENCIALES_INICIALES: Credencial[] = [
   { usuario: "admin", contrasena: "123", rol: "Administrador", nombreCompleto: "Andrea Salas", iniciales: "AS" },
 ];
@@ -104,12 +96,12 @@ async function cargarTodo() {
   yaCargado = true;
   try {
     const [pacientes, especialidades, usuarios, roles, medicamentos] = await Promise.all([
-  pacienteService.listar(),
-  especialidadService.listar(),
-  usuarioService.listarConEspecialidad(),
-  rolService.listar(),
-  medicamentoService.listar(),
-]);
+      pacienteService.listar(),
+      especialidadService.listar(),
+      usuarioService.listarConEspecialidad(),
+      rolService.listar(),
+      medicamentoService.listar(),
+    ]);
     const citas = await citaService.listar(pacientes, usuarios, especialidades);
     const pacientesMap = new Map(
       pacientes.map((p) => [p.id, { nombre: `${p.nombre} ${p.apellido1} ${p.apellido2}`, cedula: p.cedula }])
@@ -173,7 +165,6 @@ async function toggleEstadoEspecialidad(id: number) {
   await refrescarEspecialidades();
 }
 
-// ─── Medicamentos ───────────────────────────────────────────────────────────
 async function refrescarMedicamentos() {
   const medicamentos = await medicamentoService.listar();
   patch({ medicamentos });
@@ -196,7 +187,6 @@ async function toggleEstadoMedicamento(id: number) {
   await refrescarMedicamentos();
 }
 
-// ─── Roles ──────────────────────────────────────────────────────────────────
 async function refrescarRoles() {
   const roles = await rolService.listar();
   patch({ roles });
@@ -206,7 +196,6 @@ async function crearRol(nombreRol: string, cita: boolean = false, estado: "A" | 
   await rolService.crear(nombreRol, cita, estado);
   await refrescarRoles();
 }
-
 
 async function toggleEstadoRol(id: number) {
   const actual = state.roles.find((r) => r.IdRol === id);
@@ -233,8 +222,6 @@ async function crearUsuario(datos: DatosUsuarioForm & { contrasena: string }) {
   await refrescarUsuarios();
 }
 
-// La especialidad NO se envía aquí: se asigna/quita desde Gestión de
-// especialidades (asignarEspecialidadAMedico / quitarEspecialidadDeMedico).
 async function actualizarUsuario(usuario: UsuarioClinica) {
   await usuarioService.actualizar(usuario.id, {
     nombre: usuario.nombre,
@@ -257,14 +244,11 @@ async function toggleEstadoUsuario(id: number) {
   await refrescarUsuarios();
 }
 
-// Un médico puede tener varias especialidades: solo agrega la relación,
-// sin eliminar las que ya tenía.
 async function asignarEspecialidadAMedico(usuarioId: number, especialidadId: number) {
   await usuarioService.asignarEspecialidad(usuarioId, especialidadId);
   await refrescarUsuarios();
 }
 
-// Quita SOLO la relación con esa especialidad puntual (no todas).
 async function quitarEspecialidadDeMedico(usuarioId: number, especialidadId: number) {
   await usuarioService.quitarEspecialidad(usuarioId, especialidadId);
   await refrescarUsuarios();
@@ -279,9 +263,19 @@ function nombreEspecialidad(s: ClinicaState, especialidadId?: number): string {
   return s.especialidades.find((e) => e.id === especialidadId)?.nombre ?? "—";
 }
 
-async function crearCita(datos: { pacienteId: number; medicoId: number; fecha: string; hora: string; motivo: string }) {
+// Ahora recibe también especialidadId, requerido por el backend (columna
+// IdEspecialidad, obligatoria en InsertCita).
+async function crearCita(datos: {
+  pacienteId: number;
+  especialidadId: number;
+  medicoId: number;
+  fecha: string;
+  hora: string;
+  motivo: string;
+}) {
   await citaService.crear({
     IdPaciente: datos.pacienteId,
+    IdEspecialidad: datos.especialidadId,
     IdUsuario: datos.medicoId,
     FechaCita: datos.fecha,
     HoraCita: datos.hora,
@@ -292,7 +286,7 @@ async function crearCita(datos: { pacienteId: number; medicoId: number; fecha: s
 }
 
 async function refrescarCitas() {
-const citas = await citaService.listar(state.pacientes, state.usuarios, state.especialidades);
+  const citas = await citaService.listar(state.pacientes, state.usuarios, state.especialidades);
   patch({ citas });
 }
 
@@ -310,19 +304,28 @@ async function cambiarEstadoCita(id: number, estado: string) {
   await refrescarCitas();
 }
 
+// Ahora envía también IdEspecialidad al reprogramar (requerido por
+// UpdateCita en el backend).
 async function actualizarCita(cita: Cita) {
   await citaService.reprogramar(
     cita.id,
     {
       IdCita: cita.id,
       IdPaciente: cita.pacienteId,
+      IdEspecialidad: cita.especialidadId,
       IdUsuario: cita.medicoId,
       FechaCita: cita.fecha,
       HoraCita: cita.hora,
       Estado: cita.estado,
       Motivo: cita.motivo,
     },
-    { FechaCita: cita.fecha, HoraCita: cita.hora, Motivo: cita.motivo, IdUsuario: cita.medicoId }
+    {
+      FechaCita: cita.fecha,
+      HoraCita: cita.hora,
+      Motivo: cita.motivo,
+      IdUsuario: cita.medicoId,
+      IdEspecialidad: cita.especialidadId,
+    }
   );
   await refrescarCitas();
 }
@@ -365,9 +368,7 @@ async function anularFactura(id: number) {
   await refrescarFacturas();
 }
 
-// ─── Sesión ─────────────────────────────────────────────────────────────────
 async function iniciarSesion(usuario: string, contrasena: string): Promise<Credencial | null> {
-  // 1. Revisa primero el admin mock (respaldo para siempre poder entrar)
   const mock = CREDENCIALES_INICIALES.find(
     (c) => c.usuario.toLowerCase() === usuario.trim().toLowerCase() && c.contrasena === contrasena
   );
@@ -376,7 +377,6 @@ async function iniciarSesion(usuario: string, contrasena: string): Promise<Crede
     return mock;
   }
 
-  // 2. Si no coincide con el mock, intenta el login real contra la BD
   try {
     const credencial = await authService.login(usuario, contrasena);
     patch({ usuarioActual: credencial });

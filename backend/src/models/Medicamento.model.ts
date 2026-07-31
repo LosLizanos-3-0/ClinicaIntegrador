@@ -12,6 +12,7 @@ export const insertMedicamento = async (data: Medicamento) => {
     .input('StockActual', sql.Int, data.StockActual ?? 0)
     .input('StockMinimo', sql.Int, data.StockMinimo ?? 0)
     .input('PrecioUnitario', sql.Decimal(10, 2), data.PrecioUnitario ?? 0)
+    .input('Estado', sql.Char(1), data.Estado ?? 'A')
     .execute('InsertMedicamento');
 };
 
@@ -38,6 +39,7 @@ export const updateMedicamento = async (id: number, data: Medicamento) => {
     .input('StockActual', sql.Int, data.StockActual)
     .input('StockMinimo', sql.Int, data.StockMinimo)
     .input('PrecioUnitario', sql.Decimal(10, 2), data.PrecioUnitario)
+    .input('Estado', sql.Char(1), data.Estado ?? 'A')
     .execute('UpdateMedicamento');
 };
 

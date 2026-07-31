@@ -1,21 +1,4 @@
-/**
- * GestionRoles.tsx
- * RF08 – Gestión de Roles
- *   ✔ Ver usuarios agrupados por rol
- *   ✔ Editar usuario (rol, estado) desde la vista de roles — mismos campos
- *     y validaciones que Gestión de usuarios
- *   ✔ Activar / Desactivar usuarios (con confirmación)
- *   ✔ Crear / Editar / Activar / Desactivar roles reales (tabla Rol)
- *
- * Requiere: React 18+ · TypeScript · Bootstrap 5.3 · Bootstrap Icons 1.11+
- *
- * Los roles y usuarios vienen de `clinicaStore.ts` (SQL Server real, vía
- * rol.service.ts y usuario.service.ts). La especialidad de un médico
- * (posiblemente varias) se gestiona desde Gestión de especialidades; aquí
- * solo se muestra el resultado, igual que en GestionUsuarios.tsx.
- */
-
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useMemo, useState } from "react";
 import type { EstadoUsuario } from "../../types/clinica.types";
 import {
   clinicaStore,
@@ -612,12 +595,11 @@ export default function GestionRoles() {
     [roles]
   );
 
-  // Selecciona automáticamente el primer rol disponible en cuanto carguen
-  useEffect(() => {
-    if (!rolActual && catalogoRoles.length > 0) {
-      setRolActual(catalogoRoles[0].nombre);
-    }
-  }, [catalogoRoles, rolActual]);
+  // Rol "efectivo": el elegido por el usuario, o si aún no hay ninguno
+  // (primera carga), el primero del catálogo. Se calcula en cada render,
+  // sin necesidad de un efecto que llame a setState (evita el warning
+  // "Avoid calling setState() directly within an effect").
+  const rolActualEfectivo = rolActual || catalogoRoles[0]?.nombre || "";
 
   const conteoPorRol = useMemo(() => {
     const conteo: Record<string, number> = {};
@@ -625,15 +607,15 @@ export default function GestionRoles() {
     return conteo;
   }, [usuarios, catalogoRoles]);
 
-  const rolActualInfo = catalogoRoles.find((r) => r.nombre === rolActual) ?? catalogoRoles[0];
+  const rolActualInfo = catalogoRoles.find((r) => r.nombre === rolActualEfectivo) ?? catalogoRoles[0];
 
   const usuariosDelRol = useMemo(() => {
     const termino = busqueda.trim().toLowerCase();
     return usuarios.filter((u) =>
-      u.rol === rolActual &&
+      u.rol === rolActualEfectivo &&
       (nombreCompletoDe(u).toLowerCase().includes(termino) || u.correo.toLowerCase().includes(termino))
     );
-  }, [usuarios, rolActual, busqueda]);
+  }, [usuarios, rolActualEfectivo, busqueda]);
 
   const guardarUsuario = async (form: FormUsuario & { contrasena?: string }) => {
     if (form.id) {
@@ -676,7 +658,7 @@ export default function GestionRoles() {
     if (!modalEditarRol) return;
     const nombreAnterior = modalEditarRol.NombreRol;
     await clinicaStore.actualizarRol(modalEditarRol, { nombreRol: nombre, cita, estado });
-    if (rolActual === nombreAnterior) {
+    if (rolActualEfectivo === nombreAnterior) {
       setRolActual(nombre);
     }
     setModalEditarRol(null);
@@ -760,7 +742,7 @@ export default function GestionRoles() {
                     <div
                       key={r.id}
                       className={`position-relative px-3 py-3 rounded border bg-white ${
-                        r.nombre === rolActual ? "border-primary-subtle bg-primary bg-opacity-10" : ""
+                        r.nombre === rolActualEfectivo ? "border-primary-subtle bg-primary bg-opacity-10" : ""
                       } ${r.estado === "I" ? "opacity-60" : ""}`}
                     >
                       <button
@@ -769,7 +751,7 @@ export default function GestionRoles() {
                         className="btn text-start p-0 border-0 bg-transparent w-100"
                         style={{ paddingRight: 70 }}
                       >
-                        <p className={`fs-6 fw-medium d-flex align-items-center gap-2 mb-0 ${r.nombre === rolActual ? "text-primary" : "text-dark"}`}>
+                        <p className={`fs-6 fw-medium d-flex align-items-center gap-2 mb-0 ${r.nombre === rolActualEfectivo ? "text-primary" : "text-dark"}`}>
                           <i className={`bi bi-${r.icono}`} aria-hidden="true" /> {r.nombre}
                         </p>
                         <p className="fs-11 text-secondary mt-1 mb-0">{r.descripcion}</p>
@@ -814,7 +796,7 @@ export default function GestionRoles() {
                 <div className="bg-soft border rounded px-3 py-3 mb-3">
                   <p className="fs-6 fw-medium text-dark mb-0">{rolActualInfo?.nombre}</p>
                   <p className="fs-11 text-secondary mt-1 mb-0">
-                    {conteoPorRol[rolActual] ?? 0} usuarios · {rolActualInfo?.descripcion}
+                    {conteoPorRol[rolActualEfectivo] ?? 0} usuarios · {rolActualInfo?.descripcion}
                   </p>
                 </div>
 

@@ -10,6 +10,7 @@ export const insertDetalleFactura = async (data: DetalleFactura) => {
     .input('Cantidad', sql.Int, data.Cantidad)
     .input('PrecioUnitario', sql.Decimal(10, 2), data.PrecioUnitario)
     .input('Subtotal', sql.Decimal(10, 2), data.Subtotal)
+    .input('Estado', sql.Char(1), data.Estado ?? 'A')
     .execute('InsertDetalleFactura');
 };
 
@@ -34,6 +35,7 @@ export const updateDetalleFactura = async (id: number, data: DetalleFactura) => 
     .input('Cantidad', sql.Int, data.Cantidad)
     .input('PrecioUnitario', sql.Decimal(10, 2), data.PrecioUnitario)
     .input('Subtotal', sql.Decimal(10, 2), data.Subtotal)
+    .input('Estado', sql.Char(1), data.Estado ?? 'A')
     .execute('UpdateDetalleFactura');
 };
 

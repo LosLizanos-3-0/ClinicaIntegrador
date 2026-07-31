@@ -8,6 +8,7 @@ export const insertPago = async (data: Pago) => {
     .input('IdFactura', sql.Int, data.IdFactura)
     .input('Monto', sql.Decimal(10, 2), data.Monto)
     .input('MetodoPago', sql.VarChar(30), data.MetodoPago)
+    .input('Estado', sql.Char(1), data.Estado ?? 'A')
     .execute('InsertPago');
 };
 
@@ -30,6 +31,7 @@ export const updatePago = async (id: number, data: Pago) => {
     .input('IdFactura', sql.Int, data.IdFactura)
     .input('Monto', sql.Decimal(10, 2), data.Monto)
     .input('MetodoPago', sql.VarChar(30), data.MetodoPago)
+    .input('Estado', sql.Char(1), data.Estado ?? 'A')
     .execute('UpdatePago');
 };
 

@@ -41,10 +41,6 @@ export interface Reporte {
 
 export type EstadoEspecialidad = "Activa" | "Inactiva";
 
-// Codigo, medicos, consultorios y tags NO existen en la tabla Especialidad
-// de la base de datos (ver especialidad.model.ts: solo IdEspecialidad,
-// Estado, NombreEspecialidad). Se eliminaron del tipo para reflejar
-// exactamente lo que el sistema realmente persiste.
 export interface Especialidad {
   id: number;
   nombre: string;
@@ -86,10 +82,6 @@ export interface Paciente {
   sexo: "Masculino" | "Femenino";
 }
 
-// Ajustado a las columnas reales de la tabla Medicamento en SQL Server:
-// IdMedicamento, NombreMedicamento, Descripcion, Presentacion, Ubicacion,
-// StockActual, StockMinimo, PrecioUnitario, Estado. No existen Unidad,
-// Laboratorio ni Categoría en la base de datos.
 export interface Medicamento {
   id: number;
   nombre: string;
@@ -104,6 +96,10 @@ export interface Medicamento {
 
 export type EstadoCita = "Programada" | "Confirmada" | "Atendida" | "Cancelada";
 
+// Se agregó especialidadId: ahora la cita guarda explícitamente con qué
+// especialidad fue agendada (columna real IdEspecialidad en la BD), en
+// vez de derivarla del médico — necesario porque un médico puede tener
+// varias especialidades.
 export interface Cita {
   id: number;
   pacienteId: number;
@@ -111,6 +107,7 @@ export interface Cita {
   cedulaPaciente: string;
   medicoId: number;
   medico: string;
+  especialidadId: number;
   especialidad: string;
   fecha: string;
   hora: string;

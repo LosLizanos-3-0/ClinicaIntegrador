@@ -1,24 +1,3 @@
-/**
- * GestionEspecialidades.tsx
- * RF03 – Gestión de Médicos / Especialidades
- *   ✔ Registrar especialidades (solo Nombre — el Estado inicial y el ID
- *     se controlan en el backend)
- *   ✔ Asignar / quitar médicos a especialidades (un médico puede tener varias)
- *   ✔ Editar especialidades (Nombre, Estado, Médicos asignados)
- *   ✔ Activar / Desactivar especialidades (con confirmación)
- *   ✔ Vista cuadrícula y lista
- *
- * Se eliminaron Código, Etiquetas y Consultorios de toda la pantalla: esos
- * campos no existen en la tabla Especialidad de la base de datos (que solo
- * tiene IdEspecialidad, Estado y NombreEspecialidad). El "código" que se
- * veía antes (ESP-1, ESP-2...) era un valor generado en el frontend, no un
- * dato real almacenado.
- *
- * "Médicos asignados" solo aparece en el modal de Editar (no en Nueva
- * especialidad), porque para asignar médicos primero debe existir la
- * especialidad guardada con su id real.
- */
-
 import React, { useState, useMemo } from "react";
 import type { EstadoEspecialidad } from "../../types/clinica.types";
 import { clinicaStore, useClinicaStore, type UsuarioClinica, type EspecialidadClinica } from "../../types/clinicaStore";
