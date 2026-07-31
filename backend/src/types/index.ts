@@ -2,6 +2,7 @@ export interface Rol {
   IdRol?: number;
   cita: boolean;
   NombreRol: string;
+  Estado?: 'A' | 'I';
 }
 
 export interface Usuario {
@@ -46,10 +47,11 @@ export interface Paciente {
 export interface Cita {
   IdCita?: number;
   IdPaciente: number;
+  IdEspecialidad: number; // 👈 nuevo
   IdUsuario: number;
   FechaCita: string;
   HoraCita: string;
-  Estado?: 'Agendada' | 'Cancelada' | 'Reprogramada' | 'Atendida';
+  Estado?: 'Agendada' | 'Confirmada' | 'Cancelada' | 'Reprogramada' | 'Atendida';
   Motivo?: string;
 }
 
@@ -57,7 +59,9 @@ export interface ExpedienteMedico {
   IdExpediente?: number;
   IdPaciente: number;
   IdUsuario: number;
+  IdCita: number; // 👈 nuevo
   Observaciones?: string;
+  Estado?: 'A' | 'I';
 }
 
 export interface Consulta {
@@ -67,6 +71,7 @@ export interface Consulta {
   IdUsuario: number;
   Diagnostico?: string;
   Tratamiento?: string;
+  Estado?: 'A' | 'I';
 }
 
 export interface Medicamento {
@@ -78,6 +83,7 @@ export interface Medicamento {
   StockActual?: number;
   StockMinimo?: number;
   PrecioUnitario?: number;
+  Estado?: 'A' | 'I';
 }
 
 export interface Receta {
@@ -85,7 +91,7 @@ export interface Receta {
   IdConsulta: number;
   IdPaciente: number;
   IdUsuario: number;
-  Estado?: 'Pendiente' | 'Despachada';
+  Estado?: 'Pendiente' | 'Despachada' | 'Anulada';
 }
 
 export interface DetalleReceta {
@@ -94,12 +100,14 @@ export interface DetalleReceta {
   IdMedicamento: number;
   Cantidad: number;
   Indicaciones?: string;
+  Estado?: 'A' | 'I';
 }
 
 export interface EntregaMedicamento {
   IdEntrega?: number;
   IdReceta: number;
   IdUsuario: number;
+  Estado?: 'A' | 'I';
 }
 
 export interface Factura {
@@ -117,6 +125,7 @@ export interface DetalleFactura {
   Cantidad: number;
   PrecioUnitario: number;
   Subtotal: number;
+  Estado?: 'A' | 'I';
 }
 
 export interface Pago {
@@ -124,4 +133,5 @@ export interface Pago {
   IdFactura: number;
   Monto: number;
   MetodoPago: 'Efectivo' | 'Tarjeta' | 'Transferencia' | 'SINPE';
+  Estado?: 'A' | 'I';
 }

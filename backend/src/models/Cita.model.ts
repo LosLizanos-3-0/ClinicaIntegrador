@@ -6,6 +6,7 @@ export const insertCita = async (data: Cita) => {
   const pool = await poolPromise;
   await pool.request()
     .input('IdPaciente', sql.Int, data.IdPaciente)
+    .input('IdEspecialidad', sql.Int, data.IdEspecialidad)
     .input('IdUsuario', sql.Int, data.IdUsuario)
     .input('FechaCita', sql.Date, data.FechaCita)
     .input('HoraCita', sql.VarChar(8), data.HoraCita)
@@ -31,6 +32,7 @@ export const updateCita = async (id: number, data: Cita) => {
   await pool.request()
     .input('IdCita', sql.Int, id)
     .input('IdPaciente', sql.Int, data.IdPaciente)
+    .input('IdEspecialidad', sql.Int, data.IdEspecialidad)
     .input('IdUsuario', sql.Int, data.IdUsuario)
     .input('FechaCita', sql.Date, data.FechaCita)
     .input('HoraCita', sql.VarChar(8), data.HoraCita)
