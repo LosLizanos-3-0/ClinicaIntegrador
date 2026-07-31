@@ -6,7 +6,8 @@ import type { Paciente } from "../types/clinica.types";
 interface CitaBD {
   IdCita: number;
   IdPaciente: number;
-  Idusuario: number;
+  IdEspecialidad: number;
+  IdUsuario: number;
   FechaCita: string;
   HoraCita: string;
   Estado: string;
@@ -23,29 +24,26 @@ function estadoABackend(e: string) {
   return ESTADO_A_BD[e] ?? e;
 }
 
-// Junta los nombres de las especialidades del médico, ej: "Cardiología/Urología"
-function especialidadDelMedico(medico: UsuarioClinica | undefined, especialidades: EspecialidadClinica[]): string {
-  if (!medico) return "";
-  const nombres = (medico.especialidadIds ?? [])
-    .map((id) => especialidades.find((e) => e.id === id)?.nombre)
-    .filter((n): n is string => !!n);
-  return nombres.join("/");
-}
 
 export const citaService = {
   async listar(pacientes: Paciente[], medicos: UsuarioClinica[], especialidades: EspecialidadClinica[]): Promise<Cita[]> {
     const { data } = await api.get<CitaBD[]>("/citas");
     return data.map((c) => {
       const paciente = pacientes.find((p) => p.id === c.IdPaciente);
-      const medico = medicos.find((m) => m.id === c.Idusuario);
+      const medico = medicos.find((m) => m.id === c.IdUsuario);
+      // La especialidad de la cita ahora se lee directamente de IdEspecialidad
+      // (columna real de la BD), no se deriva del médico — necesario porque
+      // un médico puede tener varias especialidades asignadas.
+      const especialidad = especialidades.find((e) => e.id === c.IdEspecialidad);
       return {
         id: c.IdCita,
         pacienteId: c.IdPaciente,
         paciente: paciente ? `${paciente.nombre} ${paciente.apellido1} ${paciente.apellido2}` : "",
         cedulaPaciente: paciente?.cedula ?? "",
-        medicoId: c.Idusuario,
-        medico: medico?.nombre ?? "",
-        especialidad: especialidadDelMedico(medico, especialidades),
+        medicoId: c.IdUsuario,
+        medico: medico ? `${medico.nombre} ${medico.apellido1}` : "",
+        especialidadId: c.IdEspecialidad,
+        especialidad: especialidad?.nombre ?? "",
         fecha: c.FechaCita?.split("T")[0] ?? "",
         hora: c.HoraCita,
         motivo: c.Motivo ?? "",
@@ -54,7 +52,14 @@ export const citaService = {
     });
   },
 
-  async crear(datos: { IdPaciente: number; IdUsuario: number; FechaCita: string; HoraCita: string; Motivo: string }) {
+  async crear(datos: {
+    IdPaciente: number;
+    IdEspecialidad: number;
+    IdUsuario: number;
+    FechaCita: string;
+    HoraCita: string;
+    Motivo: string;
+  }) {
     await api.post("/citas", { ...datos, Estado: "Agendada" });
   },
 
@@ -62,7 +67,11 @@ export const citaService = {
     await api.patch(`/citas/${id}/estado`, { Estado: estadoABackend(nuevoEstado) });
   },
 
-  async reprogramar(id: number, base: CitaBD, cambios: { FechaCita: string; HoraCita: string; Motivo: string; IdUsuario: number }) {
+  async reprogramar(
+    id: number,
+    base: CitaBD,
+    cambios: { FechaCita: string; HoraCita: string; Motivo: string; IdUsuario: number; IdEspecialidad: number }
+  ) {
     await api.put(`/citas/${id}`, { ...base, ...cambios });
   },
 };

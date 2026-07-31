@@ -17,10 +17,18 @@ interface FacturaBD {
   Estado: "Pendiente" | "Pagada" | "Anulada";
 }
 
+interface DetalleFacturaBD {
+  IdDetalleFactura: number;
+  IdFactura: number;
+  Concepto: string;
+  Cantidad: number;
+  PrecioUnitario: number;
+}
+
 export const facturaService = {
   async listar(pacientesMap: Map<number, { nombre: string; cedula: string }>): Promise<Factura[]> {
     const { data } = await api.get<FacturaBD[]>("/facturas");
-    const { data: todosDetalles } = await api.get<any[]>("/detalle-factura");
+    const { data: todosDetalles } = await api.get<DetalleFacturaBD[]>("/detalle-factura");
 
     return data.map((f) => {
       const paciente = pacientesMap.get(f.IdPaciente);

@@ -9,6 +9,7 @@ export const insertDetalleReceta = async (data: DetalleReceta) => {
     .input('IdMedicamento', sql.Int, data.IdMedicamento)
     .input('Cantidad', sql.Int, data.Cantidad)
     .input('Indicaciones', sql.VarChar(300), data.Indicaciones ?? null)
+    .input('Estado', sql.Char(1), data.Estado ?? 'A')
     .execute('InsertDetalleReceta');
 };
 
@@ -32,6 +33,7 @@ export const updateDetalleReceta = async (id: number, data: DetalleReceta) => {
     .input('IdMedicamento', sql.Int, data.IdMedicamento)
     .input('Cantidad', sql.Int, data.Cantidad)
     .input('Indicaciones', sql.VarChar(300), data.Indicaciones ?? null)
+    .input('Estado', sql.Char(1), data.Estado ?? 'A')
     .execute('UpdateDetalleReceta');
 };
 

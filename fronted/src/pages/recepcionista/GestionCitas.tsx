@@ -1,5 +1,11 @@
 /**
  * GestionCitas.tsx
+ *
+ * La especialidad de la cita ahora se guarda explícitamente (Cita.especialidadId,
+ * columna IdEspecialidad en la BD), en vez de derivarse del médico. Necesario
+ * porque un médico puede estar asignado a varias especialidades: el select de
+ * "Especialidad" en el modal sigue sirviendo para filtrar médicos, pero además
+ * su valor se envía tal cual al backend al crear o reprogramar la cita.
  */
 
 import React, { useMemo, useState } from "react";
@@ -37,7 +43,7 @@ interface ModalCitaProps {
 // ─── Modal Agendar / Reprogramar ──────────────────────────────────────────────
 function ModalCita({ cita, onGuardar, onCerrar }: ModalCitaProps) {
   const esNueva = !cita?.id;
-  const { pacientes, especialidades, usuarios } = useClinicaStore();
+  const { pacientes, especialidades } = useClinicaStore();
   const medicos = clinicaStore.medicosActivos(clinicaStore.getSnapshot());
 
   const especialidadesActivas = useMemo(
@@ -50,19 +56,13 @@ function ModalCita({ cita, onGuardar, onCerrar }: ModalCitaProps) {
     () => pacientes.filter((p) => p.estado === "Activo" || p.id === cita?.pacienteId),
     [pacientes, cita]
   );
-
-  const especialidadInicial = (): number | "" => {
-    if (!cita) return "";
-    const medico = usuarios.find((m) => m.id === cita.medicoId);
-    return medico?.especialidadIds?.[0] ?? "";
-  };
-
+  
   const [form, setForm] = useState<FormCita>(
     cita
       ? {
           id: cita.id,
           pacienteId: cita.pacienteId,
-          especialidadId: especialidadInicial(),
+          especialidadId: cita.especialidadId,
           medicoId: cita.medicoId,
           fecha: cita.fecha,
           hora: cita.hora,
@@ -271,6 +271,7 @@ export default function GestionCitas() {
     const paciente = pacientes.find((p) => p.id === form.pacienteId);
     const medico = medicos.find((m) => m.id === form.medicoId);
     if (!paciente || !medico) return "Selecciona un paciente y un médico válidos.";
+    if (!form.especialidadId) return "Selecciona una especialidad.";
 
     const fechaISO = form.fecha; // el backend espera YYYY-MM-DD
 
@@ -281,6 +282,7 @@ export default function GestionCitas() {
         ...citaExistente,
         medicoId: medico.id,
         medico: nombreCompleto(medico),
+        especialidadId: form.especialidadId,
         fecha: fechaISO,
         hora: form.hora,
         motivo: form.motivo,
@@ -288,6 +290,7 @@ export default function GestionCitas() {
     } else {
       await clinicaStore.crearCita({
         pacienteId: paciente.id,
+        especialidadId: form.especialidadId,
         medicoId: medico.id,
         fecha: fechaISO,
         hora: form.hora,

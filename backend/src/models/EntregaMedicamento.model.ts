@@ -7,6 +7,7 @@ export const insertEntregaMedicamento = async (data: EntregaMedicamento) => {
   await pool.request()
     .input('IdReceta', sql.Int, data.IdReceta)
     .input('IdUsuario', sql.Int, data.IdUsuario)
+    .input('Estado', sql.Char(1), data.Estado ?? 'A')
     .execute('InsertEntregaMedicamento');
 };
 
@@ -28,6 +29,7 @@ export const updateEntregaMedicamento = async (id: number, data: EntregaMedicame
     .input('IdEntrega', sql.Int, id)
     .input('IdReceta', sql.Int, data.IdReceta)
     .input('IdUsuario', sql.Int, data.IdUsuario)
+    .input('Estado', sql.Char(1), data.Estado ?? 'A')
     .execute('UpdateEntregaMedicamento');
 };
 

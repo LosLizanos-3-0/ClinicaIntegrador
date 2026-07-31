@@ -10,6 +10,7 @@ export const insertConsulta = async (data: Consulta) => {
     .input('IdUsuario', sql.Int, data.IdUsuario)
     .input('Diagnostico', sql.VarChar(500), data.Diagnostico ?? null)
     .input('Tratamiento', sql.VarChar(500), data.Tratamiento ?? null)
+    .input('Estado', sql.Char(1), data.Estado ?? 'A')
     .execute('InsertConsulta');
 };
 
@@ -34,6 +35,7 @@ export const updateConsulta = async (id: number, data: Consulta) => {
     .input('IdUsuario', sql.Int, data.IdUsuario)
     .input('Diagnostico', sql.VarChar(500), data.Diagnostico ?? null)
     .input('Tratamiento', sql.VarChar(500), data.Tratamiento ?? null)
+    .input('Estado', sql.Char(1), data.Estado ?? 'A')
     .execute('UpdateConsulta');
 };
 
