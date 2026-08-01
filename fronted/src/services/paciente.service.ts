@@ -29,6 +29,7 @@ function aFrontend(p: PacienteBD): Paciente {
     registro: new Date(p.FechaRegistro).toLocaleDateString("es-CR"),
     estado: p.Estado === "A" ? "Activo" : "Inactivo",
     sexo: p.Sexo,
+    direccion: p.Direccion ?? ""
   };
 }
 
@@ -43,6 +44,7 @@ function aBackend(p: Omit<Paciente, "id" | "registro">) {
     Sexo: p.sexo,
     Telefono: p.telefono || null,
     Correo: p.correo || null,
+    Direccion: p.direccion || null
   };
 }
 

@@ -80,6 +80,7 @@ export interface Paciente {
   registro: string;
   estado: EstadoUsuario;
   sexo: "Masculino" | "Femenino";
+  direccion?: string;
 }
 
 export interface Medicamento {
