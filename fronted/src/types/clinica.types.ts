@@ -142,7 +142,7 @@ export interface Factura {
   metodoPago?: MetodoPago;
 }
 
-export type EstadoReceta = "Pendiente" | "Validada" | "Entregada";
+export type EstadoReceta = "Pendiente" | "Despachada" | "Anulada";
 
 export interface ItemReceta {
   medicamentoId: number;
@@ -161,4 +161,23 @@ export interface Receta {
   items: ItemReceta[];
   estado: EstadoReceta;
   observaciones?: string;
+}
+
+export interface ExpedienteMedico {
+  id: number;
+  pacienteId: number;
+  medicoId: number;
+  citaId: number;
+  fecha: string;
+  observaciones?: string;
+}
+
+export interface ConsultaMedica {
+  id: number;
+  expedienteId: number;
+  citaId?: number;
+  medicoId: number;
+  fecha: string;
+  diagnostico?: string;
+  tratamiento?: string;
 }

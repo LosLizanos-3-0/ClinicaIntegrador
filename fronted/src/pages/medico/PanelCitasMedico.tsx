@@ -1,8 +1,7 @@
 import { useMemo, useState } from "react";
 import { useClinicaStore, clinicaStore } from "../../types/clinicaStore";
-import type { EstadoCita } from "../../types/clinica.types";
+import type { EstadoCita, ConsultaMedica } from "../../types/clinica.types";
 
-/* ================== HELPERS DE FECHA ================== */
 const MESES = [
   "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
   "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre",
@@ -15,7 +14,6 @@ function fmtDate(d: Date) {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
 
-/* ================== ESTADOS DE CITA ================== */
 const ESTADO_BADGE: Record<EstadoCita, string> = {
   Programada: "bg-warning text-dark",
   Confirmada: "bg-info text-dark",
@@ -25,27 +23,18 @@ const ESTADO_BADGE: Record<EstadoCita, string> = {
 
 const ESTADO_BLOQUEADO: EstadoCita[] = ["Atendida", "Cancelada"];
 
-/* ================== TIPOS LOCALES (SOLO VISUAL, NO PERSISTEN AÚN) ==================
-   NOTA: el backend todavía no tiene un módulo de "expediente" ni de "recetas".
-   Estas estructuras son temporales, solo para mostrar el flujo visual completo.
-   Cuando el backend exponga estos módulos, esto se reemplaza por llamadas reales
-   a clinicaStore / servicios, igual que se hizo con citas.
-*/
-interface NotaLocal {
-  motivo: string;
-  descripcion: string;
-}
-interface MedicamentoLocal {
-  medicamento: string;
+interface MedicamentoForm {
+  medicamentoId: number | "";
   cantidad: string;
+  indicaciones: string;
 }
+
+const MEDICAMENTO_VACIO: MedicamentoForm = { medicamentoId: "", cantidad: "", indicaciones: "" };
 
 export default function PanelCitasMedico() {
   const snap = useClinicaStore();
   const credencial = snap.usuarioActual;
 
-  // El médico logueado se identifica cruzando la credencial (usuario) con
-  // el usuario real del backend (que sí tiene id numérico).
   const medico = useMemo(
     () => snap.usuarios.find((u) => u.nombreUsuario === credencial?.usuario),
     [snap.usuarios, credencial]
@@ -56,6 +45,11 @@ export default function PanelCitasMedico() {
     [snap.citas, medico]
   );
 
+  const medicamentosDisponibles = useMemo(
+    () => snap.medicamentos.filter((m) => m.estado === "A"),
+    [snap.medicamentos]
+  );
+
   const hoy = new Date();
   const [cursorMes, setCursorMes] = useState(new Date(hoy.getFullYear(), hoy.getMonth(), 1));
   const [fechaSeleccionada, setFechaSeleccionada] = useState(fmtDate(hoy));
@@ -63,22 +57,19 @@ export default function PanelCitasMedico() {
   const [citaActualId, setCitaActualId] = useState<number | null>(null);
   const [modalCitaAbierto, setModalCitaAbierto] = useState(false);
   const [modalExpedienteAbierto, setModalExpedienteAbierto] = useState(false);
-  const [modalNotaAbierto, setModalNotaAbierto] = useState(false);
-  const [modalRecetaAbierto, setModalRecetaAbierto] = useState(false);
+  const [historialPaciente, setHistorialPaciente] = useState<ConsultaMedica[]>([]);
+  const [cargandoHistorial, setCargandoHistorial] = useState(false);
 
-  // Estado visual-only de notas/recetas "pendientes de guardar" por cita.
-  const [notasNuevasPorCita, setNotasNuevasPorCita] = useState<Record<number, NotaLocal[]>>({});
-  const [recetasNuevasPorCita, setRecetasNuevasPorCita] = useState<Record<number, MedicamentoLocal[][]>>({});
+  const [observaciones, setObservaciones] = useState("");
+  const [diagnostico, setDiagnostico] = useState("");
+  const [tratamiento, setTratamiento] = useState("");
+  const [medicamentosForm, setMedicamentosForm] = useState<MedicamentoForm[]>([{ ...MEDICAMENTO_VACIO }]);
 
-  const [notaMotivo, setNotaMotivo] = useState("");
-  const [notaDescripcion, setNotaDescripcion] = useState("");
-  const [medicamentosForm, setMedicamentosForm] = useState<MedicamentoLocal[]>([{ medicamento: "", cantidad: "" }]);
+  const [guardando, setGuardando] = useState(false);
+  const [error, setError] = useState("");
 
   const citaActual = citasMedico.find((c) => c.id === citaActualId) ?? null;
-  const notasNuevas = citaActualId ? notasNuevasPorCita[citaActualId] ?? [] : [];
-  const recetasNuevas = citaActualId ? recetasNuevasPorCita[citaActualId] ?? [] : [];
 
-  /* ================== CALENDARIO ================== */
   const diasDelMes = useMemo(() => {
     const primerDia = new Date(cursorMes.getFullYear(), cursorMes.getMonth(), 1);
     const ultimoDia = new Date(cursorMes.getFullYear(), cursorMes.getMonth() + 1, 0);
@@ -92,7 +83,6 @@ export default function PanelCitasMedico() {
 
   const fechasConCitas = useMemo(() => new Set(citasMedico.map((c) => c.fecha)), [citasMedico]);
 
-  /* ================== CITAS DEL DÍA SELECCIONADO ================== */
   const citasDelDia = useMemo(
     () =>
       citasMedico
@@ -101,21 +91,13 @@ export default function PanelCitasMedico() {
     [citasMedico, fechaSeleccionada]
   );
 
-  /* ================== EXPEDIENTE (visual, provisional) ==================
-     Mientras no exista un módulo real de expediente en el backend, mostramos
-     las citas anteriores ya "Atendida" del mismo paciente como aproximación
-     de su historial, usando el campo `notas` como descripción.
-  */
-  const expedienteVisual = useMemo(() => {
-    if (!citaActual) return [];
-    return citasMedico
-      .filter((c) => c.pacienteId === citaActual.pacienteId && c.estado === "Atendida" && c.id !== citaActual.id)
-      .sort((a, b) => (a.fecha + a.hora > b.fecha + b.hora ? -1 : 1));
-  }, [citaActual, citasMedico]);
-
-  /* ================== HANDLERS ================== */
   function abrirModalCita(id: number) {
     setCitaActualId(id);
+    setObservaciones("");
+    setDiagnostico("");
+    setTratamiento("");
+    setMedicamentosForm([{ ...MEDICAMENTO_VACIO }]);
+    setError("");
     setModalCitaAbierto(true);
   }
 
@@ -137,56 +119,66 @@ export default function PanelCitasMedico() {
     await clinicaStore.cancelarCita(citaActual.id);
   }
 
-  function abrirModalNota() {
-    setNotaMotivo("");
-    setNotaDescripcion("");
-    setModalNotaAbierto(true);
-  }
-
-  function guardarNota() {
-    if (!citaActualId || !notaMotivo.trim() || !notaDescripcion.trim()) return;
-    setNotasNuevasPorCita((prev) => ({
-      ...prev,
-      [citaActualId]: [...(prev[citaActualId] ?? []), { motivo: notaMotivo.trim(), descripcion: notaDescripcion.trim() }],
-    }));
-    setModalNotaAbierto(false);
-  }
-
-  function abrirModalReceta() {
-    setMedicamentosForm([{ medicamento: "", cantidad: "" }]);
-    setModalRecetaAbierto(true);
+  async function abrirExpediente() {
+    if (!citaActual) return;
+    setModalExpedienteAbierto(true);
+    setCargandoHistorial(true);
+    try {
+      const historial = await clinicaStore.obtenerHistorialPaciente(citaActual.pacienteId);
+      setHistorialPaciente(historial);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setCargandoHistorial(false);
+    }
   }
 
   function agregarFilaMedicamento() {
-    setMedicamentosForm((prev) => [...prev, { medicamento: "", cantidad: "" }]);
+    setMedicamentosForm((prev) => [...prev, { ...MEDICAMENTO_VACIO }]);
   }
 
   function quitarFilaMedicamento(index: number) {
     setMedicamentosForm((prev) => prev.filter((_, i) => i !== index));
   }
 
-  function actualizarMedicamento(index: number, campo: keyof MedicamentoLocal, valor: string) {
+  function actualizarMedicamento<K extends keyof MedicamentoForm>(index: number, campo: K, valor: MedicamentoForm[K]) {
     setMedicamentosForm((prev) => prev.map((m, i) => (i === index ? { ...m, [campo]: valor } : m)));
   }
 
-  function guardarReceta() {
-    if (!citaActualId) return;
-    const medicamentos = medicamentosForm.filter((m) => m.medicamento.trim() && m.cantidad.trim());
-    if (medicamentos.length === 0) return;
-    setRecetasNuevasPorCita((prev) => ({
-      ...prev,
-      [citaActualId]: [...(prev[citaActualId] ?? []), medicamentos],
-    }));
-    setModalRecetaAbierto(false);
-  }
+  async function registrarExpediente() {
+    if (!citaActual || !medico) return;
+    if (!diagnostico.trim() && !tratamiento.trim() && !observaciones.trim()) {
+      setError("Ingresa al menos observaciones, diagnóstico o tratamiento.");
+      return;
+    }
 
-  function registrarExpediente() {
-    // Provisional: por ahora solo limpia lo "pendiente de guardar" localmente.
-    // Cuando exista el módulo real de expediente en el backend, aquí se
-    // enviarán notasNuevas / recetasNuevas al servicio correspondiente.
-    if (!citaActualId) return;
-    setNotasNuevasPorCita((prev) => ({ ...prev, [citaActualId]: [] }));
-    setRecetasNuevasPorCita((prev) => ({ ...prev, [citaActualId]: [] }));
+    const items = medicamentosForm
+      .filter((m) => m.medicamentoId && m.cantidad.trim())
+      .map((m) => ({
+        medicamentoId: Number(m.medicamentoId),
+        cantidad: Number(m.cantidad),
+        indicaciones: m.indicaciones.trim() || undefined,
+      }));
+
+    setGuardando(true);
+    setError("");
+    try {
+      await clinicaStore.registrarAtencionMedica({
+        pacienteId: citaActual.pacienteId,
+        medicoId: medico.id,
+        citaId: citaActual.id,
+        observaciones: observaciones.trim() || undefined,
+        diagnostico: diagnostico.trim() || undefined,
+        tratamiento: tratamiento.trim() || undefined,
+        medicamentos: items,
+      });
+      cerrarModalCita();
+    } catch (err) {
+      console.error(err);
+      setError("Ocurrió un error al registrar el expediente. Intenta de nuevo.");
+    } finally {
+      setGuardando(false);
+    }
   }
 
   const bloqueado = citaActual ? ESTADO_BLOQUEADO.includes(citaActual.estado) : false;
@@ -203,16 +195,15 @@ export default function PanelCitasMedico() {
           <p className="text-secondary mb-0 small">
             {credencial?.nombreCompleto ?? "Médico"}
             {medico?.especialidadIds && medico.especialidadIds.length > 0
-  ? ` — ${medico.especialidadIds
-      .map((id) => clinicaStore.nombreEspecialidad(snap, id))
-      .join(", ")}`
-  : ""}
+              ? ` — ${medico.especialidadIds
+                  .map((id) => clinicaStore.nombreEspecialidad(snap, id))
+                  .join(", ")}`
+              : ""}
           </p>
         </div>
       </div>
 
       <div className="row g-4">
-        {/* Calendario */}
         <div className="col-lg-4">
           <div className="card shadow-sm">
             <div className="card-header d-flex justify-content-between align-items-center">
@@ -269,7 +260,6 @@ export default function PanelCitasMedico() {
           </div>
         </div>
 
-        {/* Tabla de citas */}
         <div className="col-lg-8">
           <div className="card shadow-sm">
             <div className="card-header">
@@ -308,7 +298,6 @@ export default function PanelCitasMedico() {
         </div>
       </div>
 
-      {/* Modal Detalle Cita */}
       {modalCitaAbierto && citaActual && (
         <>
           <div className="modal fade show d-block" tabIndex={-1}>
@@ -387,55 +376,104 @@ export default function PanelCitasMedico() {
 
                   <div className="d-flex justify-content-between align-items-center mb-2">
                     <h6 className="mb-0">Expediente</h6>
-                    <button className="btn btn-sm btn-outline-primary" onClick={() => setModalExpedienteAbierto(true)}>
-                      Ver expediente
+                    <button className="btn btn-sm btn-outline-primary" onClick={abrirExpediente}>
+                      Ver historial
                     </button>
                   </div>
-                  <p className="text-secondary small">
-                    Vista provisional: se muestran las citas atendidas anteriores de este paciente. El módulo de
-                    expediente clínico todavía no está conectado al backend.
-                  </p>
 
-                  {notasNuevas.length > 0 && (
-                    <div className="alert alert-info py-2 mb-2">
-                      <strong>Notas pendientes de guardar:</strong>
-                      <ul className="mb-0">
-                        {notasNuevas.map((n, i) => (
-                          <li key={i}>
-                            <strong>{n.motivo}:</strong> {n.descripcion}
-                          </li>
+                  <div className="mb-3">
+                    <label className="form-label small">Observaciones generales</label>
+                    <textarea
+                      className="form-control form-control-sm"
+                      rows={2}
+                      value={observaciones}
+                      onChange={(e) => setObservaciones(e.target.value)}
+                      disabled={bloqueado}
+                      placeholder="Antecedentes, alergias, etc."
+                    />
+                  </div>
+
+                  <div className="row g-2 mb-3">
+                    <div className="col-md-6">
+                      <label className="form-label small">Diagnóstico</label>
+                      <textarea
+                        className="form-control form-control-sm"
+                        rows={3}
+                        value={diagnostico}
+                        onChange={(e) => setDiagnostico(e.target.value)}
+                        disabled={bloqueado}
+                      />
+                    </div>
+                    <div className="col-md-6">
+                      <label className="form-label small">Tratamiento</label>
+                      <textarea
+                        className="form-control form-control-sm"
+                        rows={3}
+                        value={tratamiento}
+                        onChange={(e) => setTratamiento(e.target.value)}
+                        disabled={bloqueado}
+                      />
+                    </div>
+                  </div>
+
+                  <label className="form-label small">Receta (opcional)</label>
+                  {medicamentosForm.map((m, i) => (
+                    <div key={i} className="border rounded p-2 mb-2 d-flex gap-2 align-items-center">
+                      <select
+                        className="form-select form-select-sm"
+                        value={m.medicamentoId}
+                        onChange={(e) => actualizarMedicamento(i, "medicamentoId", e.target.value ? Number(e.target.value) : "")}
+                        disabled={bloqueado}
+                      >
+                        <option value="">Selecciona medicamento…</option>
+                        {medicamentosDisponibles.map((med) => (
+                          <option key={med.id} value={med.id}>{med.nombre}</option>
                         ))}
-                      </ul>
+                      </select>
+                      <input
+                        type="number"
+                        min={1}
+                        className="form-control form-control-sm"
+                        style={{ maxWidth: 90 }}
+                        placeholder="Cant."
+                        value={m.cantidad}
+                        onChange={(e) => actualizarMedicamento(i, "cantidad", e.target.value)}
+                        disabled={bloqueado}
+                      />
+                      <input
+                        type="text"
+                        className="form-control form-control-sm"
+                        placeholder="Indicaciones"
+                        value={m.indicaciones}
+                        onChange={(e) => actualizarMedicamento(i, "indicaciones", e.target.value)}
+                        disabled={bloqueado}
+                      />
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-outline-danger"
+                        onClick={() => quitarFilaMedicamento(i)}
+                        disabled={medicamentosForm.length === 1 || bloqueado}
+                      >
+                        Quitar
+                      </button>
                     </div>
-                  )}
+                  ))}
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-outline-primary mt-1"
+                    onClick={agregarFilaMedicamento}
+                    disabled={bloqueado}
+                  >
+                    Añadir otro medicamento
+                  </button>
 
-                  {recetasNuevas.length > 0 && (
-                    <div className="alert alert-info py-2 mb-2">
-                      <strong>Recetas pendientes de guardar:</strong>
-                      {recetasNuevas.map((r, i) => (
-                        <ul className="mb-0" key={i}>
-                          {r.map((m, j) => (
-                            <li key={j}>
-                              {m.medicamento} — {m.cantidad}
-                            </li>
-                          ))}
-                        </ul>
-                      ))}
-                    </div>
+                  {error && (
+                    <div className="alert alert-danger py-2 mt-3 mb-0 small">{error}</div>
                   )}
-
-                  <div className="d-flex gap-2 mt-3">
-                    <button className="btn btn-sm btn-outline-secondary" disabled={bloqueado} onClick={abrirModalNota}>
-                      Añadir notas
-                    </button>
-                    <button className="btn btn-sm btn-outline-secondary" disabled={bloqueado} onClick={abrirModalReceta}>
-                      Añadir receta
-                    </button>
-                  </div>
                 </div>
                 <div className="modal-footer">
-                  <button type="button" className="btn btn-success" disabled={bloqueado} onClick={registrarExpediente}>
-                    Registrar expediente
+                  <button type="button" className="btn btn-success" disabled={bloqueado || guardando} onClick={registrarExpediente}>
+                    {guardando ? "Guardando…" : "Registrar expediente"}
                   </button>
                   <button type="button" className="btn btn-secondary" onClick={cerrarModalCita}>
                     Cerrar
@@ -448,152 +486,48 @@ export default function PanelCitasMedico() {
         </>
       )}
 
-      {/* Modal Expediente (provisional) */}
       {modalExpedienteAbierto && citaActual && (
         <>
           <div className="modal fade show d-block" tabIndex={-1} style={{ zIndex: 1060 }}>
             <div className="modal-dialog modal-lg modal-dialog-scrollable">
               <div className="modal-content">
                 <div className="modal-header">
-                  <h5 className="modal-title">Expediente del paciente (provisional)</h5>
+                  <h5 className="modal-title">Historial de {citaActual.paciente}</h5>
                   <button type="button" className="btn-close" onClick={() => setModalExpedienteAbierto(false)} />
                 </div>
                 <div className="modal-body">
-                  <table className="table table-bordered align-middle">
-                    <thead className="table-light">
-                      <tr>
-                        <th>Fecha</th>
-                        <th>Motivo</th>
-                        <th>Estado</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {expedienteVisual.length === 0 ? (
+                  {cargandoHistorial ? (
+                    <p className="text-secondary text-center py-3 mb-0">Cargando historial…</p>
+                  ) : (
+                    <table className="table table-bordered align-middle">
+                      <thead className="table-light">
                         <tr>
-                          <td colSpan={3} className="text-center text-secondary">
-                            Sin citas atendidas previas registradas.
-                          </td>
+                          <th>Fecha</th>
+                          <th>Diagnóstico</th>
+                          <th>Tratamiento</th>
                         </tr>
-                      ) : (
-                        expedienteVisual.map((c) => (
-                          <tr key={c.id}>
-                            <td>{c.fecha}</td>
-                            <td>{c.motivo}</td>
-                            <td>
-                              <span className={`badge ${ESTADO_BADGE[c.estado]}`}>{c.estado}</span>
+                      </thead>
+                      <tbody>
+                        {historialPaciente.length === 0 ? (
+                          <tr>
+                            <td colSpan={3} className="text-center text-secondary">
+                              Sin consultas previas registradas.
                             </td>
                           </tr>
-                        ))
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
-          </div>
-          <div className="modal-backdrop fade show" style={{ zIndex: 1055 }} />
-        </>
-      )}
-
-      {/* Modal Añadir Nota */}
-      {modalNotaAbierto && (
-        <>
-          <div className="modal fade show d-block" tabIndex={-1} style={{ zIndex: 1060 }}>
-            <div className="modal-dialog">
-              <div className="modal-content">
-                <div className="modal-header">
-                  <h5 className="modal-title">Añadir nota al expediente</h5>
-                  <button type="button" className="btn-close" onClick={() => setModalNotaAbierto(false)} />
-                </div>
-                <div className="modal-body">
-                  <div className="mb-3">
-                    <label className="form-label">Motivo</label>
-                    <input
-                      type="text"
-                      className="form-control"
-                      placeholder="Ej: Control rutinario"
-                      value={notaMotivo}
-                      onChange={(e) => setNotaMotivo(e.target.value)}
-                    />
-                  </div>
-                  <div className="mb-3">
-                    <label className="form-label">Descripción</label>
-                    <textarea
-                      className="form-control"
-                      rows={4}
-                      placeholder="Detalle de la consulta..."
-                      value={notaDescripcion}
-                      onChange={(e) => setNotaDescripcion(e.target.value)}
-                    />
-                  </div>
-                </div>
-                <div className="modal-footer">
-                  <button type="button" className="btn btn-secondary" onClick={() => setModalNotaAbierto(false)}>
-                    Cancelar
-                  </button>
-                  <button type="button" className="btn btn-primary" onClick={guardarNota}>
-                    Guardar nota
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-          <div className="modal-backdrop fade show" style={{ zIndex: 1055 }} />
-        </>
-      )}
-
-      {/* Modal Añadir Receta */}
-      {modalRecetaAbierto && (
-        <>
-          <div className="modal fade show d-block" tabIndex={-1} style={{ zIndex: 1060 }}>
-            <div className="modal-dialog">
-              <div className="modal-content">
-                <div className="modal-header">
-                  <h5 className="modal-title">Añadir receta</h5>
-                  <button type="button" className="btn-close" onClick={() => setModalRecetaAbierto(false)} />
-                </div>
-                <div className="modal-body">
-                  {medicamentosForm.map((m, i) => (
-                    <div key={i} className="border rounded p-2 mb-2 d-flex gap-2 align-items-center">
-                      <input
-                        type="text"
-                        className="form-control form-control-sm"
-                        placeholder="Medicamento"
-                        value={m.medicamento}
-                        onChange={(e) => actualizarMedicamento(i, "medicamento", e.target.value)}
-                      />
-                      <input
-                        type="text"
-                        className="form-control form-control-sm"
-                        placeholder="Cantidad / indicación"
-                        value={m.cantidad}
-                        onChange={(e) => actualizarMedicamento(i, "cantidad", e.target.value)}
-                      />
-                      <button
-                        type="button"
-                        className="btn btn-sm btn-outline-danger"
-                        onClick={() => quitarFilaMedicamento(i)}
-                        disabled={medicamentosForm.length === 1}
-                      >
-                        Quitar
-                      </button>
-                    </div>
-                  ))}
-                  <button type="button" className="btn btn-sm btn-outline-primary mt-2" onClick={agregarFilaMedicamento}>
-                    Añadir otro medicamento
-                  </button>
-                  <p className="text-secondary small mt-3 mb-0">
-                    El catálogo de medicamentos todavía no está conectado al backend, por eso el nombre se escribe
-                    libremente por ahora.
-                  </p>
-                </div>
-                <div className="modal-footer">
-                  <button type="button" className="btn btn-secondary" onClick={() => setModalRecetaAbierto(false)}>
-                    Cancelar
-                  </button>
-                  <button type="button" className="btn btn-primary" onClick={guardarReceta}>
-                    Guardar receta
-                  </button>
+                        ) : (
+                          historialPaciente
+                            .sort((a, b) => (a.fecha > b.fecha ? -1 : 1))
+                            .map((c) => (
+                              <tr key={c.id}>
+                                <td>{new Date(c.fecha).toLocaleDateString("es-CR")}</td>
+                                <td>{c.diagnostico || "—"}</td>
+                                <td>{c.tratamiento || "—"}</td>
+                              </tr>
+                            ))
+                        )}
+                      </tbody>
+                    </table>
+                  )}
                 </div>
               </div>
             </div>

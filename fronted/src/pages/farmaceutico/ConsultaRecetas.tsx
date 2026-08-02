@@ -1,21 +1,32 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import type { Receta } from "../../types/clinica.types";
 import { useClinicaStore, clinicaStore } from "../../types/clinicaStore";
 
+const ESTADO_LABEL: Record<Receta["estado"], string> = {
+  Pendiente: "Pendiente",
+  Despachada: "Entregada",
+  Anulada: "Anulada",
+};
+
 const ESTADO_COLOR: Record<Receta["estado"], string> = {
   Pendiente: "badge-soft-amber",
-  Validada: "badge-soft-blue",
-  Entregada: "badge-soft-green",
+  Despachada: "badge-soft-green",
+  Anulada: "badge-soft-red",
 };
 
 export default function ConsultaRecetas() {
-  const { recetas } = useClinicaStore();
+  const snap = useClinicaStore();
+  const { recetas, usuarios, usuarioActual } = snap;
+
+  const farmaceutico = usuarios.find((u) => u.nombreUsuario === usuarioActual?.usuario);
 
   const [filtroEstado, setFiltroEstado] = useState<string>("Todos");
   const [busqueda, setBusqueda] = useState<string>("");
   const [recetaActiva, setRecetaActiva] = useState<Receta | null>(null);
   const [idIngresado, setIdIngresado] = useState<string>("");
+  const [numeroValidado, setNumeroValidado] = useState(false); // solo local, no persiste en BD
   const [error, setError] = useState<string>("");
+  const [procesando, setProcesando] = useState(false);
 
   const recetasFiltradas = recetas.filter((r) => {
     const coincideEstado = filtroEstado === "Todos" || r.estado === filtroEstado;
@@ -30,19 +41,20 @@ export default function ConsultaRecetas() {
 
   const stats = {
     pendientes: recetas.filter((r) => r.estado === "Pendiente").length,
-    validadas: recetas.filter((r) => r.estado === "Validada").length,
-    entregadas: recetas.filter((r) => r.estado === "Entregada").length,
+    entregadas: recetas.filter((r) => r.estado === "Despachada").length,
   };
 
   const abrirReceta = (r: Receta) => {
     setRecetaActiva(r);
     setIdIngresado("");
+    setNumeroValidado(false);
     setError("");
   };
 
   const cerrarModal = () => {
     setRecetaActiva(null);
     setIdIngresado("");
+    setNumeroValidado(false);
     setError("");
   };
 
@@ -53,20 +65,38 @@ export default function ConsultaRecetas() {
       setError("Ingresa el número de receta que lleva el paciente.");
       return;
     }
-    const exito = clinicaStore.validarReceta(recetaActiva.id, idNumerico);
-    if (!exito) {
+    const coincide = clinicaStore.validarNumeroReceta(recetaActiva.id, idNumerico);
+    if (!coincide) {
       setError("El número de receta no coincide.");
       return;
     }
     setError("");
-    setRecetaActiva({ ...recetaActiva, estado: "Validada" });
+    setNumeroValidado(true);
   };
 
-  const handleEntregar = () => {
+  const handleEntregar = async () => {
     if (!recetaActiva) return;
-    clinicaStore.marcarRecetaEntregada(recetaActiva.id);
-    setRecetaActiva({ ...recetaActiva, estado: "Entregada" });
+    if (!farmaceutico) {
+      setError("No se pudo identificar al usuario farmacéutico actual.");
+      return;
+    }
+    setProcesando(true);
+    setError("");
+    try {
+      await clinicaStore.marcarRecetaEntregada(recetaActiva.id, farmaceutico.id);
+      setRecetaActiva({ ...recetaActiva, estado: "Despachada" });
+    } catch (err: any) {
+      console.error(err);
+      const mensajeServidor = err?.response?.data?.error;
+      setError(mensajeServidor ?? "Ocurrió un error al registrar la entrega. Intenta de nuevo.");
+    } finally {
+      setProcesando(false);
+    }
   };
+
+  if (snap.cargando) {
+    return <div className="text-center text-secondary py-5">Cargando recetas...</div>;
+  }
 
   return (
     <>
@@ -84,7 +114,9 @@ export default function ConsultaRecetas() {
                   <p className="fw-medium text-dark mb-0">{recetaActiva.paciente}</p>
                   <p className="fs-11 text-secondary mb-0">Cédula {recetaActiva.cedulaPaciente}</p>
                 </div>
-                <span className={`badge-soft ${ESTADO_COLOR[recetaActiva.estado]}`}>{recetaActiva.estado}</span>
+                <span className={`badge-soft ${ESTADO_COLOR[recetaActiva.estado]}`}>
+                  {ESTADO_LABEL[recetaActiva.estado]}
+                </span>
               </div>
 
               <div className="bg-soft border rounded p-3">
@@ -109,7 +141,7 @@ export default function ConsultaRecetas() {
                 <div className="badge-soft badge-soft-red w-100 text-start py-2 px-3 fs-12">{error}</div>
               )}
 
-              {recetaActiva.estado === "Pendiente" && (
+              {recetaActiva.estado === "Pendiente" && !numeroValidado && (
                 <div>
                   <label className="form-label fs-12 text-secondary mb-1">
                     Número de receta que presenta el paciente
@@ -128,13 +160,13 @@ export default function ConsultaRecetas() {
                 </div>
               )}
 
-              {recetaActiva.estado === "Validada" && (
-                <button onClick={handleEntregar} className="btn btn-success btn-sm w-100">
-                  Marcar medicamento como entregado
+              {recetaActiva.estado === "Pendiente" && numeroValidado && (
+                <button onClick={handleEntregar} className="btn btn-success btn-sm w-100" disabled={procesando}>
+                  {procesando ? "Registrando…" : "Marcar medicamento como entregado"}
                 </button>
               )}
 
-              {recetaActiva.estado === "Entregada" && (
+              {recetaActiva.estado === "Despachada" && (
                 <p className="fs-12 text-success text-center mb-0">Medicamento entregado al paciente.</p>
               )}
             </div>
@@ -148,9 +180,8 @@ export default function ConsultaRecetas() {
         </div>
 
         <div className="p-4">
-          <div className="row row-cols-3 g-3 mb-4">
+          <div className="row row-cols-2 g-3 mb-4">
             <div className="col"><StatCard label="Pendientes" value={stats.pendientes} color="text-warning" /></div>
-            <div className="col"><StatCard label="Validadas" value={stats.validadas} color="text-primary" /></div>
             <div className="col"><StatCard label="Entregadas" value={stats.entregadas} color="text-success" /></div>
           </div>
 
@@ -171,9 +202,8 @@ export default function ConsultaRecetas() {
               style={{ maxWidth: 200 }}
             >
               <option value="Todos">Todos los estados</option>
-              <option>Pendiente</option>
-              <option>Validada</option>
-              <option>Entregada</option>
+              <option value="Pendiente">Pendiente</option>
+              <option value="Despachada">Entregada</option>
             </select>
           </div>
 
@@ -190,7 +220,7 @@ export default function ConsultaRecetas() {
                   <p className="fs-11 text-secondary mb-0">{r.medico} · {r.especialidad} · {r.fecha}</p>
                 </div>
                 <div className="d-flex align-items-center gap-2 flex-shrink-0">
-                  <span className={`badge-soft ${ESTADO_COLOR[r.estado]}`}>{r.estado}</span>
+                  <span className={`badge-soft ${ESTADO_COLOR[r.estado]}`}>{ESTADO_LABEL[r.estado]}</span>
                   <button onClick={() => abrirReceta(r)} className="btn btn-outline-secondary btn-sm">
                     Ver detalle
                   </button>
