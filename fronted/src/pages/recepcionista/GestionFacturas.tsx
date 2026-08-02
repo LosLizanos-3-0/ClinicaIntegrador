@@ -55,11 +55,13 @@ interface ModalNuevaFacturaProps {
   onCerrar: () => void;
 }
 
-// ─── Modal Nueva factura ───────────────────────────────────────────────────────
 function ModalNuevaFactura({ onGuardar, onCerrar }: ModalNuevaFacturaProps) {
-  const { citas } = useClinicaStore();
-  const citasAtendidasSinFacturar = citas.filter((c) => c.estado === "Atendida");
-
+  const { citas, facturas } = useClinicaStore();
+  const citasYaFacturadasIds = new Set(facturas.map((f) => f.citaId));
+  const citasAtendidasSinFacturar = citas.filter(
+    (c) => c.estado === "Atendida" && !citasYaFacturadasIds.has(c.id)
+  );
+  
   const [citaId, setCitaId] = useState<number | "">("");
   const [error, setError] = useState<string>("");
 

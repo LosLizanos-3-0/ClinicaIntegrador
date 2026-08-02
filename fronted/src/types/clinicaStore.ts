@@ -17,6 +17,13 @@ import { citaService } from "../services/cita.service";
 import { facturaService } from "../services/factura.service";
 import { authService } from "../services/auth.service";
 import { medicamentoService } from "../services/medicamento.service";
+import { expedienteService } from "../services/expediente.service";
+import { consultaService } from "../services/consulta.service";
+import { recetaService } from "../services/receta.service";
+import { detalleRecetaService } from "../services/detalleReceta.service";
+import { entregaMedicamentoService } from "../services/entregaMedicamento.service";
+import type { ConsultaMedica } from "./clinica.types";
+
 
 export interface UsuarioClinica {
   id: number;
@@ -103,12 +110,13 @@ async function cargarTodo() {
       medicamentoService.listar(),
     ]);
     const citas = await citaService.listar(pacientes, usuarios, especialidades);
+    const recetas = await recetaService.listar(pacientes, usuarios, especialidades, medicamentos);
     const pacientesMap = new Map(
       pacientes.map((p) => [p.id, { nombre: `${p.nombre} ${p.apellido1} ${p.apellido2}`, cedula: p.cedula }])
     );
     const facturas = await facturaService.listar(pacientesMap);
 
-    patch({ pacientes, especialidades, usuarios, roles, medicamentos, citas, facturas, cargando: false });
+    patch({ pacientes, especialidades, usuarios, roles, medicamentos, citas, recetas, facturas, cargando: false });
   } catch (error) {
     console.error("Error cargando datos del backend:", error);
     patch({ cargando: false });
@@ -263,6 +271,58 @@ function nombreEspecialidad(s: ClinicaState, especialidadId?: number): string {
   return s.especialidades.find((e) => e.id === especialidadId)?.nombre ?? "—";
 }
 
+async function registrarAtencionMedica(datos: {
+  pacienteId: number;
+  medicoId: number;
+  citaId: number;
+  observaciones?: string;
+  diagnostico?: string;
+  tratamiento?: string;
+  medicamentos: { medicamentoId: number; cantidad: number; indicaciones?: string }[];
+}) {
+  const idExpediente = await expedienteService.crear({
+    IdPaciente: datos.pacienteId,
+    IdUsuario: datos.medicoId,
+    IdCita: datos.citaId,
+    Observaciones: datos.observaciones,
+  });
+
+  const idConsulta = await consultaService.crear({
+    IdExpediente: idExpediente,
+    IdCita: datos.citaId,
+    IdUsuario: datos.medicoId,
+    Diagnostico: datos.diagnostico,
+    Tratamiento: datos.tratamiento,
+  });
+
+  if (datos.medicamentos.length > 0) {
+    await recetaService.crear({
+      IdConsulta: idConsulta,
+      IdPaciente: datos.pacienteId,
+      IdUsuario: datos.medicoId,
+      items: datos.medicamentos.map((m) => ({
+        IdMedicamento: m.medicamentoId,
+        Cantidad: m.cantidad,
+        Indicaciones: m.indicaciones,
+      })),
+    });
+  }
+
+  await refrescarCitas();
+  await refrescarRecetas();
+}
+
+async function obtenerHistorialPaciente(pacienteId: number): Promise<ConsultaMedica[]> {
+  const [expedientes, consultas] = await Promise.all([
+    expedienteService.listar(),
+    consultaService.listar(),
+  ]);
+  const idsExpedientes = new Set(
+    expedientes.filter((e) => e.pacienteId === pacienteId).map((e) => e.id)
+  );
+  return consultas.filter((c) => idsExpedientes.has(c.expedienteId));
+}
+
 // Ahora recibe también especialidadId, requerido por el backend (columna
 // IdEspecialidad, obligatoria en InsertCita).
 async function crearCita(datos: {
@@ -368,6 +428,30 @@ async function anularFactura(id: number) {
   await refrescarFacturas();
 }
 
+// ─────────────────────────────────────────────
+// Recetas (farmacéutico — gestión de entregas)
+// ─────────────────────────────────────────────
+
+async function refrescarRecetas() {
+  const recetas = await recetaService.listar(
+    state.pacientes,
+    state.usuarios,
+    state.especialidades,
+    state.medicamentos
+  );
+  patch({ recetas });
+}
+
+function validarNumeroReceta(idReceta: number, idIngresado: number): boolean {
+  return idReceta === idIngresado;
+}
+
+async function marcarRecetaEntregada(idReceta: number, idUsuarioFarmaceutico: number) {
+  await entregaMedicamentoService.crear({ IdReceta: idReceta, IdUsuario: idUsuarioFarmaceutico });
+  await recetaService.camEstado(idReceta, "Despachada");
+  await refrescarRecetas();
+}
+
 async function iniciarSesion(usuario: string, contrasena: string): Promise<Credencial | null> {
   const mock = CREDENCIALES_INICIALES.find(
     (c) => c.usuario.toLowerCase() === usuario.trim().toLowerCase() && c.contrasena === contrasena
@@ -434,6 +518,13 @@ export const clinicaStore = {
 
   iniciarSesion,
   cerrarSesion,
+
+  registrarAtencionMedica,
+  obtenerHistorialPaciente,
+
+  refrescarRecetas,
+  validarNumeroReceta,
+  marcarRecetaEntregada,
 };
 
 export function useClinicaStore() {
