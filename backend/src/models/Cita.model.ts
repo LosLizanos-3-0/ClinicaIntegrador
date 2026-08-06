@@ -10,7 +10,7 @@ export const insertCita = async (data: Cita) => {
     .input('IdUsuario', sql.Int, data.IdUsuario)
     .input('FechaCita', sql.Date, data.FechaCita)
     .input('HoraCita', sql.VarChar(8), data.HoraCita)
-    .input('Estado', sql.VarChar(20), data.Estado ?? 'Agendada')
+    .input('Estado', sql.VarChar(20), data.Estado ?? 'Programada')
     .input('Motivo', sql.VarChar(200), data.Motivo ?? null)
     .execute('InsertCita');
 };

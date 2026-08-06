@@ -14,14 +14,10 @@ interface CitaBD {
   Motivo: string | null;
 }
 
-const ESTADO_A_BD: Record<string, string> = { Programada: "Agendada" };
-const ESTADO_A_FRONT: Record<string, string> = { Agendada: "Programada" };
-
-function estadoAFrontend(e: string) {
-  return (ESTADO_A_FRONT[e] ?? e) as Cita["estado"];
-}
-function estadoABackend(e: string) {
-  return ESTADO_A_BD[e] ?? e;
+function formatearHora(horaCruda: string): string {
+  if (!horaCruda) return "";
+  const parteHora = horaCruda.includes("T") ? horaCruda.split("T")[1] : horaCruda;
+  return parteHora.slice(0, 5); // "20:41:00.000Z" -> "20:41"
 }
 
 export const citaService = {
@@ -44,9 +40,9 @@ export const citaService = {
         especialidadId: c.IdEspecialidad,
         especialidad: especialidad?.nombre ?? "",
         fecha: c.FechaCita?.split("T")[0] ?? "",
-        hora: c.HoraCita,
+        hora: formatearHora(c.HoraCita),
         motivo: c.Motivo ?? "",
-        estado: estadoAFrontend(c.Estado),
+        estado: c.Estado as Cita["estado"],
       };
     });
   },
@@ -59,11 +55,11 @@ export const citaService = {
     HoraCita: string;
     Motivo: string;
   }) {
-    await api.post("/citas", { ...datos, Estado: "Agendada" });
+    await api.post("/citas", datos);
   },
 
   async actualizarEstado(id: number, nuevoEstado: string) {
-    await api.patch(`/citas/${id}/estado`, { Estado: estadoABackend(nuevoEstado) });
+    await api.patch(`/citas/${id}/estado`, { Estado: nuevoEstado });
   },
 
   async reprogramar(
