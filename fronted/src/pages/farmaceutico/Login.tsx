@@ -32,7 +32,7 @@ export default function Login({ onIngresar }: LoginProps) {
     } catch (err) {
       console.error(err);
       setError("Ocurrió un error al iniciar sesión. Intenta de nuevo.");
-    } finally {
+    } finally { 
       setCargando(false);
     }
   };

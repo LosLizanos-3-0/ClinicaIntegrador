@@ -51,7 +51,7 @@ export interface Cita {
   IdUsuario: number;
   FechaCita: string;
   HoraCita: string;
-  Estado?: 'Agendada' | 'Confirmada' | 'Cancelada' | 'Reprogramada' | 'Atendida';
+  Estado?: 'Programada' | 'Confirmada' | 'Atendida' | 'Cancelada';
   Motivo?: string;
 }
 

@@ -23,6 +23,13 @@ export const getCitaById = async (req: Request, res: Response) => {
 
 export const createCita = async (req: Request, res: Response) => {
   try {
+    const { FechaCita, HoraCita } = req.body;
+    if (FechaCita && HoraCita) {
+      const fechaHoraCita = new Date(`${FechaCita}T${HoraCita}`);
+      if (fechaHoraCita.getTime() < Date.now()) {
+        return res.status(400).json({ error: 'No se puede agendar una cita en una fecha u hora que ya pasó' });
+      }
+    }
     await CitaModel.insertCita(req.body);
     res.status(201).json({ mensaje: 'Cita creada correctamente' });
   } catch (error: any) {
@@ -39,6 +46,13 @@ export const createCita = async (req: Request, res: Response) => {
 
 export const updateCita = async (req: Request, res: Response) => {
   try {
+    const { FechaCita, HoraCita } = req.body;
+    if (FechaCita && HoraCita) {
+      const fechaHoraCita = new Date(`${FechaCita}T${HoraCita}`);
+      if (fechaHoraCita.getTime() < Date.now()) {
+        return res.status(400).json({ error: 'No se puede reprogramar una cita a una fecha u hora que ya pasó' });
+      }
+    }
     await CitaModel.updateCita(Number(req.params.id), req.body);
     res.json({ mensaje: 'Cita actualizada correctamente' });
   } catch (error: any) {

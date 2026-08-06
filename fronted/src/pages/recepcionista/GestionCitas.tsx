@@ -1,12 +1,3 @@
-/**
- * GestionCitas.tsx
- *
- * La especialidad de la cita ahora se guarda explícitamente (Cita.especialidadId,
- * columna IdEspecialidad en la BD), en vez de derivarse del médico. Necesario
- * porque un médico puede estar asignado a varias especialidades: el select de
- * "Especialidad" en el modal sigue sirviendo para filtrar médicos, pero además
- * su valor se envía tal cual al backend al crear o reprogramar la cita.
- */
 
 import React, { useMemo, useState } from "react";
 import type { Cita, EstadoCita } from "../../types/clinica.types";
@@ -56,7 +47,7 @@ function ModalCita({ cita, onGuardar, onCerrar }: ModalCitaProps) {
     () => pacientes.filter((p) => p.estado === "Activo" || p.id === cita?.pacienteId),
     [pacientes, cita]
   );
-  
+
   const [form, setForm] = useState<FormCita>(
     cita
       ? {
@@ -101,6 +92,11 @@ function ModalCita({ cita, onGuardar, onCerrar }: ModalCitaProps) {
     }
     if (!form.fecha || !form.hora) {
       setError("Indica la fecha y la hora de la cita.");
+      return;
+    }
+    const fechaHoraCita = new Date(`${form.fecha}T${form.hora}`);
+    if (fechaHoraCita.getTime() < Date.now()) {
+      setError("No puedes agendar ni reprogramar una cita en una fecha u hora que ya pasó.");
       return;
     }
     if (!form.motivo.trim()) {
@@ -192,6 +188,7 @@ function ModalCita({ cita, onGuardar, onCerrar }: ModalCitaProps) {
                 <input
                   type="date"
                   value={form.fecha}
+                  min={new Date().toISOString().split("T")[0]}
                   onChange={(e) => handleChange("fecha", e.target.value)}
                   className="form-control form-control-sm"
                 />
@@ -237,6 +234,66 @@ function ModalCita({ cita, onGuardar, onCerrar }: ModalCitaProps) {
   );
 }
 
+// ─── Modal Confirmar cita ──────────────────────────────────────────────────────
+// Paso intermedio: al recepcionista le puede tocar una cita que en realidad no
+// se puede confirmar (falta algo, el paciente avisó que no puede venir, etc.),
+// así que el botón "Confirmar" ya no cambia el estado al primer clic — abre
+// este modal y solo se confirma si el recepcionista lo aprueba explícitamente.
+interface ModalConfirmarCitaProps {
+  cita: Cita;
+  onConfirmar: () => Promise<void>;
+  onCerrar: () => void;
+}
+
+function ModalConfirmarCita({ cita, onConfirmar, onCerrar }: ModalConfirmarCitaProps) {
+  const [guardando, setGuardando] = useState<boolean>(false);
+  const [error, setError] = useState<string>("");
+
+  const handleConfirmar = async () => {
+    setGuardando(true);
+    setError("");
+    try {
+      await onConfirmar();
+    } catch (err) {
+      console.error(err);
+      setError("Ocurrió un error al confirmar la cita. Intenta de nuevo.");
+      setGuardando(false);
+    }
+  };
+
+  return (
+    <div className="modal-overlay d-flex align-items-center justify-content-center p-3">
+      <div className="bg-white rounded-4 shadow w-100" style={{ maxWidth: 420 }}>
+        <div className="px-4 py-3 border-bottom d-flex align-items-center justify-content-between">
+          <h3 className="fs-6 fw-medium text-dark mb-0">Confirmar cita</h3>
+          <button onClick={onCerrar} className="btn btn-link text-secondary fs-5 lh-1 text-decoration-none p-0">✕</button>
+        </div>
+
+        <div className="p-4 d-flex flex-column gap-2">
+          <p className="fs-6 text-dark mb-0">
+            ¿Confirmar la cita de <strong>{cita.paciente}</strong> con {cita.medico} el {cita.fecha} a las {cita.hora}?
+          </p>
+          <p className="fs-12 text-secondary mb-0">
+            Verifica antes de confirmar que el paciente y el médico realmente puedan asistir a este horario.
+          </p>
+          {error && (
+            <div className="badge-soft badge-soft-red w-100 text-start py-2 px-3 fs-12 mt-2">{error}</div>
+          )}
+        </div>
+
+        <div className="px-4 py-3 border-top d-flex justify-content-end gap-2">
+          <button onClick={onCerrar} className="btn btn-outline-secondary btn-sm" disabled={guardando}>
+            Cancelar
+          </button>
+          <button onClick={handleConfirmar} className="btn btn-success btn-sm" disabled={guardando}>
+            {guardando ? "Confirmando…" : "Sí, confirmar"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Componente principal ─────────────────────────────────────────────────────
 export default function GestionCitas() {
   const { citas, cargando } = useClinicaStore();
@@ -244,6 +301,7 @@ export default function GestionCitas() {
   const [busqueda, setBusqueda] = useState<string>("");
   const [filtroEstado, setFiltroEstado] = useState<string>("Todos");
   const [modalCita, setModalCita] = useState<Cita | null | undefined>(undefined);
+  const [citaAConfirmar, setCitaAConfirmar] = useState<Cita | null>(null);
 
   const citasFiltradas = useMemo(() => {
     const texto = busqueda.trim().toLowerCase();
@@ -310,6 +368,17 @@ export default function GestionCitas() {
         />
       )}
 
+      {citaAConfirmar && (
+        <ModalConfirmarCita
+          cita={citaAConfirmar}
+          onConfirmar={async () => {
+            await clinicaStore.confirmarCita(citaAConfirmar.id);
+            setCitaAConfirmar(null);
+          }}
+          onCerrar={() => setCitaAConfirmar(null)}
+        />
+      )}
+
       <div className="bg-white rounded-4 border overflow-hidden">
         <div className="px-4 py-3 border-bottom bg-soft d-flex flex-wrap gap-3 align-items-start justify-content-between">
           <div>
@@ -373,19 +442,18 @@ export default function GestionCitas() {
                     <div className="d-flex align-items-center gap-2 flex-shrink-0">
                       <span className={`badge-soft ${ESTADO_COLOR[c.estado]}`}>{c.estado}</span>
 
+                      {/* Recepcionista: puede reprogramar/cancelar cualquier cita
+                          activa, y confirmar las que están "Programada". NO puede
+                          marcar una cita como "Atendida" — eso es exclusivo del
+                          médico, desde su propia vista. */}
                       {(c.estado === "Programada" || c.estado === "Confirmada") && (
                         <>
                           <button onClick={() => setModalCita(c)} className="btn btn-outline-secondary btn-sm">
                             Reprogramar
                           </button>
                           {c.estado === "Programada" && (
-                            <button onClick={() => clinicaStore.confirmarCita(c.id)} className="btn btn-outline-success btn-sm">
+                            <button onClick={() => setCitaAConfirmar(c)} className="btn btn-outline-success btn-sm">
                               Confirmar
-                            </button>
-                          )}
-                          {c.estado === "Confirmada" && (
-                            <button onClick={() => clinicaStore.marcarCitaAtendida(c.id)} className="btn btn-success btn-sm">
-                              Marcar atendida
                             </button>
                           )}
                           <button onClick={() => clinicaStore.cancelarCita(c.id)} className="btn btn-outline-danger btn-sm">
