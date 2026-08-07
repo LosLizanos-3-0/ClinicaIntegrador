@@ -51,7 +51,7 @@ export interface Cita {
   IdUsuario: number;
   FechaCita: string;
   HoraCita: string;
-  Estado?: 'Programada' | 'Confirmada' | 'Atendida' | 'Cancelada';
+  Estado?: 'Agendada' | 'Confirmada' | 'Cancelada' | 'Reprogramada' | 'Atendida';
   Motivo?: string;
 }
 
@@ -74,16 +74,45 @@ export interface Consulta {
   Estado?: 'A' | 'I';
 }
 
+export interface CategoriaMedicamento {
+  IdCategoria?: number;
+  NombreCategoria: string;
+  Comentario?: string;
+  Estado?: 'A' | 'I';
+}
+
 export interface Medicamento {
   IdMedicamento?: number;
   NombreMedicamento: string;
   Descripcion?: string;
+  IdCategoria: number;
+  NombreCategoria?: string;
   Presentacion?: string;
   Ubicacion: string;
   StockActual?: number;
   StockMinimo?: number;
   PrecioUnitario?: number;
   Estado?: 'A' | 'I';
+}
+
+export interface MedicamentoUpdate {
+  NombreMedicamento: string;
+  Descripcion?: string;
+  IdCategoria: number;
+  Presentacion?: string;
+  Ubicacion: string;
+  StockMinimo: number;
+  PrecioUnitario: number;
+  Estado?: 'A' | 'I';
+}
+
+export interface Bitacora {
+  IdBita?: number;
+  Tabla: string;
+  Accion: string;
+  Fecha?: string;
+  UsuarioSQL?: string;
+  Registro?: string;
 }
 
 export interface Receta {

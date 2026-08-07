@@ -83,16 +83,34 @@ export interface Paciente {
   direccion?: string;
 }
 
+export interface CategoriaMedicamento {
+  id: number;
+  nombre: string;
+  comentario?: string;
+  estado: "A" | "I";
+}
+
 export interface Medicamento {
   id: number;
   nombre: string;
   descripcion?: string;
+  idCategoria: number;
+  categoria?: string;
   presentacion?: string;
   ubicacion: string;
   stockActual: number;
   stockMinimo: number;
   precioUnitario: number;
   estado: "A" | "I";
+}
+
+export interface RegistroBitacora {
+  id: number;
+  tabla: string;
+  accion: string;
+  fecha: string;
+  usuarioSql: string;
+  registro: string;
 }
 
 export type EstadoCita = "Programada" | "Confirmada" | "Atendida" | "Cancelada";

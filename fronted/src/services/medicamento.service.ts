@@ -5,6 +5,8 @@ interface MedicamentoBD {
   IdMedicamento: number;
   NombreMedicamento: string;
   Descripcion: string | null;
+  IdCategoria: number;
+  NombreCategoria: string | null;
   Presentacion: string | null;
   Ubicacion: string;
   StockActual: number;
@@ -18,6 +20,8 @@ function aFrontend(m: MedicamentoBD): Medicamento {
     id: m.IdMedicamento,
     nombre: m.NombreMedicamento,
     descripcion: m.Descripcion ?? undefined,
+    idCategoria: m.IdCategoria,
+    categoria: m.NombreCategoria ?? undefined,
     presentacion: m.Presentacion ?? undefined,
     ubicacion: m.Ubicacion,
     stockActual: m.StockActual,
@@ -27,13 +31,26 @@ function aFrontend(m: MedicamentoBD): Medicamento {
   };
 }
 
-function aBackend(m: Omit<Medicamento, "id" | "estado">) {
+function aBackendCrear(m: Omit<Medicamento, "id" | "estado" | "categoria">) {
   return {
     NombreMedicamento: m.nombre,
     Descripcion: m.descripcion || null,
+    IdCategoria: m.idCategoria,
     Presentacion: m.presentacion || null,
     Ubicacion: m.ubicacion,
     StockActual: m.stockActual,
+    StockMinimo: m.stockMinimo,
+    PrecioUnitario: m.precioUnitario,
+  };
+}
+
+function aBackendActualizar(m: Omit<Medicamento, "id" | "estado" | "categoria" | "stockActual">) {
+  return {
+    NombreMedicamento: m.nombre,
+    Descripcion: m.descripcion || null,
+    IdCategoria: m.idCategoria,
+    Presentacion: m.presentacion || null,
+    Ubicacion: m.ubicacion,
     StockMinimo: m.stockMinimo,
     PrecioUnitario: m.precioUnitario,
   };
@@ -45,12 +62,12 @@ export const medicamentoService = {
     return data.map(aFrontend);
   },
 
-  async crear(m: Omit<Medicamento, "id" | "estado">) {
-    await api.post("/medicamentos", aBackend(m));
+  async crear(m: Omit<Medicamento, "id" | "estado" | "categoria">) {
+    await api.post("/medicamentos", aBackendCrear(m));
   },
 
-  async actualizar(id: number, m: Omit<Medicamento, "id" | "estado">) {
-    await api.put(`/medicamentos/${id}`, aBackend(m));
+  async actualizar(id: number, m: Omit<Medicamento, "id" | "estado" | "categoria" | "stockActual">) {
+    await api.put(`/medicamentos/${id}`, aBackendActualizar(m));
   },
 
   async cambiarEstado(id: number, estadoActual: "A" | "I") {

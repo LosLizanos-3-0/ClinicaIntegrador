@@ -3,11 +3,13 @@ import type {
   EstadoUsuario,
   Paciente,
   Medicamento,
+  CategoriaMedicamento,
   Receta,
   Cita,
   Factura,
   MetodoPago,
   Credencial,
+  ConsultaMedica,
 } from "./clinica.types";
 import { pacienteService } from "../services/paciente.service";
 import { especialidadService } from "../services/especialidad.service";
@@ -17,13 +19,11 @@ import { citaService } from "../services/cita.service";
 import { facturaService } from "../services/factura.service";
 import { authService } from "../services/auth.service";
 import { medicamentoService } from "../services/medicamento.service";
+import { categoriaMedicamentoService } from "../services/categoriaMedicamento.service";
 import { expedienteService } from "../services/expediente.service";
 import { consultaService } from "../services/consulta.service";
 import { recetaService } from "../services/receta.service";
-import { detalleRecetaService } from "../services/detalleReceta.service";
 import { entregaMedicamentoService } from "../services/entregaMedicamento.service";
-import type { ConsultaMedica } from "./clinica.types";
-
 
 export interface UsuarioClinica {
   id: number;
@@ -55,6 +55,7 @@ interface ClinicaState {
   roles: RolBD[];
   pacientes: Paciente[];
   medicamentos: Medicamento[];
+  categoriasMedicamento: CategoriaMedicamento[];
   recetas: Receta[];
   citas: Cita[];
   facturas: Factura[];
@@ -74,6 +75,7 @@ let state: ClinicaState = {
   roles: [],
   pacientes: [],
   medicamentos: [],
+  categoriasMedicamento: [],
   recetas: RECETAS_INICIALES,
   citas: [],
   facturas: [],
@@ -102,12 +104,13 @@ async function cargarTodo() {
   if (yaCargado) return;
   yaCargado = true;
   try {
-    const [pacientes, especialidades, usuarios, roles, medicamentos] = await Promise.all([
+    const [pacientes, especialidades, usuarios, roles, medicamentos, categoriasMedicamento] = await Promise.all([
       pacienteService.listar(),
       especialidadService.listar(),
       usuarioService.listarConEspecialidad(),
       rolService.listar(),
       medicamentoService.listar(),
+      categoriaMedicamentoService.listar(),
     ]);
     const citas = await citaService.listar(pacientes, usuarios, especialidades);
     const recetas = await recetaService.listar(pacientes, usuarios, especialidades, medicamentos);
@@ -116,7 +119,18 @@ async function cargarTodo() {
     );
     const facturas = await facturaService.listar(pacientesMap);
 
-    patch({ pacientes, especialidades, usuarios, roles, medicamentos, citas, recetas, facturas, cargando: false });
+    patch({
+      pacientes,
+      especialidades,
+      usuarios,
+      roles,
+      medicamentos,
+      categoriasMedicamento,
+      citas,
+      recetas,
+      facturas,
+      cargando: false,
+    });
   } catch (error) {
     console.error("Error cargando datos del backend:", error);
     patch({ cargando: false });
@@ -178,12 +192,12 @@ async function refrescarMedicamentos() {
   patch({ medicamentos });
 }
 
-async function crearMedicamento(datos: Omit<Medicamento, "id" | "estado">) {
+async function crearMedicamento(datos: Omit<Medicamento, "id" | "estado" | "categoria">) {
   await medicamentoService.crear(datos);
   await refrescarMedicamentos();
 }
 
-async function actualizarMedicamento(medicamento: Medicamento) {
+async function actualizarMedicamento(medicamento: Omit<Medicamento, "estado" | "categoria" | "stockActual">) {
   await medicamentoService.actualizar(medicamento.id, medicamento);
   await refrescarMedicamentos();
 }
@@ -193,6 +207,28 @@ async function toggleEstadoMedicamento(id: number) {
   if (!actual) return;
   await medicamentoService.cambiarEstado(id, actual.estado);
   await refrescarMedicamentos();
+}
+
+async function refrescarCategoriasMedicamento() {
+  const categoriasMedicamento = await categoriaMedicamentoService.listar();
+  patch({ categoriasMedicamento });
+}
+
+async function crearCategoriaMedicamento(datos: Omit<CategoriaMedicamento, "id" | "estado">) {
+  await categoriaMedicamentoService.crear(datos);
+  await refrescarCategoriasMedicamento();
+}
+
+async function actualizarCategoriaMedicamento(categoria: Omit<CategoriaMedicamento, "estado">) {
+  await categoriaMedicamentoService.actualizar(categoria.id, categoria);
+  await refrescarCategoriasMedicamento();
+}
+
+async function toggleEstadoCategoriaMedicamento(id: number) {
+  const actual = state.categoriasMedicamento.find((c) => c.id === id);
+  if (!actual) return;
+  await categoriaMedicamentoService.cambiarEstado(id, actual.estado);
+  await refrescarCategoriasMedicamento();
 }
 
 async function refrescarRoles() {
@@ -313,13 +349,8 @@ async function registrarAtencionMedica(datos: {
 }
 
 async function obtenerHistorialPaciente(pacienteId: number): Promise<ConsultaMedica[]> {
-  const [expedientes, consultas] = await Promise.all([
-    expedienteService.listar(),
-    consultaService.listar(),
-  ]);
-  const idsExpedientes = new Set(
-    expedientes.filter((e) => e.pacienteId === pacienteId).map((e) => e.id)
-  );
+  const [expedientes, consultas] = await Promise.all([expedienteService.listar(), consultaService.listar()]);
+  const idsExpedientes = new Set(expedientes.filter((e) => e.pacienteId === pacienteId).map((e) => e.id));
   return consultas.filter((c) => idsExpedientes.has(c.expedienteId));
 }
 
@@ -433,12 +464,7 @@ async function anularFactura(id: number) {
 // ─────────────────────────────────────────────
 
 async function refrescarRecetas() {
-  const recetas = await recetaService.listar(
-    state.pacientes,
-    state.usuarios,
-    state.especialidades,
-    state.medicamentos
-  );
+  const recetas = await recetaService.listar(state.pacientes, state.usuarios, state.especialidades, state.medicamentos);
   patch({ recetas });
 }
 
@@ -493,6 +519,10 @@ export const clinicaStore = {
   crearMedicamento,
   actualizarMedicamento,
   toggleEstadoMedicamento,
+  refrescarCategoriasMedicamento,
+  crearCategoriaMedicamento,
+  actualizarCategoriaMedicamento,
+  toggleEstadoCategoriaMedicamento,
 
   crearRol,
   actualizarRol,
