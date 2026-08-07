@@ -19,8 +19,10 @@ import GestionUsuarios from "./pages/admin/GestionUsuarios";
 import GestionReportes from "./pages/admin/GestionReportes";
 import GestionEspecialidades from "./pages/admin/GestionEspecialidades";
 import GestionRoles from "./pages/admin/GestionRoles";
+import GestionBitacora from "./pages/admin/GestionBitacora";
 import ConsultaRecetas from "./pages/farmaceutico/ConsultaRecetas";
 import GestionInventario from "./pages/farmaceutico/GestionInventario";
+import GestionCategoriaMedicamento from "./pages/farmaceutico/GestionCategoriaMedicamento";
 import GestionPacientes from "./pages/recepcionista/GestionPacientes";
 import GestionCitas from "./pages/recepcionista/GestionCitas";
 import GestionFacturas from "./pages/recepcionista/GestionFacturas";
@@ -35,8 +37,10 @@ type Seccion =
   | "reportes"
   | "especialidades"
   | "roles"
+  | "bitacora"
   | "recetas"
   | "inventario"
+  | "categoriaMedicamento"
   | "pacientes"
   | "citas"
   | "facturas"
@@ -54,10 +58,12 @@ const NAV_ITEMS_POR_ROL: Record<string, NavItem[]> = {
     { id: "reportes",        label: "Reportes",        icono: "bar-chart-fill" },
     { id: "especialidades",  label: "Especialidades",  icono: "heart-pulse-fill" },
     { id: "roles",           label: "Roles",            icono: "shield-lock-fill" },
+    { id: "bitacora",        label: "Bitácora",         icono: "clock-history" },
   ],
   Farmacéutico: [
     { id: "recetas",     label: "Recetas",     icono: "file-earmark-medical-fill" },
     { id: "inventario",  label: "Inventario",  icono: "box-seam-fill" },
+    { id: "categoriaMedicamento", label: "Categoría", icono: "tags-fill" },
   ],
   Recepcionista: [
     { id: "pacientes", label: "Pacientes", icono: "🧾" },
@@ -217,9 +223,13 @@ export default function App() {
           />
         )}
 
+        {seccion === "bitacora" && <GestionBitacora />}
+
         {seccion === "recetas" && <ConsultaRecetas />}
 
         {seccion === "inventario" && <GestionInventario />}
+
+        {seccion === "categoriaMedicamento" && <GestionCategoriaMedicamento />}
 
         {seccion === "pacientes" && <GestionPacientes />}
 

@@ -2,13 +2,14 @@ import React, { useState } from "react";
 import type { Medicamento } from "../../types/clinica.types";
 import { useClinicaStore, clinicaStore } from "../../types/clinicaStore";
 
-const COLUMNAS_TABLA_INVENTARIO = "1.8fr 1.4fr 1fr 1fr 0.9fr 0.7fr";
+const COLUMNAS_TABLA_INVENTARIO = "1.8fr 1.2fr 1.2fr 1fr 0.9fr 0.7fr";
 
-type FormMedicamento = Omit<Medicamento, "id" | "estado"> & { id?: number };
+type FormMedicamento = Omit<Medicamento, "id" | "estado" | "categoria"> & { id?: number };
 
 const FORM_VACIO: FormMedicamento = {
   nombre: "",
   descripcion: "",
+  idCategoria: 0,
   presentacion: "",
   ubicacion: "",
   stockActual: 0,
@@ -16,13 +17,16 @@ const FORM_VACIO: FormMedicamento = {
   precioUnitario: 0,
 };
 
+const TEXTO_LIBRE_REGEX = /^[A-Za-zÁÉÍÓÚáéíóúÑñ0-9.,+%/() -]*$/;
+
 interface ModalMedicamentoProps {
   medicamento?: Medicamento;
+  categorias: { id: number; nombre: string; estado: "A" | "I" }[];
   onGuardar: (form: FormMedicamento) => Promise<void>;
   onCerrar: () => void;
 }
 
-function ModalMedicamento({ medicamento, onGuardar, onCerrar }: ModalMedicamentoProps) {
+function ModalMedicamento({ medicamento, categorias, onGuardar, onCerrar }: ModalMedicamentoProps) {
   const esNuevo = !medicamento?.id;
   const [form, setForm] = useState<FormMedicamento>(
     medicamento ? { ...medicamento } : { ...FORM_VACIO }
@@ -30,27 +34,65 @@ function ModalMedicamento({ medicamento, onGuardar, onCerrar }: ModalMedicamento
   const [error, setError] = useState<string>("");
   const [guardando, setGuardando] = useState<boolean>(false);
 
+  const categoriasDisponibles = categorias.filter(
+    (c) => c.estado === "A" || c.id === form.idCategoria
+  );
+
   const handleChange = <K extends keyof FormMedicamento>(campo: K, valor: FormMedicamento[K]) => {
     setForm((prev) => ({ ...prev, [campo]: valor }));
   };
 
   const handleSubmit = async () => {
-    if (!form.nombre.trim()) {
+    const nombre = form.nombre.trim();
+    const ubicacion = form.ubicacion.trim();
+    const descripcion = (form.descripcion ?? "").trim();
+    const presentacion = (form.presentacion ?? "").trim();
+
+    if (!nombre || nombre.length < 2) {
       setError("El nombre del medicamento es obligatorio.");
       return;
     }
-    if (!form.ubicacion.trim()) {
+    if (!TEXTO_LIBRE_REGEX.test(nombre)) {
+      setError("El nombre del medicamento contiene caracteres no válidos.");
+      return;
+    }
+    if (!form.idCategoria || form.idCategoria <= 0) {
+      setError("Debes seleccionar una categoría.");
+      return;
+    }
+    if (descripcion && !TEXTO_LIBRE_REGEX.test(descripcion)) {
+      setError("La descripción contiene caracteres no válidos.");
+      return;
+    }
+    if (presentacion && !TEXTO_LIBRE_REGEX.test(presentacion)) {
+      setError("La presentación contiene caracteres no válidos.");
+      return;
+    }
+    if (!ubicacion || ubicacion.length < 2) {
       setError("La ubicación es obligatoria.");
       return;
     }
-    if (form.stockActual < 0 || form.stockMinimo < 0 || form.precioUnitario < 0) {
-      setError("Los valores numéricos no pueden ser negativos.");
+    if (!TEXTO_LIBRE_REGEX.test(ubicacion)) {
+      setError("La ubicación contiene caracteres no válidos.");
       return;
     }
+    if (esNuevo && (!Number.isFinite(form.stockActual) || form.stockActual < 0)) {
+      setError("El stock actual no puede ser negativo.");
+      return;
+    }
+    if (!Number.isFinite(form.stockMinimo) || form.stockMinimo < 0) {
+      setError("El stock mínimo no puede ser negativo.");
+      return;
+    }
+    if (!Number.isFinite(form.precioUnitario) || form.precioUnitario < 0) {
+      setError("El precio unitario no puede ser negativo.");
+      return;
+    }
+
     setGuardando(true);
     setError("");
     try {
-      await onGuardar(form);
+      await onGuardar({ ...form, nombre, ubicacion, descripcion, presentacion });
     } catch (err) {
       console.error(err);
       setError("Ocurrió un error al guardar el medicamento. Intenta de nuevo.");
@@ -78,6 +120,20 @@ function ModalMedicamento({ medicamento, onGuardar, onCerrar }: ModalMedicamento
               placeholder="Ej: Acetaminofén 500mg"
               className="form-control form-control-sm"
             />
+          </div>
+
+          <div>
+            <label className="form-label fs-12 text-secondary mb-1">Categoría</label>
+            <select
+              value={form.idCategoria || ""}
+              onChange={(e) => handleChange("idCategoria", Number(e.target.value))}
+              className="form-select form-select-sm"
+            >
+              <option value="">Selecciona una categoría</option>
+              {categoriasDisponibles.map((c) => (
+                <option key={c.id} value={c.id}>{c.nombre}</option>
+              ))}
+            </select>
           </div>
 
           <div>
@@ -119,6 +175,8 @@ function ModalMedicamento({ medicamento, onGuardar, onCerrar }: ModalMedicamento
                 value={form.stockActual}
                 onChange={(e) => handleChange("stockActual", Number(e.target.value))}
                 className="form-control form-control-sm"
+                disabled={!esNuevo}
+                title={!esNuevo ? "El stock actual no se puede modificar desde este formulario" : undefined}
               />
             </div>
             <div className="col-md-4">
@@ -141,6 +199,12 @@ function ModalMedicamento({ medicamento, onGuardar, onCerrar }: ModalMedicamento
             </div>
           </div>
 
+          {!esNuevo && (
+            <p className="fs-11 text-secondary mb-0">
+              El stock actual solo se modifica mediante la entrega de recetas.
+            </p>
+          )}
+
           {error && (
             <div className="badge-soft badge-soft-red w-100 text-start py-2 px-3 fs-12">{error}</div>
           )}
@@ -158,14 +222,19 @@ function ModalMedicamento({ medicamento, onGuardar, onCerrar }: ModalMedicamento
 }
 
 export default function GestionInventario() {
-  const { medicamentos, cargando } = useClinicaStore();
+  const { medicamentos, categoriasMedicamento, cargando } = useClinicaStore();
 
   const [busqueda, setBusqueda] = useState<string>("");
   const [modalMedicamento, setModalMedicamento] = useState<Medicamento | null | undefined>(undefined);
 
   const medicamentosFiltrados = medicamentos.filter((m) => {
     const texto = busqueda.trim().toLowerCase();
-    return texto === "" || m.nombre.toLowerCase().includes(texto) || m.ubicacion.toLowerCase().includes(texto);
+    return (
+      texto === "" ||
+      m.nombre.toLowerCase().includes(texto) ||
+      m.ubicacion.toLowerCase().includes(texto) ||
+      (m.categoria ?? "").toLowerCase().includes(texto)
+    );
   });
 
   const stats = {
@@ -182,7 +251,7 @@ export default function GestionInventario() {
 
   const guardarMedicamento = async (form: FormMedicamento) => {
     if (form.id) {
-      await clinicaStore.actualizarMedicamento({ ...(form as Medicamento), id: form.id });
+      await clinicaStore.actualizarMedicamento({ ...form, id: form.id });
     } else {
       await clinicaStore.crearMedicamento(form);
     }
@@ -194,6 +263,7 @@ export default function GestionInventario() {
       {modalMedicamento !== undefined && (
         <ModalMedicamento
           medicamento={modalMedicamento ?? undefined}
+          categorias={categoriasMedicamento}
           onGuardar={guardarMedicamento}
           onCerrar={() => setModalMedicamento(undefined)}
         />
@@ -220,11 +290,11 @@ export default function GestionInventario() {
 
               <div className="d-flex flex-column flex-sm-row gap-2 mb-3">
                 <div className="flex-fill d-flex align-items-center gap-2 bg-soft border rounded px-3 py-2">
-                  <span className="text-secondary fs-6">🔍</span>
+                  <i className="bi bi-search text-secondary fs-6" aria-hidden="true" />
                   <input
                     value={busqueda}
                     onChange={(e) => setBusqueda(e.target.value)}
-                    placeholder="Buscar por nombre o ubicación…"
+                    placeholder="Buscar por nombre, ubicación o categoría…"
                     className="form-control form-control-sm border-0 bg-transparent shadow-none p-0"
                   />
                 </div>
@@ -235,7 +305,7 @@ export default function GestionInventario() {
                   className="d-none d-md-grid px-3 py-2 bg-soft fs-11 text-uppercase text-secondary fw-medium border-bottom"
                   style={{ display: "grid", gridTemplateColumns: COLUMNAS_TABLA_INVENTARIO, letterSpacing: ".03em" }}
                 >
-                  <span>Medicamento</span><span>Ubicación</span><span>Stock</span><span>Precio</span><span>Estado</span><span className="text-center">Acciones</span>
+                  <span>Medicamento</span><span>Categoría</span><span>Ubicación</span><span>Stock</span><span>Estado</span><span className="text-center">Acciones</span>
                 </div>
 
                 {medicamentosFiltrados.length === 0 && (
@@ -255,9 +325,9 @@ export default function GestionInventario() {
                         <p className="fw-medium text-dark mb-0">{m.nombre}</p>
                         <p className="fs-11 text-secondary mb-0">{m.presentacion || "—"}{m.descripcion ? ` · ${m.descripcion}` : ""}</p>
                       </div>
+                      <p className="text-secondary fs-12 mb-0">{m.categoria || "—"}</p>
                       <p className="text-secondary fs-12 mb-0">{m.ubicacion}</p>
                       <p className="fs-12 mb-0">{m.stockActual} <span className="text-secondary">/ min {m.stockMinimo}</span></p>
-                      <p className="fs-12 mb-0">₡{m.precioUnitario.toLocaleString("es-CR")}</p>
                       <div>
                         <span className={`badge-soft ${estado.clase}`}>{estado.label}</span>
                       </div>
