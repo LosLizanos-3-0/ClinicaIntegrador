@@ -5,6 +5,7 @@
 import React, { useMemo, useState } from "react";
 import type { Paciente } from "../../types/clinica.types";
 import { clinicaStore, useClinicaStore } from "../../types/clinicaStore";
+import { formatearCedula, formatearTelefono } from "../../utils/Formato";
 
 const POR_PAGINA = 8;
 
@@ -140,11 +141,15 @@ function ModalPaciente({ paciente, onGuardar, onCerrar }: ModalPacienteProps) {
 
           <div className="row g-3">
             <div className="col-12 col-sm-6">
-              <Field label="Cédula">
+           <Field label="Cédula">
                 <input
                   value={form.cedula}
-                  onChange={(e) => handleChange("cedula", e.target.value)}
+                  onChange={(e) =>
+                    handleChange("cedula", formatearCedula(e.target.value))
+                  }
                   placeholder="1-1234-5678"
+                  inputMode="numeric"
+                  maxLength={11}
                   className="form-control form-control-sm"
                 />
               </Field>
@@ -196,11 +201,15 @@ function ModalPaciente({ paciente, onGuardar, onCerrar }: ModalPacienteProps) {
               </Field>
             </div>
             <div className="col-12 col-sm-6">
-              <Field label="Teléfono">
+             <Field label="Teléfono">
                 <input
                   value={form.telefono}
-                  onChange={(e) => handleChange("telefono", e.target.value)}
+                  onChange={(e) =>
+                    handleChange("telefono", formatearTelefono(e.target.value))
+                  }
                   placeholder="8888-1234"
+                  inputMode="numeric"
+                  maxLength={9}
                   className="form-control form-control-sm"
                 />
               </Field>

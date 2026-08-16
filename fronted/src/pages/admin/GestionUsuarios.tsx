@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from "react";
 import type { EstadoUsuario } from "../../types/clinica.types";
 import { clinicaStore, useClinicaStore, type UsuarioClinica, type EspecialidadClinica } from "../../types/clinicaStore";
+import { formatearCedula, formatearTelefono } from "../../utils/Formato";
 
 const ROL_COLOR: Record<string, string> = {
   Administrador: "badge-soft-purple",
@@ -212,11 +213,15 @@ function ModalUsuario({ usuario, rolesActivos, onGuardar, onCerrar }: ModalUsuar
               </Field>
             </div>
             <div className="col-6">
-              <Field label="Teléfono">
+             <Field label="Teléfono">
                 <input
                   value={form.telefono ?? ""}
-                  onChange={(e) => handleChange("telefono", e.target.value)}
+                  onChange={(e) =>
+                    handleChange("telefono", formatearTelefono(e.target.value))
+                  }
                   placeholder="8888-0000"
+                  inputMode="numeric"
+                  maxLength={9}
                   className="form-control form-control-sm"
                 />
               </Field>
@@ -244,15 +249,21 @@ function ModalUsuario({ usuario, rolesActivos, onGuardar, onCerrar }: ModalUsuar
                 />
               </Field>
             </div>
-            <div className="col-6">
+            <div className="col-5">
+              <div className="col-11">
               <Field label="Cédula / identificación">
                 <input
                   value={form.ident}
-                  onChange={(e) => handleChange("ident", e.target.value)}
+                  onChange={(e) =>
+                    handleChange("ident", formatearCedula(e.target.value))
+                  }
                   placeholder="1-2345-6789"
+                  inputMode="numeric"
+                  maxLength={11}
                   className="form-control form-control-sm"
                 />
               </Field>
+            </div>
             </div>
           </div>
 
