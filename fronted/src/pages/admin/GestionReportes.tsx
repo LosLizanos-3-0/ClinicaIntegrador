@@ -127,6 +127,7 @@ export default function GestionReportes({
     setTipoNuevo("Consultas");
   };
 
+  /*Se trabajara en reportes*/ 
   return (
     <>
       {/* Modal nuevo reporte */}
