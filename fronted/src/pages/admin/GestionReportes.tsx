@@ -16,7 +16,7 @@ const ESPECIALIDADES_MOCK: BarraEspecialidad[] = [
   { nombre: "Traumatología", valor: 159, max: 324, colorClase: "bg-warning" },
   { nombre: "Dermatología",  valor: 118, max: 324, colorClase: "bg-orange-bar" },
 ];
-
+/*Jose Gay*/ 
 const REPORTES_MOCK: Reporte[] = [
   { id: 1, nombre: "Reporte de consultas — junio 2025",  fecha: "30/06/2025", autor: "Admin", tipo: "Consultas", colorClase: "badge-soft-blue" },
   { id: 2, nombre: "Ingresos y facturación — junio 2025",fecha: "30/06/2025", autor: "Admin", tipo: "Finanzas",  colorClase: "badge-soft-green" },
