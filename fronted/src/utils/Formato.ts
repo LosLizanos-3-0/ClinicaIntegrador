@@ -14,3 +14,12 @@ export const formatearTelefono = (valor: string): string => {
   if (digitos.length <= 4) return digitos;
   return `${digitos.slice(0, 4)}-${digitos.slice(4, 8)}`;
 };
+
+export const esCorreoValido = (correo: string): boolean => {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(correo.trim());
+};
+
+
+export const soloLetras = (valor: string): string => {
+  return valor.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]/g, "");
+};

@@ -426,8 +426,12 @@ async function crearFactura(datos: {
   citaId?: number;
   items: { concepto: string; cantidad: number; precioUnitario: number }[];
 }) {
+  const IVA = 0.13;
   const item = datos.items[0];
-  const total = item.cantidad * item.precioUnitario;
+  const subtotal = item.cantidad * item.precioUnitario;
+  const impuesto = Math.round(subtotal * IVA);
+  const total = subtotal + impuesto; 
+
   await facturaService.crear({
     IdPaciente: datos.pacienteId,
     IdCita: datos.citaId ?? 0,
