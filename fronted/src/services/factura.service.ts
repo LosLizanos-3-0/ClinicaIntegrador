@@ -8,6 +8,15 @@ const METODO_A_BD: Record<MetodoPago, string> = {
   "Sinpe Móvil": "SINPE",
 };
 
+const BD_A_METODO: Record<string, MetodoPago> = {
+  Efectivo: "Efectivo",
+  Tarjeta: "Tarjeta",
+  Transferencia: "Transferencia",
+  SINPE: "Sinpe Móvil",
+};
+
+const IVA = 0.13;
+
 interface FacturaBD {
   IdFactura: number;
   IdPaciente: number;
@@ -25,16 +34,42 @@ interface DetalleFacturaBD {
   PrecioUnitario: number;
 }
 
+interface PagoBD {
+  IdPago: number;
+  IdFactura: number;
+  Monto: number;
+  MetodoPago: string;
+  FechaPago?: string;
+}
+
 export const facturaService = {
   async listar(pacientesMap: Map<number, { nombre: string; cedula: string }>): Promise<Factura[]> {
     const { data } = await api.get<FacturaBD[]>("/facturas");
     const { data: todosDetalles } = await api.get<DetalleFacturaBD[]>("/detalle-factura");
+
+    let todosPagos: PagoBD[] = [];
+    try {
+      const { data: pagos } = await api.get<PagoBD[]>("/pagos");
+      todosPagos = pagos;
+    } catch (error) {
+      console.error("No se pudo obtener /pagos:", error);
+    }
 
     return data.map((f) => {
       const paciente = pacientesMap.get(f.IdPaciente);
       const items = todosDetalles
         .filter((d) => d.IdFactura === f.IdFactura)
         .map((d) => ({ concepto: d.Concepto, cantidad: d.Cantidad, precioUnitario: d.PrecioUnitario }));
+
+      const pago = todosPagos
+        .filter((p) => p.IdFactura === f.IdFactura)
+        .sort((a, b) => b.IdPago - a.IdPago)[0];
+      const metodoPago = pago ? BD_A_METODO[pago.MetodoPago] : undefined;
+
+      const total = f.Total;
+      const subtotal = Math.round(total / (1 + IVA));
+      const impuesto = total - subtotal;
+
       return {
         id: f.IdFactura,
         pacienteId: f.IdPaciente,
@@ -43,10 +78,11 @@ export const facturaService = {
         citaId: f.IdCita,
         fecha: new Date(f.FechaEmision).toLocaleDateString("es-CR"),
         items,
-        subtotal: f.Total,
-        impuesto: 0,
-        total: f.Total,
+        subtotal,
+        impuesto,
+        total,
         estado: f.Estado,
+        metodoPago,
       };
     });
   },

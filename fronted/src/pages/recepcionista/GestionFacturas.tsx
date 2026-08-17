@@ -5,6 +5,7 @@
  *   ✔ Precio unitario automático según la especialidad de la cita
  *   ✔ Calcular subtotal, impuesto (IVA 13%) y total
  *   ✔ Marcar facturas como pagadas / anuladas
+ *   ✔ Imprimir comprobante de pago
  *
  * Requiere: React 18+ · TypeScript · Bootstrap 5.3
  * (usa clases auxiliares definidas en clinica-admin.css / index.css)
@@ -61,7 +62,7 @@ function ModalNuevaFactura({ onGuardar, onCerrar }: ModalNuevaFacturaProps) {
   const citasAtendidasSinFacturar = citas.filter(
     (c) => c.estado === "Atendida" && !citasYaFacturadasIds.has(c.id)
   );
-  
+
   const [citaId, setCitaId] = useState<number | "">("");
   const [error, setError] = useState<string>("");
 
@@ -166,6 +167,75 @@ function ModalNuevaFactura({ onGuardar, onCerrar }: ModalNuevaFacturaProps) {
   );
 }
 
+// ─── Impresión de comprobante ──────────────────────────────────────────────────
+function imprimirComprobante(factura: Factura) {
+  const ventana = window.open("", "_blank", "width=380,height=600");
+  if (!ventana) return;
+
+  const fechaImpresion = new Date().toLocaleString("es-CR");
+
+  const filasItems = factura.items
+    .map(
+      (item) => `
+        <tr>
+          <td>${item.concepto}</td>
+          <td style="text-align:center;">${item.cantidad}</td>
+          <td style="text-align:right;">${formatoColones(item.cantidad * item.precioUnitario)}</td>
+        </tr>`
+    )
+    .join("");
+
+  ventana.document.write(`
+    <html>
+      <head>
+        <title>Comprobante Factura #${factura.id}</title>
+        <style>
+          body { font-family: monospace; font-size: 12px; padding: 16px; color: #000; }
+          h1 { font-size: 16px; text-align: center; margin-bottom: 4px; }
+          p { margin: 2px 0; }
+          table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+          th, td { padding: 4px 0; font-size: 12px; }
+          th { text-align: left; border-bottom: 1px solid #000; }
+          .totales td { border-top: 1px solid #000; padding-top: 6px; }
+          .total-final { font-weight: bold; font-size: 14px; }
+          .centrado { text-align: center; }
+          hr { border: none; border-top: 1px dashed #000; margin: 10px 0; }
+        </style>
+      </head>
+      <body>
+        <h1>Clínica Integradora</h1>
+        <p class="centrado">Comprobante de pago</p>
+        <hr />
+        <p><strong>Factura #${factura.id}</strong></p>
+        <p>Fecha emisión: ${factura.fecha}</p>
+        <p>Paciente: ${factura.paciente}</p>
+        <p>Cédula: ${factura.cedulaPaciente}</p>
+        <hr />
+        <table>
+          <thead>
+            <tr><th>Concepto</th><th style="text-align:center;">Cant.</th><th style="text-align:right;">Monto</th></tr>
+          </thead>
+          <tbody>
+            ${filasItems}
+          </tbody>
+        </table>
+        <table class="totales">
+          <tr><td>Subtotal</td><td style="text-align:right;">${formatoColones(factura.subtotal)}</td></tr>
+          <tr><td>IVA (13%)</td><td style="text-align:right;">${formatoColones(factura.impuesto)}</td></tr>
+          <tr class="total-final"><td>Total</td><td style="text-align:right;">${formatoColones(factura.total)}</td></tr>
+        </table>
+        <hr />
+        <p>Método de pago: ${factura.metodoPago ?? "—"}</p>
+        <p class="centrado">¡Gracias por su visita!</p>
+        <p class="centrado" style="font-size:10px; color:#555;">Impreso: ${fechaImpresion}</p>
+      </body>
+    </html>
+  `);
+  ventana.document.close();
+  ventana.focus();
+  ventana.print();
+}
+
 // ─── Modal detalle / cobro ─────────────────────────────────────────────────────
 function ModalDetalleFactura({ factura, onCerrar }: { factura: Factura; onCerrar: () => void }) {
   const [metodoPago, setMetodoPago] = useState<MetodoPago>("Efectivo");
@@ -215,7 +285,15 @@ function ModalDetalleFactura({ factura, onCerrar }: { factura: Factura; onCerrar
           </div>
 
           {factura.estado === "Pagada" && factura.metodoPago && (
-            <p className="fs-12 text-success text-center mb-0">Pagada con {factura.metodoPago}.</p>
+            <>
+              <p className="fs-12 text-success text-center mb-0">Pagada con {factura.metodoPago}.</p>
+              <button
+                onClick={() => imprimirComprobante(factura)}
+                className="btn btn-outline-primary btn-sm w-100"
+              >
+                🖨️ Imprimir comprobante
+              </button>
+            </>
           )}
 
           {factura.estado === "Anulada" && (
@@ -381,6 +459,6 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
     <div>
       <label className="form-label fs-12 text-secondary mb-1">{label}</label>
       {children}
-    </div>
+    </div>  
   );
 }

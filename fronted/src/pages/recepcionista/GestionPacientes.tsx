@@ -5,7 +5,12 @@
 import React, { useMemo, useState } from "react";
 import type { Paciente } from "../../types/clinica.types";
 import { clinicaStore, useClinicaStore } from "../../types/clinicaStore";
-import { formatearCedula, formatearTelefono } from "../../utils/Formato";
+import {
+  formatearCedula,
+  formatearTelefono,
+  esCorreoValido,
+  soloLetras,
+} from "../../utils/Formato";
 
 const POR_PAGINA = 8;
 
@@ -63,12 +68,21 @@ function ModalPaciente({ paciente, onGuardar, onCerrar }: ModalPacienteProps) {
   };
 
   const handleSubmit = async () => {
-    if (!form.nombre.trim() || !form.apellido1.trim() || !form.cedula.trim()) {
-      setError("Nombre, primer apellido y cédula son obligatorios.");
+    if (
+      !form.nombre.trim() ||
+      !form.apellido1.trim() ||
+      !form.apellido2.trim() ||
+      !form.cedula.trim()
+    ) {
+      setError("Nombre, apellidos y cédula son obligatorios.");
       return;
     }
-    if (!form.correo.trim() || !form.telefono.trim()) {
-      setError("Correo y teléfono son obligatorios.");
+    if (!form.telefono.trim()) {
+      setError("El teléfono es obligatorio.");
+      return;
+    }
+    if (!esCorreoValido(form.correo)) {
+      setError("Ingresa un correo válido (ejemplo@dominio.com).");
       return;
     }
     if (!form.fechaNacimiento) {
@@ -111,7 +125,9 @@ function ModalPaciente({ paciente, onGuardar, onCerrar }: ModalPacienteProps) {
               <Field label="Nombre">
                 <input
                   value={form.nombre}
-                  onChange={(e) => handleChange("nombre", e.target.value)}
+                  onChange={(e) =>
+                    handleChange("nombre", soloLetras(e.target.value))
+                  }
                   placeholder="Nombre"
                   className="form-control form-control-sm"
                 />
@@ -121,7 +137,9 @@ function ModalPaciente({ paciente, onGuardar, onCerrar }: ModalPacienteProps) {
               <Field label="Primer apellido">
                 <input
                   value={form.apellido1}
-                  onChange={(e) => handleChange("apellido1", e.target.value)}
+                  onChange={(e) =>
+                    handleChange("apellido1", soloLetras(e.target.value))
+                  }
                   placeholder="Primer apellido"
                   className="form-control form-control-sm"
                 />
@@ -131,7 +149,9 @@ function ModalPaciente({ paciente, onGuardar, onCerrar }: ModalPacienteProps) {
               <Field label="Segundo apellido">
                 <input
                   value={form.apellido2}
-                  onChange={(e) => handleChange("apellido2", e.target.value)}
+                  onChange={(e) =>
+                    handleChange("apellido2", soloLetras(e.target.value))
+                  }
                   placeholder="Segundo apellido"
                   className="form-control form-control-sm"
                 />
@@ -141,7 +161,7 @@ function ModalPaciente({ paciente, onGuardar, onCerrar }: ModalPacienteProps) {
 
           <div className="row g-3">
             <div className="col-12 col-sm-6">
-           <Field label="Cédula">
+              <Field label="Cédula">
                 <input
                   value={form.cedula}
                   onChange={(e) =>
@@ -201,7 +221,7 @@ function ModalPaciente({ paciente, onGuardar, onCerrar }: ModalPacienteProps) {
               </Field>
             </div>
             <div className="col-12 col-sm-6">
-             <Field label="Teléfono">
+              <Field label="Teléfono">
                 <input
                   value={form.telefono}
                   onChange={(e) =>
@@ -266,10 +286,7 @@ export default function GestionPacientes() {
 
   const [busqueda, setBusqueda] = useState<string>("");
   const [pagina, setPagina] = useState<number>(1);
-  const [modalPaciente, setModalPaciente] = useState<
-    Paciente | null | undefined
-  >(undefined);
-
+  const [modalPaciente, setModalPaciente] = useState<Paciente | null | undefined>(undefined);
   const filtrados = useMemo(() => {
     const texto = busqueda.trim().toLowerCase();
     if (!texto) return pacientes;
