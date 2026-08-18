@@ -24,6 +24,8 @@ import { expedienteService } from "../services/expediente.service";
 import { consultaService } from "../services/consulta.service";
 import { recetaService } from "../services/receta.service";
 import { entregaMedicamentoService } from "../services/entregaMedicamento.service";
+import { detalleRecetaService } from "../services/detalleReceta.service";
+import { calcularTotalConIva } from "../services/factura.service";
 
 export interface UsuarioClinica {
   id: number;
@@ -64,10 +66,6 @@ interface ClinicaState {
 }
 
 const RECETAS_INICIALES: Receta[] = [];
-
-const CREDENCIALES_INICIALES: Credencial[] = [
-  { usuario: "admin", contrasena: "123", rol: "Administrador", nombreCompleto: "Andrea Salas", iniciales: "AS" },
-];
 
 let state: ClinicaState = {
   usuarios: [],
@@ -206,6 +204,13 @@ async function toggleEstadoMedicamento(id: number) {
   const actual = state.medicamentos.find((m) => m.id === id);
   if (!actual) return;
   await medicamentoService.cambiarEstado(id, actual.estado);
+  await refrescarMedicamentos();
+}
+
+async function actualizarStockMedicamento(id: number, stockActual: number) {
+  const rol = state.usuarioActual?.rol;
+  if (rol !== "Administrador") return; // el botón ni debería mostrarse, pero por si acaso
+  await medicamentoService.actualizarStock(id, stockActual, rol);
   await refrescarMedicamentos();
 }
 
@@ -424,23 +429,29 @@ async function actualizarCita(cita: Cita) {
 async function crearFactura(datos: {
   pacienteId: number;
   citaId?: number;
-  items: { concepto: string; cantidad: number; precioUnitario: number }[];
+  montoConsulta: number;
+  idsDetalleRecetaSeleccionados?: number[]; // items de la receta que el paciente decide pagar aqui
+  idReceta?: number;
 }) {
-  const IVA = 0.13;
-  const item = datos.items[0];
-  const subtotal = item.cantidad * item.precioUnitario;
-  const impuesto = Math.round(subtotal * IVA);
-  const total = subtotal + impuesto; 
-
-  await facturaService.crear({
+  const idFactura = await facturaService.crear({
     IdPaciente: datos.pacienteId,
     IdCita: datos.citaId ?? 0,
-    total,
-    concepto: item.concepto,
-    cantidad: item.cantidad,
-    precioUnitario: item.precioUnitario,
+    montoConsulta: datos.montoConsulta,
   });
-  await refrescarFacturas();
+
+  // Si el paciente eligio medicamentos, se marcan y se agregan a la factura.
+  // El precio y el subtotal los calcula la base de datos, no el frontend.
+  if (datos.idsDetalleRecetaSeleccionados?.length && datos.idReceta) {
+    for (const idDetalleReceta of datos.idsDetalleRecetaSeleccionados) {
+      await detalleRecetaService.marcarIncluirFactura(idDetalleReceta, true);
+    }
+    await facturaService.agregarMedicamentosDeReceta(idFactura, datos.idReceta);
+  }
+
+  // Importante: refrescar tambien las recetas, si no el store se queda con
+  // "incluirFactura: false" en memoria y el medicamento sigue apareciendo
+  // como disponible para cobrar en otra factura del mismo paciente.
+  await Promise.all([refrescarFacturas(), refrescarRecetas()]);
 }
 
 async function refrescarFacturas() {
@@ -451,10 +462,14 @@ async function refrescarFacturas() {
   patch({ facturas });
 }
 
+
 async function marcarFacturaPagada(id: number, metodoPago: MetodoPago) {
   const factura = state.facturas.find((f) => f.id === id);
   if (!factura) return;
-  await facturaService.cambiarEstado(id, "Pagada", factura.total, metodoPago);
+  // Se cobra el total CON el 13% de IVA (calculado en codigo), aunque la BD
+  // solo conoce el monto sin impuesto.
+  const montoConIva = calcularTotalConIva(factura.total);
+  await facturaService.cambiarEstado(id, "Pagada", montoConIva, metodoPago);
   await refrescarFacturas();
 }
 
@@ -462,7 +477,6 @@ async function anularFactura(id: number) {
   await facturaService.cambiarEstado(id, "Anulada");
   await refrescarFacturas();
 }
-
 // ─────────────────────────────────────────────
 // Recetas (farmacéutico — gestión de entregas)
 // ─────────────────────────────────────────────
@@ -483,14 +497,6 @@ async function marcarRecetaEntregada(idReceta: number, idUsuarioFarmaceutico: nu
 }
 
 async function iniciarSesion(usuario: string, contrasena: string): Promise<Credencial | null> {
-  const mock = CREDENCIALES_INICIALES.find(
-    (c) => c.usuario.toLowerCase() === usuario.trim().toLowerCase() && c.contrasena === contrasena
-  );
-  if (mock) {
-    patch({ usuarioActual: mock });
-    return mock;
-  }
-
   try {
     const credencial = await authService.login(usuario, contrasena);
     patch({ usuarioActual: credencial });
@@ -523,6 +529,8 @@ export const clinicaStore = {
   crearMedicamento,
   actualizarMedicamento,
   toggleEstadoMedicamento,
+  refrescarMedicamentos,
+  actualizarStockMedicamento,
   refrescarCategoriasMedicamento,
   crearCategoriaMedicamento,
   actualizarCategoriaMedicamento,

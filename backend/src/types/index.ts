@@ -47,7 +47,7 @@ export interface Paciente {
 export interface Cita {
   IdCita?: number;
   IdPaciente: number;
-  IdEspecialidad: number; // 👈 nuevo
+  IdEspecialidad: number;
   IdUsuario: number;
   FechaCita: string;
   HoraCita: string;
@@ -74,19 +74,11 @@ export interface Consulta {
   Estado?: 'A' | 'I';
 }
 
-export interface CategoriaMedicamento {
-  IdCategoria?: number;
-  NombreCategoria: string;
-  Comentario?: string;
-  Estado?: 'A' | 'I';
-}
-
 export interface Medicamento {
   IdMedicamento?: number;
   NombreMedicamento: string;
   Descripcion?: string;
   IdCategoria: number;
-  NombreCategoria?: string;
   Presentacion?: string;
   Ubicacion: string;
   StockActual?: number;
@@ -95,6 +87,9 @@ export interface Medicamento {
   Estado?: 'A' | 'I';
 }
 
+// Datos que acepta UpdateMedicamento (no incluye StockActual: ese campo
+// solo se modifica mediante el endpoint/procedimiento exclusivo de Admin,
+// UpdateStockMedicamento).
 export interface MedicamentoUpdate {
   NombreMedicamento: string;
   Descripcion?: string;
@@ -103,6 +98,13 @@ export interface MedicamentoUpdate {
   Ubicacion: string;
   StockMinimo: number;
   PrecioUnitario: number;
+  Estado?: 'A' | 'I';
+}
+
+export interface CategoriaMedicamento {
+  IdCategoria?: number;
+  NombreCategoria: string;
+  Comentario?: string;
   Estado?: 'A' | 'I';
 }
 
@@ -129,6 +131,7 @@ export interface DetalleReceta {
   IdMedicamento: number;
   Cantidad: number;
   Indicaciones?: string;
+  IncluirFactura?: boolean; // el paciente decide si compra este medicamento aqui
   Estado?: 'A' | 'I';
 }
 
@@ -138,25 +141,26 @@ export interface EntregaMedicamento {
   IdUsuario: number;
   Estado?: 'A' | 'I';
 }
-
 export interface Factura {
   IdFactura?: number;
   IdPaciente: number;
   IdCita: number;
-  Total?: number;
+  MontoConsulta?: number; // se digita desde el frontend
+  MontoReceta?: number;   // se calcula solo, nunca se envia desde el frontend
+  Total?: number;         // solo lectura, calculado en la BD (MontoConsulta + MontoReceta)
   Estado?: 'Pendiente' | 'Pagada' | 'Anulada';
 }
 
 export interface DetalleFactura {
   IdDetalleFactura?: number;
   IdFactura: number;
+  IdDetalleReceta?: number; // enlaza con el medicamento recetado que origino esta linea
   Concepto: string;
   Cantidad: number;
   PrecioUnitario: number;
-  Subtotal: number;
+  Subtotal?: number; // solo lectura, calculado en la BD (Cantidad * PrecioUnitario)
   Estado?: 'A' | 'I';
 }
-
 export interface Pago {
   IdPago?: number;
   IdFactura: number;

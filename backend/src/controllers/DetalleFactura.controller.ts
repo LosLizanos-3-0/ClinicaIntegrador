@@ -50,3 +50,17 @@ export const cambiarEstadoDetalle = async (req: Request, res: Response) => {
     res.status(500).json({ error: 'Error al cambiar el estado del detalle' });
   }
 };
+
+// Crea automaticamente las lineas de medicamentos de una receta (los marcados
+// IncluirFactura=1) dentro de una factura. El precio sale del catalogo de
+// Medicamento en la BD, nunca del frontend.
+export const generarDesdeReceta = async (req: Request, res: Response) => {
+  try {
+    const { IdFactura, IdReceta } = req.body;
+    await DetalleModel.generarDetalleFacturaDesdeReceta(IdFactura, IdReceta);
+    res.status(201).json({ mensaje: 'Medicamentos agregados a la factura correctamente' });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Error al agregar los medicamentos a la factura' });
+  }
+};

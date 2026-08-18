@@ -140,6 +140,8 @@ export type EstadoFactura = "Pendiente" | "Pagada" | "Anulada";
 export type MetodoPago = "Efectivo" | "Tarjeta" | "Sinpe Móvil" | "Transferencia";
 
 export interface ItemFactura {
+  idDetalleFactura?: number;
+  idDetalleReceta?: number;
   concepto: string;
   cantidad: number;
   precioUnitario: number;
@@ -152,9 +154,9 @@ export interface Factura {
   cedulaPaciente: string;
   citaId?: number;
   fecha: string;
-  items: ItemFactura[];
-  subtotal: number;
-  impuesto: number;
+  items: ItemFactura[]; // solo los medicamentos facturados
+  montoConsulta: number;
+  montoReceta: number;
   total: number;
   estado: EstadoFactura;
   metodoPago?: MetodoPago;
@@ -163,14 +165,19 @@ export interface Factura {
 export type EstadoReceta = "Pendiente" | "Despachada" | "Anulada";
 
 export interface ItemReceta {
+  idDetalleReceta: number;
   medicamentoId: number;
   medicamento: string;
   cantidad: number;
+  precioUnitario: number;
   indicaciones: string;
+  incluirFactura: boolean; // el paciente eligio comprarlo aqui
 }
 
 export interface Receta {
   id: number;
+  pacienteId: number;
+  citaId?: number; // de que cita/consulta viene esta receta, para no mezclarla con otras citas del mismo paciente
   paciente: string;
   cedulaPaciente: string;
   medico: string;

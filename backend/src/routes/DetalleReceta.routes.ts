@@ -8,5 +8,6 @@ router.get('/:id', DetalleController.getDetalleById);
 router.post('/', DetalleController.createDetalle);
 router.put('/:id', DetalleController.updateDetalle);
 router.patch('/:id/estado', DetalleController.cambiarEstadoDetalle);
+router.patch('/:id/incluir-factura', DetalleController.marcarIncluirFactura);
 
 export default router;

@@ -8,6 +8,8 @@ import {
 } from "../../types/clinicaStore";
 import type { RolBD } from "../../services/rol.service";
 import { formatearCedula, formatearTelefono } from "../../utils/Formato";
+import { validarNombre, validarCedula, validarTelefono, validarNombreUsuario, validarContrasena } from "../../utils/validaciones";
+import { esCorreoValido } from "../../utils/Formato";
 
 // Ícono + descripción "bonita" para los roles que el sistema ya conoce.
 const ROLES_INFO: Record<string, { icono: string; descripcion: string }> = {
@@ -260,9 +262,9 @@ function ModalRol({ onGuardar, onCerrar }: ModalRolProps) {
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState("");
 
-  const handleSubmit = async () => {
-    if (!nombre.trim()) {
-      setError("El nombre del rol es obligatorio.");
+   const handleSubmit = async () => {
+    if (!validarNombre(nombre)) {
+      setError("El nombre del rol debe tener solo letras, entre 2 y 50 caracteres.");
       return;
     }
     setGuardando(true);
@@ -371,9 +373,9 @@ function ModalEditarRol({ rol, onGuardar, onCerrar }: ModalEditarRolProps) {
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState("");
 
-  const handleSubmit = async () => {
-    if (!nombre.trim()) {
-      setError("El nombre del rol es obligatorio.");
+    const handleSubmit = async () => {
+    if (!validarNombre(nombre)) {
+      setError("El nombre del rol debe tener solo letras, entre 2 y 50 caracteres.");
       return;
     }
     setGuardando(true);
@@ -517,42 +519,41 @@ function ModalUsuario({
       return next;
     });
   };
-
   const handleSubmit = async () => {
-    if (!form.nombre.trim()) {
-      setError("Ingresa un nombre.");
+    if (!validarNombre(form.nombre)) {
+      setError("El nombre debe tener solo letras, entre 2 y 50 caracteres.");
       return;
     }
-    if (!form.apellido1.trim()) {
-      setError("Ingresa un apellido 1.");
+    if (!validarNombre(form.apellido1)) {
+      setError("El primer apellido debe tener solo letras, entre 2 y 50 caracteres.");
       return;
     }
-    if (!(form.apellido2 ?? "").trim()) {
-      setError("Ingresa apellido 2.");
+    if (!validarNombre(form.apellido2 ?? "")) {
+      setError("El segundo apellido debe tener solo letras, entre 2 y 50 caracteres.");
       return;
     }
-    if (!(form.telefono ?? "").trim()) {
-      setError("Ingresa número telefónico.");
+    if (!validarTelefono(form.telefono ?? "")) {
+      setError("El teléfono debe tener el formato 8888-0000.");
       return;
     }
-    if (!form.correo.trim()) {
-      setError("Ingresa un correo.");
+    if (!esCorreoValido(form.correo)) {
+      setError("Ingresa un correo electrónico válido.");
       return;
     }
-    if (!form.nombreUsuario.trim()) {
-      setError("Ingresa nombre usuario.");
+    if (!validarNombreUsuario(form.nombreUsuario)) {
+      setError("El usuario de acceso debe tener entre 3 y 30 caracteres (letras, números, puntos o guiones).");
       return;
     }
-    if (!form.ident.trim()) {
-      setError("Ingresa un número de cédula/identificación.");
+    if (!validarCedula(form.ident)) {
+      setError("La cédula/identificación debe tener el formato 1-2345-6789.");
       return;
     }
-    if (esNuevo && !contrasena.trim()) {
-      setError("Ingresa contraseña.");
+    if (esNuevo && !validarContrasena(contrasena)) {
+      setError("La contraseña debe tener al menos 4 caracteres.");
       return;
     }
     if (!form.rol) {
-      setError("Ingresa rol.");
+      setError("Selecciona un rol.");
       return;
     }
 

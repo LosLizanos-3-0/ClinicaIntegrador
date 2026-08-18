@@ -2,12 +2,23 @@ import { Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import * as UsuarioModel from '../models/Usuario.model';
 import * as RolModel from '../models/Rol.model';
+import * as BitacoraModel from '../models/Bitacora.model';
 
 export const login = async (req: Request, res: Response) => {
-  try {
-    const { usuario, contrasena } = req.body;
+  const { usuario, contrasena } = req.body;
 
+  const registrarIntento = async (resultado: 'EXITOSO' | 'FALLIDO', detalle: string) => {
+    try {
+      await BitacoraModel.insertBitacoraLogin(usuario || '(vacío)', resultado, detalle);
+    } catch (errorBitacora) {
+      // Un fallo al escribir la bitácora nunca debe tumbar el login
+      console.error('No se pudo registrar el intento de login en la bitácora:', errorBitacora);
+    }
+  };
+
+  try {
     if (!usuario || !contrasena) {
+      await registrarIntento('FALLIDO', 'Usuario/correo y contraseña son obligatorios');
       return res.status(400).json({ error: 'Usuario/correo y contraseña son obligatorios' });
     }
 
@@ -19,20 +30,25 @@ export const login = async (req: Request, res: Response) => {
     );
 
     if (!encontrado) {
+      await registrarIntento('FALLIDO', `El usuario "${usuario}" no existe`);
       return res.status(401).json({ error: 'Usuario o contraseña incorrectos' });
     }
 
     if (encontrado.Estado === 'I') {
+      await registrarIntento('FALLIDO', `El usuario "${usuario}" está inactivo`);
       return res.status(403).json({ error: 'Este usuario está inactivo. Contacta al administrador.' });
     }
 
     const coincide = await bcrypt.compare(contrasena, encontrado.Contrasena);
     if (!coincide) {
+      await registrarIntento('FALLIDO', `Contraseña incorrecta para "${usuario}"`);
       return res.status(401).json({ error: 'Usuario o contraseña incorrectos' });
     }
 
     const roles = await RolModel.selectRol();
     const rol = roles.find((r) => r.IdRol === encontrado.IdRol);
+
+    await registrarIntento('EXITOSO', `Inicio de sesión de "${encontrado.NombreUsuario}" (${rol?.NombreRol ?? 'Sin rol'})`);
 
     res.json({
       IdUsuario: encontrado.IdUsuario,
@@ -45,6 +61,7 @@ export const login = async (req: Request, res: Response) => {
     });
   } catch (error) {
     console.error(error);
+    await registrarIntento('FALLIDO', 'Error interno del servidor');
     res.status(500).json({ error: 'Error al iniciar sesión' });
   }
 };

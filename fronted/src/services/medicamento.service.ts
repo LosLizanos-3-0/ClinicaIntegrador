@@ -75,4 +75,12 @@ export const medicamentoService = {
       Estado: estadoActual === "A" ? "I" : "A",
     });
   },
+
+  async actualizarStock(id: number, stockActual: number, rol: string) {
+    await api.patch(
+      `/medicamentos/${id}/stock`,
+      { StockActual: stockActual },
+      { headers: { 'x-rol': rol } }
+    );
+  },
 };

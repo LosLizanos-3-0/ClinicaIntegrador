@@ -1,6 +1,12 @@
 import api from "./api";
 import type { Factura, MetodoPago } from "../types/clinica.types";
 
+// El IVA se calcula SOLO en el frontend. La base de datos no lo maneja:
+// Factura.Total en la BD sigue siendo MontoConsulta + MontoReceta (sin impuesto).
+export const IVA_TASA = 0.13;
+export const calcularIva = (subtotal: number) => Math.round(subtotal * IVA_TASA);
+export const calcularTotalConIva = (subtotal: number) => subtotal + calcularIva(subtotal);
+
 const METODO_A_BD: Record<MetodoPago, string> = {
   Efectivo: "Efectivo",
   Tarjeta: "Tarjeta",
@@ -15,20 +21,21 @@ const BD_A_METODO: Record<string, MetodoPago> = {
   SINPE: "Sinpe Móvil",
 };
 
-const IVA = 0.13;
-
 interface FacturaBD {
   IdFactura: number;
   IdPaciente: number;
   IdCita: number;
   FechaEmision: string;
-  Total: number;
+  MontoConsulta: number;
+  MontoReceta: number;
+  Total: number; // sin IVA, viene de la BD
   Estado: "Pendiente" | "Pagada" | "Anulada";
 }
 
 interface DetalleFacturaBD {
   IdDetalleFactura: number;
   IdFactura: number;
+  IdDetalleReceta: number | null;
   Concepto: string;
   Cantidad: number;
   PrecioUnitario: number;
@@ -59,16 +66,18 @@ export const facturaService = {
       const paciente = pacientesMap.get(f.IdPaciente);
       const items = todosDetalles
         .filter((d) => d.IdFactura === f.IdFactura)
-        .map((d) => ({ concepto: d.Concepto, cantidad: d.Cantidad, precioUnitario: d.PrecioUnitario }));
+        .map((d) => ({
+          idDetalleFactura: d.IdDetalleFactura,
+          idDetalleReceta: d.IdDetalleReceta ?? undefined,
+          concepto: d.Concepto,
+          cantidad: d.Cantidad,
+          precioUnitario: d.PrecioUnitario,
+        }));
 
       const pago = todosPagos
         .filter((p) => p.IdFactura === f.IdFactura)
         .sort((a, b) => b.IdPago - a.IdPago)[0];
       const metodoPago = pago ? BD_A_METODO[pago.MetodoPago] : undefined;
-
-      const total = f.Total;
-      const subtotal = Math.round(total / (1 + IVA));
-      const impuesto = total - subtotal;
 
       return {
         id: f.IdFactura,
@@ -78,48 +87,39 @@ export const facturaService = {
         citaId: f.IdCita,
         fecha: new Date(f.FechaEmision).toLocaleDateString("es-CR"),
         items,
-        subtotal,
-        impuesto,
-        total,
+        montoConsulta: f.MontoConsulta,
+        montoReceta: f.MontoReceta,
+        total: f.Total, // subtotal sin IVA, tal cual lo calcula la BD
         estado: f.Estado,
         metodoPago,
       };
     });
   },
 
-  async crear(datos: {
-    IdPaciente: number;
-    IdCita: number;
-    total: number;
-    concepto: string;
-    cantidad: number;
-    precioUnitario: number;
-  }) {
-    await api.post("/facturas", {
+  // Crea la factura con el monto de consulta digitado por el recepcionista.
+  async crear(datos: { IdPaciente: number; IdCita: number; montoConsulta: number }): Promise<number> {
+    const { data } = await api.post<{ IdFactura: number }>("/facturas", {
       IdPaciente: datos.IdPaciente,
       IdCita: datos.IdCita,
-      Total: datos.total,
+      MontoConsulta: datos.montoConsulta,
       Estado: "Pendiente",
     });
-    const { data: facturas } = await api.get<FacturaBD[]>("/facturas");
-    const nueva = facturas.sort((a, b) => b.IdFactura - a.IdFactura)[0];
-
-    await api.post("/detalle-factura", {
-      IdFactura: nueva.IdFactura,
-      Concepto: datos.concepto,
-      Cantidad: datos.cantidad,
-      PrecioUnitario: datos.precioUnitario,
-      Subtotal: datos.cantidad * datos.precioUnitario,
-    });
+    return data.IdFactura;
   },
 
-  async cambiarEstado(id: number, nuevoEstado: "Pagada" | "Anulada", montoTotal?: number, metodoPago?: MetodoPago) {
-    if (nuevoEstado === "Pagada" && metodoPago && montoTotal != null) {
-      // El trigger TR_Pago_ActualizarFactura marca la factura como "Pagada"
-      // automáticamente cuando el monto pagado cubre el total.
+  // Agrega a la factura los medicamentos de la receta marcados como "cobrar aqui".
+  async agregarMedicamentosDeReceta(idFactura: number, idReceta: number): Promise<void> {
+    await api.post("/detalle-factura/generar-desde-receta", { IdFactura: idFactura, IdReceta: idReceta });
+  },
+
+  // montoTotalConIva: lo que realmente se le cobra al paciente (subtotal + 13% IVA).
+  // El trigger de la BD solo exige Monto >= Total (sin IVA), así que esto sigue
+  // marcando la factura como Pagada sin necesidad de tocar la base de datos.
+  async cambiarEstado(id: number, nuevoEstado: "Pagada" | "Anulada", montoTotalConIva?: number, metodoPago?: MetodoPago) {
+    if (nuevoEstado === "Pagada" && metodoPago && montoTotalConIva != null) {
       await api.post("/pagos", {
         IdFactura: id,
-        Monto: montoTotal,
+        Monto: montoTotalConIva,
         MetodoPago: METODO_A_BD[metodoPago],
       });
     } else {
