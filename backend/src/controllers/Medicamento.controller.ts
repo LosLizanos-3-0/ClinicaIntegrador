@@ -122,3 +122,24 @@ export const cambiarEstadoMedicamento = async (req: Request, res: Response) => {
     res.status(500).json({ error: 'Error al cambiar el estado del medicamento' });
   }
 };
+
+// Solo el rol Administrador puede tocar el stock actual directamente.
+// El frontend manda el rol en el header 'x-rol' (igual de fuerte que el resto
+// del sistema, que tampoco usa tokens de sesión).
+export const updateStockMedicamento = async (req: Request, res: Response) => {
+  try {
+    const rol = req.header('x-rol');
+    if (rol !== 'Administrador') {
+      return res.status(403).json({ error: 'Solo un administrador puede modificar el stock actual.' });
+    }
+    const stockActual = Number(req.body.StockActual);
+    if (!Number.isFinite(stockActual) || stockActual < 0) {
+      return res.status(400).json({ error: 'El stock actual debe ser un número mayor o igual a cero' });
+    }
+    await MedicamentoModel.updateStockMedicamento(Number(req.params.id), stockActual);
+    res.json({ mensaje: 'Stock actualizado correctamente' });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Error al actualizar el stock' });
+  }
+};

@@ -23,8 +23,8 @@ export const getFacturaById = async (req: Request, res: Response) => {
 
 export const createFactura = async (req: Request, res: Response) => {
   try {
-    await FacturaModel.insertFactura(req.body);
-    res.status(201).json({ mensaje: 'Factura creada correctamente' });
+    const idFactura = await FacturaModel.insertFactura(req.body);
+    res.status(201).json({ mensaje: 'Factura creada correctamente', IdFactura: idFactura });
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Error al crear la factura' });
@@ -41,6 +41,16 @@ export const updateFactura = async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'No se puede modificar una factura ya pagada' });
     }
     res.status(500).json({ error: 'Error al actualizar la factura' });
+  }
+};
+
+export const updateMontoConsultaFactura = async (req: Request, res: Response) => {
+  try {
+    await FacturaModel.updateMontoConsultaFactura(Number(req.params.id), req.body.MontoConsulta);
+    res.json({ mensaje: 'Monto de consulta actualizado correctamente' });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Error al actualizar el monto de consulta' });
   }
 };
 

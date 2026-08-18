@@ -80,10 +80,16 @@ export default function GestionBitacora() {
   });
 
   const badgeAccion = (accion: string) => {
-    if (accion === "INSERT") return "badge-soft-green";
+    if (accion === "INSERT" || accion === "EXITOSO") return "badge-soft-green";
     if (accion === "UPDATE") return "badge-soft-amber";
-    if (accion === "DELETE") return "badge-soft-red";
+    if (accion === "DELETE" || accion === "FALLIDO") return "badge-soft-red";
     return "badge-soft-gray";
+  };
+
+  const etiquetaAccion = (accion: string) => {
+    if (accion === "EXITOSO") return "Login exitoso";
+    if (accion === "FALLIDO") return "Login fallido";
+    return accion;
   };
 
   return (
@@ -146,7 +152,7 @@ export default function GestionBitacora() {
                   >
                     <p className="fw-medium text-dark mb-0">{r.tabla}</p>
                     <div>
-                      <span className={`badge-soft ${badgeAccion(r.accion)}`}>{r.accion}</span>
+                      <span className={`badge-soft ${badgeAccion(r.accion)}`}>{etiquetaAccion(r.accion)}</span>
                     </div>
                     <p className="text-secondary fs-12 mb-0">{formatearFecha(r.fecha)}</p>
                     <p className="text-secondary fs-12 mb-0">{r.usuarioSql}</p>
@@ -169,4 +175,3 @@ export default function GestionBitacora() {
     </>
   );
 }
-

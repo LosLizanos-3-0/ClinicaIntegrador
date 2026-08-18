@@ -20,6 +20,7 @@ import GestionReportes from "./pages/admin/GestionReportes";
 import GestionEspecialidades from "./pages/admin/GestionEspecialidades";
 import GestionRoles from "./pages/admin/GestionRoles";
 import GestionBitacora from "./pages/admin/GestionBitacora";
+import GestionInventarioAdmin from "./pages/admin/GestionInventario";
 import ConsultaRecetas from "./pages/farmaceutico/ConsultaRecetas";
 import GestionInventario from "./pages/farmaceutico/GestionInventario";
 import GestionCategoriaMedicamento from "./pages/farmaceutico/GestionCategoriaMedicamento";
@@ -55,6 +56,7 @@ interface NavItem {
 const NAV_ITEMS_POR_ROL: Record<string, NavItem[]> = {
   Administrador: [
     { id: "usuarios",        label: "Usuarios",        icono: "people-fill" },
+    { id: "inventario",      label: "Inventario",      icono: "box-seam-fill" },
     { id: "reportes",        label: "Reportes",        icono: "bar-chart-fill" },
     { id: "especialidades",  label: "Especialidades",  icono: "heart-pulse-fill" },
     { id: "roles",           label: "Roles",            icono: "shield-lock-fill" },
@@ -227,7 +229,8 @@ export default function App() {
 
         {seccion === "recetas" && <ConsultaRecetas />}
 
-        {seccion === "inventario" && <GestionInventario />}
+        {seccion === "inventario" &&
+          (credencial.rol === "Administrador" ? <GestionInventarioAdmin /> : <GestionInventario />)}
 
         {seccion === "categoriaMedicamento" && <GestionCategoriaMedicamento />}
 

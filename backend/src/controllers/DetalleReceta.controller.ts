@@ -50,3 +50,14 @@ export const cambiarEstadoDetalle = async (req: Request, res: Response) => {
     res.status(500).json({ error: 'Error al cambiar el estado del detalle' });
   }
 };
+
+// Checkbox del frontend: "cobrar aqui" / "lo retiro en otra farmacia"
+export const marcarIncluirFactura = async (req: Request, res: Response) => {
+  try {
+    await DetalleModel.marcarIncluirFacturaDetalleReceta(Number(req.params.id), req.body.IncluirFactura);
+    res.json({ mensaje: 'Preferencia de facturación actualizada correctamente' });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Error al actualizar la preferencia de facturación' });
+  }
+};

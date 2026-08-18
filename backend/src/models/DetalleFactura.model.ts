@@ -9,7 +9,7 @@ export const insertDetalleFactura = async (data: DetalleFactura) => {
     .input('Concepto', sql.VarChar(250), data.Concepto)
     .input('Cantidad', sql.Int, data.Cantidad)
     .input('PrecioUnitario', sql.Decimal(10, 2), data.PrecioUnitario)
-    .input('Subtotal', sql.Decimal(10, 2), data.Subtotal)
+    .input('IdDetalleReceta', sql.Int, data.IdDetalleReceta ?? null)
     .input('Estado', sql.Char(1), data.Estado ?? 'A')
     .execute('InsertDetalleFactura');
 };
@@ -34,7 +34,6 @@ export const updateDetalleFactura = async (id: number, data: DetalleFactura) => 
     .input('Concepto', sql.VarChar(250), data.Concepto)
     .input('Cantidad', sql.Int, data.Cantidad)
     .input('PrecioUnitario', sql.Decimal(10, 2), data.PrecioUnitario)
-    .input('Subtotal', sql.Decimal(10, 2), data.Subtotal)
     .input('Estado', sql.Char(1), data.Estado ?? 'A')
     .execute('UpdateDetalleFactura');
 };
@@ -45,4 +44,14 @@ export const camEstadoDetalleFactura = async (id: number, estado: 'A' | 'I') => 
     .input('IdDetalleFactura', sql.Int, id)
     .input('Estado', sql.Char(1), estado)
     .execute('CamEstadoDetalleFactura');
+};
+
+// Genera automaticamente las lineas de medicamentos (cantidad * precio) que el
+// paciente marco para cobrar aqui (IncluirFactura = 1) en esa receta.
+export const generarDetalleFacturaDesdeReceta = async (idFactura: number, idReceta: number) => {
+  const pool = await poolPromise;
+  await pool.request()
+    .input('IdFactura', sql.Int, idFactura)
+    .input('IdReceta', sql.Int, idReceta)
+    .execute('GenerarDetalleFacturaDesdeReceta');
 };

@@ -6,6 +6,7 @@ const router = Router();
 router.get('/', DetalleController.getDetalles);
 router.get('/:id', DetalleController.getDetalleById);
 router.post('/', DetalleController.createDetalle);
+router.post('/generar-desde-receta', DetalleController.generarDesdeReceta);
 router.put('/:id', DetalleController.updateDetalle);
 router.patch('/:id/estado', DetalleController.cambiarEstadoDetalle);
 

@@ -6,6 +6,7 @@ export interface DetalleRecetaBD {
   IdMedicamento: number;
   Cantidad: number;
   Indicaciones: string | null;
+  IncluirFactura: boolean;
   Estado: "A" | "I";
 }
 
@@ -27,5 +28,10 @@ export const detalleRecetaService = {
       Cantidad: datos.Cantidad,
       Indicaciones: datos.Indicaciones || null,
     });
+  },
+
+  // Checkbox del frontend: "cobrar aqui" / "lo retiro en otra farmacia"
+  async marcarIncluirFactura(idDetalleReceta: number, incluirFactura: boolean): Promise<void> {
+    await api.patch(`/detalle-receta/${idDetalleReceta}/incluir-factura`, { IncluirFactura: incluirFactura });
   },
 };

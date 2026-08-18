@@ -13,6 +13,11 @@ export interface RecetaBD {
   Estado: EstadoReceta;
 }
 
+interface ConsultaBD {
+  IdConsulta: number;
+  IdCita: number | null;
+}
+
 export const recetaService = {
   async crear(datos: {
     IdConsulta: number;
@@ -38,27 +43,30 @@ export const recetaService = {
     }
   },
 
-  // Cambia el estado de la receta (Pendiente | Despachada | Anulada)
   async camEstado(idReceta: number, estado: EstadoReceta): Promise<void> {
     await api.patch(`/recetas/${idReceta}/estado`, { Estado: estado });
   },
 
-  // Trae recetas + detalle + arma el shape que usa el frontend (ConsultaRecetas.tsx)
+  // Trae recetas + detalle + la cita de la que vienen (via Consulta) y arma
+  // el shape que usa el frontend
   async listar(
     pacientes: Paciente[],
     usuarios: UsuarioClinica[],
     especialidades: EspecialidadClinica[],
     medicamentos: Medicamento[]
   ): Promise<Receta[]> {
-    const [recetasBD, detallesBD] = await Promise.all([
+    const [recetasBD, detallesBD, consultasBD] = await Promise.all([
       api.get<RecetaBD[]>("/recetas").then((r) => r.data),
       api.get<DetalleRecetaBD[]>("/detalle-receta").then((r) => r.data),
+      api.get<ConsultaBD[]>("/consultas").then((r) => r.data),
     ]);
 
     const pacientesMap = new Map(pacientes.map((p) => [p.id, p]));
     const usuariosMap = new Map(usuarios.map((u) => [u.id, u]));
     const medicamentosMap = new Map(medicamentos.map((m) => [m.id, m]));
     const especialidadesMap = new Map(especialidades.map((e) => [e.id, e.nombre]));
+    // IdConsulta -> IdCita, para saber a que cita pertenece cada receta
+    const citaPorConsulta = new Map(consultasBD.map((c) => [c.IdConsulta, c.IdCita ?? undefined]));
 
     const detallesPorReceta = new Map<number, DetalleRecetaBD[]>();
     for (const d of detallesBD) {
@@ -76,15 +84,23 @@ export const recetaService = {
         const especialidadNombre = medico?.especialidadIds?.[0]
           ? especialidadesMap.get(medico.especialidadIds[0]) ?? "—"
           : "—";
-        const items = (detallesPorReceta.get(r.IdReceta) ?? []).map((d) => ({
-          medicamentoId: d.IdMedicamento,
-          medicamento: medicamentosMap.get(d.IdMedicamento)?.nombre ?? "Medicamento no encontrado",
-          cantidad: d.Cantidad,
-          indicaciones: d.Indicaciones ?? "",
-        }));
+        const items = (detallesPorReceta.get(r.IdReceta) ?? []).map((d) => {
+          const medicamento = medicamentosMap.get(d.IdMedicamento);
+          return {
+            idDetalleReceta: d.IdDetalleReceta,
+            medicamentoId: d.IdMedicamento,
+            medicamento: medicamento?.nombre ?? "Medicamento no encontrado",
+            cantidad: d.Cantidad,
+            precioUnitario: medicamento?.precioUnitario ?? 0,
+            indicaciones: d.Indicaciones ?? "",
+            incluirFactura: d.IncluirFactura,
+          };
+        });
 
         return {
           id: r.IdReceta,
+          pacienteId: r.IdPaciente,
+          citaId: citaPorConsulta.get(r.IdConsulta), // clave para no mezclar citas del mismo paciente
           paciente: paciente ? `${paciente.nombre} ${paciente.apellido1} ${paciente.apellido2}` : "—",
           cedulaPaciente: paciente?.cedula ?? "—",
           medico: medico ? `${medico.nombre} ${medico.apellido1}` : "—",

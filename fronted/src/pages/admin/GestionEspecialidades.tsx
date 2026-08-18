@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from "react";
 import type { EstadoEspecialidad } from "../../types/clinica.types";
 import { clinicaStore, useClinicaStore, type UsuarioClinica, type EspecialidadClinica } from "../../types/clinicaStore";
+import { validarNombre } from "../../utils/validaciones";
 
 // ─── Tipos internos ───────────────────────────────────────────────────────────
 type Vista = "grid" | "list";
@@ -227,6 +228,8 @@ function ModalEspecialidad({ especialidad, onGuardar, onCerrar }: ModalEspeciali
     ...(especialidad?.id ? { id: especialidad.id } : {}),
   });
   const [gestionMedicosAbierta, setGestionMedicosAbierta] = useState(false);
+  const [error, setError] = useState<string>("");
+  const [guardando, setGuardando] = useState<boolean>(false);
 
   const todosMedicos = usuarios.filter((u) => u.rol === "Médico");
   const medicosAsignados = especialidad
@@ -237,12 +240,21 @@ function ModalEspecialidad({ especialidad, onGuardar, onCerrar }: ModalEspeciali
     setForm((prev) => ({ ...prev, [campo]: valor }));
   };
 
-  const handleSubmit = () => {
-    if (!form.nombre.trim()) {
-      alert("El nombre es obligatorio.");
+  const handleSubmit = async () => {
+    if (!validarNombre(form.nombre)) {
+      setError("El nombre debe tener solo letras, entre 2 y 50 caracteres.");
       return;
     }
-    onGuardar(form);
+    setGuardando(true);
+    setError("");
+    try {
+      await onGuardar({ ...form, nombre: form.nombre.trim() });
+    } catch (err) {
+      console.error(err);
+      setError("Ocurrió un error al guardar la especialidad. Intenta de nuevo.");
+    } finally {
+      setGuardando(false);
+    }
   };
 
   return (
@@ -293,12 +305,16 @@ function ModalEspecialidad({ especialidad, onGuardar, onCerrar }: ModalEspeciali
               </div>
             </div>
           )}
+
+          {error && (
+            <div className="badge-soft badge-soft-red w-100 text-start py-2 px-3 fs-12">{error}</div>
+          )}
         </div>
 
         <div className="px-4 py-3 border-top d-flex justify-content-end gap-2">
-          <button onClick={onCerrar} className="btn btn-outline-secondary btn-sm">Cancelar</button>
-          <button onClick={handleSubmit} className="btn btn-primary btn-sm">
-            {esNueva ? "Crear especialidad" : "Guardar cambios"}
+          <button onClick={onCerrar} className="btn btn-outline-secondary btn-sm" disabled={guardando}>Cancelar</button>
+          <button onClick={handleSubmit} className="btn btn-primary btn-sm" disabled={guardando}>
+            {guardando ? "Guardando…" : esNueva ? "Crear especialidad" : "Guardar cambios"}
           </button>
         </div>
       </div>
@@ -308,15 +324,14 @@ function ModalEspecialidad({ especialidad, onGuardar, onCerrar }: ModalEspeciali
           titulo="Médicos asignados"
           todosMedicos={todosMedicos}
           medicosAsignados={medicosAsignados}
-          onAgregar={(medicoId) => clinicaStore.asignarEspecialidadAMedico(medicoId, especialidad.id)}
-          onQuitar={(medicoId) => clinicaStore.quitarEspecialidadDeMedico(medicoId, especialidad.id)}
+          especialidadId={especialidad.id}
           onCerrar={() => setGestionMedicosAbierta(false)}
-          vistaInicial="agregar"
         />
       )}
     </div>
   );
 }
+
 
 // ─── Componente principal ─────────────────────────────────────────────────────
 export default function GestionEspecialidades() {

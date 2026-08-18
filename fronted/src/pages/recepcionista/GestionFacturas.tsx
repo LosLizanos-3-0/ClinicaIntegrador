@@ -2,23 +2,20 @@
  * GestionFacturas.tsx
  * Módulo de Recepcionista – Facturación de consultas
  *   ✔ Generar facturas SIEMPRE asociadas a una cita "Atendida"
- *   ✔ Precio unitario automático según la especialidad de la cita
- *   ✔ Calcular subtotal, impuesto (IVA 13%) y total
+ *   ✔ Monto de consulta digitable (con precio sugerido según especialidad)
+ *   ✔ Si el paciente tiene receta pendiente DE ESA CITA, elegir que medicamentos cobrar aqui
+ *   ✔ IVA (13%) calculado en código, la base de datos no lo maneja
  *   ✔ Marcar facturas como pagadas / anuladas
  *   ✔ Imprimir comprobante de pago
  *
  * Requiere: React 18+ · TypeScript · Bootstrap 5.3
  * (usa clases auxiliares definidas en clinica-admin.css / index.css)
- *
- * Las facturas viven en `clinicaStore.ts`. Al elegir una cita "Atendida" se
- * precarga el paciente y el precio se calcula automáticamente según la
- * especialidad (ver PRECIO_POR_ESPECIALIDAD más abajo). Ya no es posible
- * facturar sin asociar una cita, ni editar cantidades/conceptos manualmente.
  */
 
 import React, { useMemo, useState } from "react";
 import type { EstadoFactura, Factura, MetodoPago } from "../../types/clinica.types";
 import { clinicaStore, useClinicaStore } from "../../types/clinicaStore";
+import { IVA_TASA, calcularIva, calcularTotalConIva } from "../../services/factura.service";
 
 const ESTADOS: EstadoFactura[] = ["Pendiente", "Pagada", "Anulada"];
 const METODOS_PAGO: MetodoPago[] = ["Efectivo", "Tarjeta", "Sinpe Móvil", "Transferencia"];
@@ -29,10 +26,8 @@ const ESTADO_COLOR: Record<EstadoFactura, string> = {
   Anulada: "badge-soft-gray",
 };
 
-const IVA = 0.13;
-
-// Precio fijo sugerido por especialidad. Ajustá estos montos a los reales
-// de tu clínica. Cualquier especialidad no listada usa PRECIO_DEFECTO.
+// Precio sugerido por especialidad (solo precarga el campo, el recepcionista
+// lo puede editar libremente). Ajustá estos montos a los reales de tu clínica.
 const PRECIO_POR_ESPECIALIDAD: Record<string, number> = {
   "Cardiología": 25000,
   "Pediatría": 20000,
@@ -48,55 +43,89 @@ const formatoColones = (valor: number) =>
 interface ModalNuevaFacturaProps {
   onGuardar: (datos: {
     pacienteId: number;
-    paciente: string;
-    cedulaPaciente: string;
     citaId?: number;
-    items: { concepto: string; cantidad: number; precioUnitario: number }[];
-  }) => string | void;
+    montoConsulta: number;
+    idsDetalleRecetaSeleccionados?: number[];
+    idReceta?: number;
+  }) => Promise<string | void>;
   onCerrar: () => void;
 }
 
 function ModalNuevaFactura({ onGuardar, onCerrar }: ModalNuevaFacturaProps) {
-  const { citas, facturas } = useClinicaStore();
+  const { citas, facturas, recetas } = useClinicaStore();
   const citasYaFacturadasIds = new Set(facturas.map((f) => f.citaId));
   const citasAtendidasSinFacturar = citas.filter(
     (c) => c.estado === "Atendida" && !citasYaFacturadasIds.has(c.id)
   );
 
   const [citaId, setCitaId] = useState<number | "">("");
+  const [montoConsulta, setMontoConsulta] = useState<number>(0);
+  const [seleccionados, setSeleccionados] = useState<Set<number>>(new Set());
   const [error, setError] = useState<string>("");
+  const [guardando, setGuardando] = useState(false);
 
   const citaSeleccionada = citas.find((c) => c.id === citaId);
 
-  const concepto = citaSeleccionada ? `Consulta ${citaSeleccionada.especialidad}` : "";
-  const precioUnitario = citaSeleccionada
-    ? PRECIO_POR_ESPECIALIDAD[citaSeleccionada.especialidad] ?? PRECIO_DEFECTO
-    : 0;
+  // Receta de ESA cita puntual (via citaId), no cualquier receta pendiente del paciente.
+  // Esto evita que se mezclen medicamentos de otras citas del mismo paciente.
+  const recetaPendiente = citaSeleccionada
+    ? recetas.find((r) => r.citaId === citaSeleccionada.id && r.estado === "Pendiente")
+    : undefined;
+  const itemsDisponibles = (recetaPendiente?.items ?? []).filter((i) => !i.incluirFactura);
 
-  const totales = useMemo(() => {
-    const subtotal = precioUnitario;
-    const impuesto = Math.round(subtotal * IVA);
-    return { subtotal, impuesto, total: subtotal + impuesto };
-  }, [precioUnitario]);
+  const handleSeleccionarCita = (id: number | "") => {
+    setCitaId(id);
+    setSeleccionados(new Set());
+    const cita = citas.find((c) => c.id === id);
+    setMontoConsulta(cita ? PRECIO_POR_ESPECIALIDAD[cita.especialidad] ?? PRECIO_DEFECTO : 0);
+  };
 
-  const handleSubmit = () => {
+  const toggleItem = (idDetalleReceta: number) => {
+    setSeleccionados((prev) => {
+      const next = new Set(prev);
+      if (next.has(idDetalleReceta)) next.delete(idDetalleReceta);
+      else next.add(idDetalleReceta);
+      return next;
+    });
+  };
+
+  const montoReceta = useMemo(
+    () =>
+      itemsDisponibles
+        .filter((i) => seleccionados.has(i.idDetalleReceta))
+        .reduce((acc, i) => acc + i.cantidad * i.precioUnitario, 0),
+    [itemsDisponibles, seleccionados]
+  );
+
+  const subtotal = montoConsulta + montoReceta;
+  const iva = calcularIva(subtotal);
+  const total = subtotal + iva;
+
+  const handleSubmit = async () => {
     if (!citaId || !citaSeleccionada) {
       setError("Selecciona la cita atendida a facturar.");
       return;
     }
-    const resultado = onGuardar({
+    if (montoConsulta <= 0) {
+      setError("Ingresa el monto de la consulta.");
+      return;
+    }
+    setGuardando(true);
+    setError("");
+    const resultado = await onGuardar({
       pacienteId: citaSeleccionada.pacienteId,
-      paciente: citaSeleccionada.paciente,
-      cedulaPaciente: citaSeleccionada.cedulaPaciente,
       citaId: citaSeleccionada.id,
-      items: [{ concepto, cantidad: 1, precioUnitario }],
+      montoConsulta,
+      idsDetalleRecetaSeleccionados: Array.from(seleccionados),
+      idReceta: recetaPendiente?.id,
     });
+    setGuardando(false);
     if (resultado) setError(resultado);
   };
 
   return (
     <div className="modal-overlay d-flex align-items-center justify-content-center p-3">
-      <div className="bg-white rounded-4 shadow w-100" style={{ maxWidth: 480 }}>
+      <div className="bg-white rounded-4 shadow w-100" style={{ maxWidth: 520 }}>
         <div className="px-4 py-3 border-bottom d-flex align-items-center justify-content-between">
           <h3 className="fs-6 fw-medium text-dark mb-0">Generar factura</h3>
           <button onClick={onCerrar} className="btn btn-link text-secondary fs-5 lh-1 text-decoration-none p-0">✕</button>
@@ -106,7 +135,7 @@ function ModalNuevaFactura({ onGuardar, onCerrar }: ModalNuevaFacturaProps) {
           <Field label="Cita atendida a facturar">
             <select
               value={citaId}
-              onChange={(e) => setCitaId(e.target.value ? Number(e.target.value) : "")}
+              onChange={(e) => handleSeleccionarCita(e.target.value ? Number(e.target.value) : "")}
               className="form-select form-select-sm"
             >
               <option value="">Selecciona una cita…</option>
@@ -130,20 +159,62 @@ function ModalNuevaFactura({ onGuardar, onCerrar }: ModalNuevaFacturaProps) {
                 <p className="fs-11 text-secondary mb-0">Cédula {citaSeleccionada.cedulaPaciente}</p>
               </div>
 
-              <div className="border rounded p-2 d-flex justify-content-between align-items-center">
-                <span className="fs-12 text-dark">{concepto}</span>
-                <span className="fs-12 text-secondary">{formatoColones(precioUnitario)}</span>
-              </div>
+              <Field label={`Monto de la consulta (${citaSeleccionada.especialidad})`}>
+                <input
+                  type="number"
+                  min={0}
+                  value={montoConsulta}
+                  onChange={(e) => setMontoConsulta(Number(e.target.value))}
+                  className="form-control form-control-sm"
+                />
+              </Field>
+
+              {itemsDisponibles.length > 0 && (
+                <div>
+                  <p className="fs-12 fw-medium text-dark mb-2">
+                    El paciente tiene medicamentos recetados. ¿Cuáles desea cancelar aquí?
+                  </p>
+                  <div className="d-flex flex-column gap-2">
+                    {itemsDisponibles.map((item) => (
+                      <label
+                        key={item.idDetalleReceta}
+                        className="border rounded p-2 d-flex justify-content-between align-items-center"
+                        style={{ cursor: "pointer" }}
+                      >
+                        <span className="d-flex align-items-center gap-2">
+                          <input
+                            type="checkbox"
+                            checked={seleccionados.has(item.idDetalleReceta)}
+                            onChange={() => toggleItem(item.idDetalleReceta)}
+                          />
+                          <span className="fs-12 text-dark">
+                            {item.medicamento} × {item.cantidad}
+                          </span>
+                        </span>
+                        <span className="fs-12 text-secondary">
+                          {formatoColones(item.cantidad * item.precioUnitario)}
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                  <p className="fs-11 text-secondary mt-1 mb-0">
+                    Lo que no marques, el paciente lo retira en otra farmacia y no se cobra aquí.
+                  </p>
+                </div>
+              )}
 
               <div className="bg-soft border rounded p-3">
                 <div className="d-flex justify-content-between fs-12 text-secondary">
-                  <span>Subtotal</span><span>{formatoColones(totales.subtotal)}</span>
+                  <span>Consulta</span><span>{formatoColones(montoConsulta)}</span>
                 </div>
                 <div className="d-flex justify-content-between fs-12 text-secondary">
-                  <span>IVA (13%)</span><span>{formatoColones(totales.impuesto)}</span>
+                  <span>Medicamentos</span><span>{formatoColones(montoReceta)}</span>
                 </div>
-                <div className="d-flex justify-content-between fs-6 fw-medium text-dark mt-1">
-                  <span>Total a pagar</span><span>{formatoColones(totales.total)}</span>
+                <div className="d-flex justify-content-between fs-12 text-secondary">
+                  <span>IVA ({(IVA_TASA * 100).toFixed(0)}%)</span><span>{formatoColones(iva)}</span>
+                </div>
+                <div className="d-flex justify-content-between fs-6 fw-medium text-dark mt-1 pt-1 border-top">
+                  <span>Total a pagar</span><span>{formatoColones(total)}</span>
                 </div>
               </div>
             </>
@@ -158,8 +229,8 @@ function ModalNuevaFactura({ onGuardar, onCerrar }: ModalNuevaFacturaProps) {
           <button onClick={onCerrar} className="btn btn-outline-secondary btn-sm">
             Cancelar
           </button>
-          <button onClick={handleSubmit} className="btn btn-primary btn-sm">
-            Generar factura
+          <button onClick={handleSubmit} className="btn btn-primary btn-sm" disabled={guardando}>
+            {guardando ? "Generando…" : "Generar factura"}
           </button>
         </div>
       </div>
@@ -173,6 +244,9 @@ function imprimirComprobante(factura: Factura) {
   if (!ventana) return;
 
   const fechaImpresion = new Date().toLocaleString("es-CR");
+  const subtotal = factura.total; // ya viene sin IVA desde la BD
+  const iva = calcularIva(subtotal);
+  const totalConIva = calcularTotalConIva(subtotal);
 
   const filasItems = factura.items
     .map(
@@ -196,8 +270,8 @@ function imprimirComprobante(factura: Factura) {
           table { width: 100%; border-collapse: collapse; margin-top: 10px; }
           th, td { padding: 4px 0; font-size: 12px; }
           th { text-align: left; border-bottom: 1px solid #000; }
-          .totales td { border-top: 1px solid #000; padding-top: 6px; }
-          .total-final { font-weight: bold; font-size: 14px; }
+          .totales td { padding-top: 4px; }
+          .total-final { font-weight: bold; font-size: 14px; border-top: 1px solid #000; }
           .centrado { text-align: center; }
           hr { border: none; border-top: 1px dashed #000; margin: 10px 0; }
         </style>
@@ -216,13 +290,18 @@ function imprimirComprobante(factura: Factura) {
             <tr><th>Concepto</th><th style="text-align:center;">Cant.</th><th style="text-align:right;">Monto</th></tr>
           </thead>
           <tbody>
+            <tr>
+              <td>Consulta</td>
+              <td style="text-align:center;">1</td>
+              <td style="text-align:right;">${formatoColones(factura.montoConsulta)}</td>
+            </tr>
             ${filasItems}
           </tbody>
         </table>
         <table class="totales">
-          <tr><td>Subtotal</td><td style="text-align:right;">${formatoColones(factura.subtotal)}</td></tr>
-          <tr><td>IVA (13%)</td><td style="text-align:right;">${formatoColones(factura.impuesto)}</td></tr>
-          <tr class="total-final"><td>Total</td><td style="text-align:right;">${formatoColones(factura.total)}</td></tr>
+          <tr><td>Subtotal</td><td style="text-align:right;">${formatoColones(subtotal)}</td></tr>
+          <tr><td>IVA (${(IVA_TASA * 100).toFixed(0)}%)</td><td style="text-align:right;">${formatoColones(iva)}</td></tr>
+          <tr class="total-final"><td>Total</td><td style="text-align:right;">${formatoColones(totalConIva)}</td></tr>
         </table>
         <hr />
         <p>Método de pago: ${factura.metodoPago ?? "—"}</p>
@@ -239,6 +318,10 @@ function imprimirComprobante(factura: Factura) {
 // ─── Modal detalle / cobro ─────────────────────────────────────────────────────
 function ModalDetalleFactura({ factura, onCerrar }: { factura: Factura; onCerrar: () => void }) {
   const [metodoPago, setMetodoPago] = useState<MetodoPago>("Efectivo");
+
+  const subtotal = factura.total; // ya viene sin IVA desde la BD
+  const iva = calcularIva(subtotal);
+  const totalConIva = subtotal + iva;
 
   return (
     <div className="modal-overlay d-flex align-items-center justify-content-center p-3">
@@ -260,6 +343,10 @@ function ModalDetalleFactura({ factura, onCerrar }: { factura: Factura; onCerrar
           <div>
             <p className="fs-12 fw-medium text-dark mb-2">Detalle</p>
             <div className="d-flex flex-column gap-2">
+              <div className="bg-soft border rounded p-2 d-flex justify-content-between">
+                <p className="fs-12 fw-medium text-dark mb-0">Consulta</p>
+                <p className="fs-12 text-dark mb-0">{formatoColones(factura.montoConsulta)}</p>
+              </div>
               {factura.items.map((item, i) => (
                 <div key={i} className="bg-soft border rounded p-2 d-flex justify-content-between">
                   <div>
@@ -274,13 +361,13 @@ function ModalDetalleFactura({ factura, onCerrar }: { factura: Factura; onCerrar
 
           <div className="bg-soft border rounded p-3">
             <div className="d-flex justify-content-between fs-12 text-secondary">
-              <span>Subtotal</span><span>{formatoColones(factura.subtotal)}</span>
+              <span>Subtotal</span><span>{formatoColones(subtotal)}</span>
             </div>
             <div className="d-flex justify-content-between fs-12 text-secondary">
-              <span>IVA (13%)</span><span>{formatoColones(factura.impuesto)}</span>
+              <span>IVA ({(IVA_TASA * 100).toFixed(0)}%)</span><span>{formatoColones(iva)}</span>
             </div>
-            <div className="d-flex justify-content-between fs-6 fw-medium text-dark mt-1">
-              <span>Total</span><span>{formatoColones(factura.total)}</span>
+            <div className="d-flex justify-content-between fs-6 fw-medium text-dark mt-1 pt-1 border-top">
+              <span>Total</span><span>{formatoColones(totalConIva)}</span>
             </div>
           </div>
 
@@ -358,12 +445,19 @@ export default function GestionFacturas() {
   const stats = {
     pendientes: facturas.filter((f) => f.estado === "Pendiente").length,
     pagadas: facturas.filter((f) => f.estado === "Pagada").length,
-    totalCobrado: facturas.filter((f) => f.estado === "Pagada").reduce((acc, f) => acc + f.total, 0),
+    totalCobrado: facturas
+      .filter((f) => f.estado === "Pagada")
+      .reduce((acc, f) => acc + calcularTotalConIva(f.total), 0),
   };
 
-  const guardarFactura: ModalNuevaFacturaProps["onGuardar"] = (datos) => {
-    clinicaStore.crearFactura(datos);
-    setMostrarNueva(false);
+  const guardarFactura: ModalNuevaFacturaProps["onGuardar"] = async (datos) => {
+    try {
+      await clinicaStore.crearFactura(datos);
+      setMostrarNueva(false);
+    } catch (err) {
+      console.error(err);
+      return "Ocurrió un error al generar la factura. Intenta de nuevo.";
+    }
   };
 
   return (
@@ -392,7 +486,7 @@ export default function GestionFacturas() {
           <div className="row row-cols-3 g-3 mb-4">
             <div className="col"><StatCard label="Pendientes" value={stats.pendientes} color="text-warning" /></div>
             <div className="col"><StatCard label="Pagadas" value={stats.pagadas} color="text-success" /></div>
-            <div className="col"><StatCard label="Total cobrado" value={formatoColones(stats.totalCobrado)} color="text-dark" /></div>
+            <div className="col"><StatCard label="Total cobrado (con IVA)" value={formatoColones(stats.totalCobrado)} color="text-dark" /></div>
           </div>
 
           {/* Filtros */}
@@ -427,7 +521,9 @@ export default function GestionFacturas() {
                 <div>
                   <p className="fs-12 text-secondary mb-0">Factura #{f.id} · {f.fecha}</p>
                   <p className="fw-medium text-dark mb-0">{f.paciente}</p>
-                  <p className="fs-11 text-secondary mb-0">{f.items.length} concepto(s) · {formatoColones(f.total)}</p>
+                  <p className="fs-11 text-secondary mb-0">
+                    {f.items.length + 1} concepto(s) · {formatoColones(calcularTotalConIva(f.total))} (IVA incl.)
+                  </p>
                 </div>
                 <div className="d-flex align-items-center gap-2 flex-shrink-0">
                   <span className={`badge-soft ${ESTADO_COLOR[f.estado]}`}>{f.estado}</span>

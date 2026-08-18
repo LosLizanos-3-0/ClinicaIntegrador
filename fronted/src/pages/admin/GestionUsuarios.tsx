@@ -1,7 +1,8 @@
 import React, { useState, useMemo } from "react";
 import type { EstadoUsuario } from "../../types/clinica.types";
 import { clinicaStore, useClinicaStore, type UsuarioClinica, type EspecialidadClinica } from "../../types/clinicaStore";
-import { formatearCedula, formatearTelefono } from "../../utils/Formato";
+import { formatearCedula, formatearTelefono, esCorreoValido } from "../../utils/Formato";
+import { validarNombre, validarCedula, validarTelefono, validarNombreUsuario, validarContrasena } from "../../utils/validaciones";
 
 const ROL_COLOR: Record<string, string> = {
   Administrador: "badge-soft-purple",
@@ -137,16 +138,42 @@ function ModalUsuario({ usuario, rolesActivos, onGuardar, onCerrar }: ModalUsuar
   };
 
   const handleSubmit = async () => {
-    // Validación de todos los campos, en el mismo orden en que aparecen en el formulario.
-    if (!form.nombre.trim())              { setError("Ingresa un nombre.");                       return; }
-    if (!form.apellido1.trim())           { setError("Ingresa un apellido 1.");                    return; }
-    if (!(form.apellido2 ?? "").trim())   { setError("Ingresa apellido 2.");                       return; }
-    if (!(form.telefono ?? "").trim())    { setError("Ingresa número telefónico.");                return; }
-    if (!form.correo.trim())              { setError("Ingresa un correo.");                        return; }
-    if (!form.nombreUsuario.trim())       { setError("Ingresa nombre usuario.");                   return; }
-    if (!form.ident.trim())               { setError("Ingresa un número de cédula/identificación.");return; }
-    if (esNuevo && !contrasena.trim())    { setError("Ingresa contraseña.");                       return; }
-    if (!form.rol)                        { setError("Ingresa rol.");                              return; }
+    if (!validarNombre(form.nombre)) {
+      setError("El nombre debe tener solo letras, entre 2 y 50 caracteres.");
+      return;
+    }
+    if (!validarNombre(form.apellido1)) {
+      setError("El primer apellido debe tener solo letras, entre 2 y 50 caracteres.");
+      return;
+    }
+    if (!validarNombre(form.apellido2 ?? "")) {
+      setError("El segundo apellido debe tener solo letras, entre 2 y 50 caracteres.");
+      return;
+    }
+    if (!validarTelefono(form.telefono ?? "")) {
+      setError("El teléfono debe tener el formato 8888-0000.");
+      return;
+    }
+    if (!esCorreoValido(form.correo)) {
+      setError("Ingresa un correo electrónico válido.");
+      return;
+    }
+    if (!validarNombreUsuario(form.nombreUsuario)) {
+      setError("El usuario de acceso debe tener entre 3 y 30 caracteres (letras, números, puntos o guiones).");
+      return;
+    }
+    if (!validarCedula(form.ident)) {
+      setError("La cédula/identificación debe tener el formato 1-2345-6789.");
+      return;
+    }
+    if (esNuevo && !validarContrasena(contrasena)) {
+      setError("La contraseña debe tener al menos 4 caracteres.");
+      return;
+    }
+    if (!form.rol) {
+      setError("Selecciona un rol.");
+      return;
+    }
 
     setGuardando(true);
     setError("");

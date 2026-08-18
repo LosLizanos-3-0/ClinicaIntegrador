@@ -3,6 +3,7 @@ import api from "./api";
 export interface DetalleFacturaBD {
   IdDetalleFactura: number;
   IdFactura: number;
+  IdDetalleReceta: number | null;
   Concepto: string;
   Cantidad: number;
   PrecioUnitario: number;
@@ -16,12 +17,14 @@ export const detalleFacturaService = {
     return data;
   },
 
+  // Para lineas manuales (ej. la consulta si se maneja como linea aparte).
+  // El Subtotal ya no se envia: la base de datos lo calcula sola.
   async crear(datos: {
     IdFactura: number;
     Concepto: string;
     Cantidad: number;
     PrecioUnitario: number;
-    Subtotal: number;
+    IdDetalleReceta?: number;
   }): Promise<void> {
     await api.post("/detalle-factura", datos);
   },

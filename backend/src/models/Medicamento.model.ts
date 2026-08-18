@@ -51,3 +51,12 @@ export const camEstadoMedicamento = async (id: number, estado: 'A' | 'I') => {
     .input('Estado', sql.Char(1), estado)
     .execute('CamEstadoMedicamento');
 };
+
+export const updateStockMedicamento = async (id: number, stockActual: number) => {
+  const pool = await poolPromise;
+  await pool.request()
+    .input('IdMedicamento', sql.Int, id)
+    .input('StockActual', sql.Int, stockActual)
+    .execute('UpdateStockMedicamento');
+};
+
