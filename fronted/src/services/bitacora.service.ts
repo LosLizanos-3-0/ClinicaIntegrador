@@ -7,6 +7,7 @@ interface BitacoraBD {
   Accion: string;
   Fecha: string;
   UsuarioSQL: string;
+  Rol: string | null;
   Registro: string;
 }
 
@@ -17,6 +18,7 @@ function aFrontend(b: BitacoraBD): RegistroBitacora {
     accion: b.Accion,
     fecha: b.Fecha,
     usuarioSql: b.UsuarioSQL,
+    rol: b.Rol ?? undefined,
     registro: b.Registro,
   };
 }

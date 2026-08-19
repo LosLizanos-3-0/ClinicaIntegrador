@@ -18,6 +18,7 @@ import facturaRoutes from './Factura.routes';
 import detalleFacturaRoutes from './DetalleFactura.routes';
 import pagoRoutes from './Pago.routes';
 import authRoutes from './Auth.routes';
+import reporteRoutes from './Reporte.routes';
 
 const router = Router();
 
@@ -39,5 +40,6 @@ router.use('/facturas', facturaRoutes);
 router.use('/detalle-factura', detalleFacturaRoutes);
 router.use('/pagos', pagoRoutes);
 router.use('/auth', authRoutes);
+router.use('/reportes', reporteRoutes);
 
 export default router;

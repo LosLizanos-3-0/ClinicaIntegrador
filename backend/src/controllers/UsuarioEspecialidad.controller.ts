@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import * as UEModel from '../models/UsuarioEspecialidad.model';
+import { obtenerActor } from '../config/actor';
 
 export const getUsuarioEspecialidades = async (req: Request, res: Response) => {
   try {
@@ -21,7 +22,8 @@ export const getByUsuario = async (req: Request, res: Response) => {
 
 export const createUsuarioEspecialidad = async (req: Request, res: Response) => {
   try {
-    await UEModel.insertUsuarioEspecialidad(req.body);
+    const actor = await obtenerActor(req);
+    await UEModel.insertUsuarioEspecialidad(req.body, actor);
     res.status(201).json({ mensaje: 'Relación creada correctamente' });
   } catch (error) {
     console.error(error);
@@ -32,7 +34,8 @@ export const createUsuarioEspecialidad = async (req: Request, res: Response) => 
 export const deleteUsuarioEspecialidad = async (req: Request, res: Response) => {
   try {
     const { idUsuario, idEspecialidad } = req.params;
-    await UEModel.deleteUsuarioEspecialidad(Number(idUsuario), Number(idEspecialidad));
+    const actor = await obtenerActor(req);
+    await UEModel.deleteUsuarioEspecialidad(Number(idUsuario), Number(idEspecialidad), actor);
     res.json({ mensaje: 'Relación eliminada correctamente' });
   } catch (error) {
     console.error(error);

@@ -2,7 +2,14 @@ import React, { useEffect, useState } from "react";
 import type { RegistroBitacora } from "../../types/clinica.types";
 import { bitacoraService } from "../../services/bitacora.service";
 
-const COLUMNAS_TABLA_BITACORA = "1.2fr 0.8fr 1.3fr 1.1fr 0.6fr";
+const COLUMNAS_TABLA_BITACORA = "1.1fr 1.3fr 0.9fr 0.9fr 1.2fr 0.6fr";
+
+const ROL_COLOR: Record<string, string> = {
+  Administrador: "badge-soft-purple",
+  Médico:        "badge-soft-emerald",
+  Recepcionista: "badge-soft-blue",
+  Farmacéutico:  "badge-soft-teal",
+};
 
 function formatearFecha(fecha: string): string {
   const d = new Date(fecha);
@@ -29,7 +36,8 @@ function ModalDetalle({ registro, onCerrar }: { registro: RegistroBitacora; onCe
         </div>
         <div className="p-4">
           <p className="fs-12 text-secondary mb-2">
-            {formatearFecha(registro.fecha)} · Usuario SQL: {registro.usuarioSql}
+            {formatearFecha(registro.fecha)} · Usuario: {registro.usuarioSql}
+            {registro.rol ? ` · Rol: ${registro.rol}` : ""}
           </p>
           <pre className="bg-soft border rounded p-3 fs-12" style={{ maxHeight: 360, overflow: "auto" }}>
             {contenido}
@@ -74,7 +82,8 @@ export default function GestionBitacora() {
       texto === "" ||
       r.tabla.toLowerCase().includes(texto) ||
       r.accion.toLowerCase().includes(texto) ||
-      r.usuarioSql.toLowerCase().includes(texto);
+      r.usuarioSql.toLowerCase().includes(texto) ||
+      (r.rol ?? "").toLowerCase().includes(texto);
     const coincideTabla = filtroTabla === "Todas" || r.tabla === filtroTabla;
     return coincideTexto && coincideTabla;
   });
@@ -115,7 +124,7 @@ export default function GestionBitacora() {
                   <input
                     value={busqueda}
                     onChange={(e) => setBusqueda(e.target.value)}
-                    placeholder="Buscar por tabla, acción o usuario…"
+                    placeholder="Buscar por tabla, usuario, rol o acción…"
                     className="form-control form-control-sm border-0 bg-transparent shadow-none p-0"
                   />
                 </div>
@@ -137,7 +146,7 @@ export default function GestionBitacora() {
                   className="d-none d-md-grid px-3 py-2 bg-soft fs-11 text-uppercase text-secondary fw-medium border-bottom"
                   style={{ display: "grid", gridTemplateColumns: COLUMNAS_TABLA_BITACORA, letterSpacing: ".03em" }}
                 >
-                  <span>Tabla</span><span>Acción</span><span>Fecha</span><span>Usuario SQL</span><span className="text-center">Detalle</span>
+                  <span>Tabla</span><span>Usuario</span><span>Rol</span><span>Acción</span><span>Fecha</span><span className="text-center">Detalle</span>
                 </div>
 
                 {registrosFiltrados.length === 0 && (
@@ -151,11 +160,18 @@ export default function GestionBitacora() {
                     style={{ gridTemplateColumns: COLUMNAS_TABLA_BITACORA }}
                   >
                     <p className="fw-medium text-dark mb-0">{r.tabla}</p>
+                    <p className="text-secondary fs-12 mb-0">{r.usuarioSql}</p>
+                    <div>
+                      {r.rol ? (
+                        <span className={`badge-soft ${ROL_COLOR[r.rol] ?? "badge-soft-gray"}`}>{r.rol}</span>
+                      ) : (
+                        <span className="text-secondary fs-12">—</span>
+                      )}
+                    </div>
                     <div>
                       <span className={`badge-soft ${badgeAccion(r.accion)}`}>{etiquetaAccion(r.accion)}</span>
                     </div>
                     <p className="text-secondary fs-12 mb-0">{formatearFecha(r.fecha)}</p>
-                    <p className="text-secondary fs-12 mb-0">{r.usuarioSql}</p>
                     <div className="d-flex align-items-center justify-content-center">
                       <button
                         onClick={() => setDetalle(r)}

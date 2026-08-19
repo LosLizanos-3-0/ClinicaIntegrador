@@ -1,14 +1,14 @@
 import sql from 'mssql';
 import poolPromise from '../config/db';
+import { ejecutarConActor, ActorInfo } from '../config/actor';
 import { Rol } from '../types';
 
-export const insertRol = async (data: Rol) => {
-  const pool = await poolPromise;
-  await pool.request()
-    .input('Cita', sql.Bit, data.cita)
-    .input('NombreRol', sql.VarChar(50), data.NombreRol)
-    .input('Estado', sql.Char(1), data.Estado ?? 'A')
-    .execute('InsertRol');
+export const insertRol = async (data: Rol, actor: ActorInfo | null = null) => {
+  await ejecutarConActor(actor, 'InsertRol', [
+    { name: 'Cita', type: sql.Bit, value: data.cita },
+    { name: 'NombreRol', type: sql.VarChar(50), value: data.NombreRol },
+    { name: 'Estado', type: sql.Char(1), value: data.Estado ?? 'A' },
+  ]);
 };
 
 export const selectRol = async (): Promise<Rol[]> => {
@@ -23,20 +23,18 @@ export const selectRolById = async (id: number): Promise<Rol | undefined> => {
   return result.recordset[0];
 };
 
-export const updateRol = async (id: number, data: Rol) => {
-  const pool = await poolPromise;
-  await pool.request()
-    .input('IdRol', sql.Int, id)
-    .input('Cita', sql.Bit, data.cita)
-    .input('NombreRol', sql.VarChar(50), data.NombreRol)
-    .input('Estado', sql.Char(1), data.Estado ?? 'A')
-    .execute('UpdateRol');
+export const updateRol = async (id: number, data: Rol, actor: ActorInfo | null = null) => {
+  await ejecutarConActor(actor, 'UpdateRol', [
+    { name: 'IdRol', type: sql.Int, value: id },
+    { name: 'Cita', type: sql.Bit, value: data.cita },
+    { name: 'NombreRol', type: sql.VarChar(50), value: data.NombreRol },
+    { name: 'Estado', type: sql.Char(1), value: data.Estado ?? 'A' },
+  ]);
 };
 
-export const camEstadoRol = async (id: number, estado: 'A' | 'I') => {
-  const pool = await poolPromise;
-  await pool.request()
-    .input('IdRol', sql.Int, id)
-    .input('Estado', sql.Char(1), estado)
-    .execute('CamEstadoRol');
+export const camEstadoRol = async (id: number, estado: 'A' | 'I', actor: ActorInfo | null = null) => {
+  await ejecutarConActor(actor, 'CamEstadoRol', [
+    { name: 'IdRol', type: sql.Int, value: id },
+    { name: 'Estado', type: sql.Char(1), value: estado },
+  ]);
 };

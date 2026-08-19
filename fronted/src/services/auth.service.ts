@@ -16,6 +16,7 @@ export const authService = {
     const { data } = await api.post<LoginResponseBD>("/auth/login", { usuario, contrasena });
     const nombreCompleto = `${data.Nombre} ${data.Apellido1} ${data.Apellido2 ?? ""}`.trim();
     return {
+      id: data.IdUsuario,
       usuario: data.NombreUsuario,
       contrasena: "",
       rol: data.Rol as Credencial["rol"],

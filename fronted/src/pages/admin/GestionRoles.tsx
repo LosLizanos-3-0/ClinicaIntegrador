@@ -548,8 +548,8 @@ function ModalUsuario({
       setError("La cédula/identificación debe tener el formato 1-2345-6789.");
       return;
     }
-    if (esNuevo && !validarContrasena(contrasena)) {
-      setError("La contraseña debe tener al menos 4 caracteres.");
+      if (esNuevo && !validarContrasena(contrasena)) {
+      setError("La contraseña debe tener al menos 3 caracteres.");
       return;
     }
     if (!form.rol) {

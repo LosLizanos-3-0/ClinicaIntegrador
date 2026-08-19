@@ -7,9 +7,18 @@ import * as BitacoraModel from '../models/Bitacora.model';
 export const login = async (req: Request, res: Response) => {
   const { usuario, contrasena } = req.body;
 
-  const registrarIntento = async (resultado: 'EXITOSO' | 'FALLIDO', detalle: string) => {
+  // Para todo intento FALLIDO se guarda "Desconocido" como usuario que
+  // realizó la acción (nunca se revela el nombre real de la cuenta,
+  // exista o no, aunque el detalle interno del intento sí queda en el
+  // campo Registro para auditoría).
+  const registrarIntento = async (
+    resultado: 'EXITOSO' | 'FALLIDO',
+    detalle: string,
+    usuarioMostrar: string = 'Desconocido',
+    rol?: string
+  ) => {
     try {
-      await BitacoraModel.insertBitacoraLogin(usuario || '(vacío)', resultado, detalle);
+      await BitacoraModel.insertBitacoraLogin(usuario || '(vacío)', resultado, detalle, usuarioMostrar, rol);
     } catch (errorBitacora) {
       // Un fallo al escribir la bitácora nunca debe tumbar el login
       console.error('No se pudo registrar el intento de login en la bitácora:', errorBitacora);
@@ -47,8 +56,14 @@ export const login = async (req: Request, res: Response) => {
 
     const roles = await RolModel.selectRol();
     const rol = roles.find((r) => r.IdRol === encontrado.IdRol);
+    const nombreMostrar = `${encontrado.Nombre} ${encontrado.Apellido1}`.trim();
 
-    await registrarIntento('EXITOSO', `Inicio de sesión de "${encontrado.NombreUsuario}" (${rol?.NombreRol ?? 'Sin rol'})`);
+    await registrarIntento(
+      'EXITOSO',
+      `Inicio de sesión de "${encontrado.NombreUsuario}" (${rol?.NombreRol ?? 'Sin rol'})`,
+      nombreMostrar,
+      rol?.NombreRol
+    );
 
     res.json({
       IdUsuario: encontrado.IdUsuario,
