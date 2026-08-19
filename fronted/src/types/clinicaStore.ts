@@ -18,6 +18,7 @@ import { rolService, type RolBD } from "../services/rol.service";
 import { citaService } from "../services/cita.service";
 import { facturaService } from "../services/factura.service";
 import { authService } from "../services/auth.service";
+import { setUsuarioActualId } from "../services/sesionActual";
 import { medicamentoService } from "../services/medicamento.service";
 import { categoriaMedicamentoService } from "../services/categoriaMedicamento.service";
 import { expedienteService } from "../services/expediente.service";
@@ -272,25 +273,37 @@ async function crearUsuario(datos: DatosUsuarioForm & { contrasena: string }) {
 }
 
 async function actualizarUsuario(usuario: UsuarioClinica) {
-  await usuarioService.actualizar(usuario.id, {
-    nombre: usuario.nombre,
-    apellido1: usuario.apellido1,
-    apellido2: usuario.apellido2,
-    telefono: usuario.telefono,
-    correo: usuario.correo,
-    rol: usuario.rol,
-    estado: usuario.estado,
-    nombreUsuario: usuario.nombreUsuario,
-    ident: usuario.ident,
-  });
+  await usuarioService.actualizar(
+    usuario.id,
+    {
+      nombre: usuario.nombre,
+      apellido1: usuario.apellido1,
+      apellido2: usuario.apellido2,
+      telefono: usuario.telefono,
+      correo: usuario.correo,
+      rol: usuario.rol,
+      estado: usuario.estado,
+      nombreUsuario: usuario.nombreUsuario,
+      ident: usuario.ident,
+    },
+    state.usuarioActual?.id
+  );
   await refrescarUsuarios();
 }
 
 async function toggleEstadoUsuario(id: number) {
   const actual = state.usuarios.find((u) => u.id === id);
   if (!actual) return;
-  await usuarioService.cambiarEstado(id, actual.estado);
+  await usuarioService.cambiarEstado(id, actual.estado, state.usuarioActual?.id);
   await refrescarUsuarios();
+}
+
+function puedeEditarUsuario(objetivo: UsuarioClinica): boolean {
+  const actual = state.usuarioActual;
+  if (!actual) return false;
+  if (objetivo.rol !== "Administrador") return true;
+  if (actual.id === objetivo.id) return false;
+  return actual.usuario.trim().toLowerCase() === "admin";
 }
 
 async function asignarEspecialidadAMedico(usuarioId: number, especialidadId: number) {
@@ -359,8 +372,7 @@ async function obtenerHistorialPaciente(pacienteId: number): Promise<ConsultaMed
   return consultas.filter((c) => idsExpedientes.has(c.expedienteId));
 }
 
-// Ahora recibe también especialidadId, requerido por el backend (columna
-// IdEspecialidad, obligatoria en InsertCita).
+
 async function crearCita(datos: {
   pacienteId: number;
   especialidadId: number;
@@ -499,6 +511,7 @@ async function marcarRecetaEntregada(idReceta: number, idUsuarioFarmaceutico: nu
 async function iniciarSesion(usuario: string, contrasena: string): Promise<Credencial | null> {
   try {
     const credencial = await authService.login(usuario, contrasena);
+    setUsuarioActualId(credencial.id);
     patch({ usuarioActual: credencial });
     return credencial;
   } catch (error) {
@@ -508,9 +521,9 @@ async function iniciarSesion(usuario: string, contrasena: string): Promise<Crede
 }
 
 function cerrarSesion() {
+  setUsuarioActualId(null);
   patch({ usuarioActual: null });
 }
-
 export const clinicaStore = {
   subscribe,
   getSnapshot,
@@ -543,6 +556,7 @@ export const clinicaStore = {
   crearUsuario,
   actualizarUsuario,
   toggleEstadoUsuario,
+  puedeEditarUsuario,
   asignarEspecialidadAMedico,
   quitarEspecialidadDeMedico,
   medicosDeEspecialidad,

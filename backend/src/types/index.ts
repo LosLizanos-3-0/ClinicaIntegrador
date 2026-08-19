@@ -114,6 +114,7 @@ export interface Bitacora {
   Accion: string;
   Fecha?: string;
   UsuarioSQL?: string;
+  Rol?: string;
   Registro?: string;
 }
 

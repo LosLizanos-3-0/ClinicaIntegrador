@@ -12,13 +12,9 @@ export interface Usuario {
   iniciales: string;
 }
 
-export type TipoReporte = "Consultas" | "Finanzas" | "Personal" | "Pacientes" | "Auditoría";
-
 export interface KPI {
   label: string;
   valor: string;
-  delta: string;
-  positivo: boolean;
   icono: string;
   colorClase: string;
 }
@@ -27,15 +23,6 @@ export interface BarraEspecialidad {
   nombre: string;
   valor: number;
   max: number;
-  colorClase: string;
-}
-
-export interface Reporte {
-  id: number;
-  nombre: string;
-  fecha: string;
-  autor: string;
-  tipo: TipoReporte;
   colorClase: string;
 }
 
@@ -61,6 +48,7 @@ export interface Rol {
 export type MatrizPermisos = Record<number, Record<string, Record<string, boolean>>>;
 
 export interface Credencial {
+  id: number;
   usuario: string;
   contrasena: string;
   rol: RolUsuario;
@@ -110,6 +98,7 @@ export interface RegistroBitacora {
   accion: string;
   fecha: string;
   usuarioSql: string;
+  rol?: string;
   registro: string;
 }
 

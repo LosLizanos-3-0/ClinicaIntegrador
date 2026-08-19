@@ -1,21 +1,21 @@
 import sql from 'mssql';
 import poolPromise from '../config/db';
+import { ejecutarConActor, ActorInfo } from '../config/actor';
 import { Usuario } from '../types';
 
-export const insertUsuario = async (data: Usuario) => {
-  const pool = await poolPromise;
-  await pool.request()
-    .input('Nombre', sql.VarChar(50), data.Nombre)
-    .input('Apellido1', sql.VarChar(50), data.Apellido1)
-    .input('Apellido2', sql.VarChar(50), data.Apellido2 ?? null)
-    .input('Ident', sql.VarChar(25), data.Ident)
-    .input('Telefono', sql.VarChar(20), data.Telefono ?? null)
-    .input('Correo', sql.VarChar(100), data.Correo)
-    .input('NombreUsuario', sql.VarChar(50), data.NombreUsuario)
-    .input('Contrasena', sql.VarChar(255), data.Contrasena)
-    .input('Estado', sql.Char(1), data.Estado ?? 'A')
-    .input('IdRol', sql.Int, data.IdRol)
-    .execute('InsertUsuario');
+export const insertUsuario = async (data: Usuario, actor: ActorInfo | null = null) => {
+  await ejecutarConActor(actor, 'InsertUsuario', [
+    { name: 'Nombre', type: sql.VarChar(50), value: data.Nombre },
+    { name: 'Apellido1', type: sql.VarChar(50), value: data.Apellido1 },
+    { name: 'Apellido2', type: sql.VarChar(50), value: data.Apellido2 ?? null },
+    { name: 'Ident', type: sql.VarChar(25), value: data.Ident },
+    { name: 'Telefono', type: sql.VarChar(20), value: data.Telefono ?? null },
+    { name: 'Correo', type: sql.VarChar(100), value: data.Correo },
+    { name: 'NombreUsuario', type: sql.VarChar(50), value: data.NombreUsuario },
+    { name: 'Contrasena', type: sql.VarChar(255), value: data.Contrasena },
+    { name: 'Estado', type: sql.Char(1), value: data.Estado ?? 'A' },
+    { name: 'IdRol', type: sql.Int, value: data.IdRol },
+  ]);
 };
 
 export const selectUsuario = async (): Promise<Usuario[]> => {
@@ -30,27 +30,25 @@ export const selectUsuarioById = async (id: number): Promise<Usuario | undefined
   return result.recordset[0];
 };
 
-export const updateUsuario = async (id: number, data: Usuario) => {
-  const pool = await poolPromise;
-  await pool.request()
-    .input('IdUsuario', sql.Int, id)
-    .input('Nombre', sql.VarChar(50), data.Nombre)
-    .input('Apellido1', sql.VarChar(50), data.Apellido1)
-    .input('Apellido2', sql.VarChar(50), data.Apellido2 ?? null)
-    .input('Ident', sql.VarChar(25), data.Ident)
-    .input('Telefono', sql.VarChar(20), data.Telefono ?? null)
-    .input('Correo', sql.VarChar(100), data.Correo)
-    .input('NombreUsuario', sql.VarChar(50), data.NombreUsuario)
-    .input('Contrasena', sql.VarChar(255), data.Contrasena)
-    .input('Estado', sql.Char(1), data.Estado)
-    .input('IdRol', sql.Int, data.IdRol)
-    .execute('UpdateUsuario');
+export const updateUsuario = async (id: number, data: Usuario, actor: ActorInfo | null = null) => {
+  await ejecutarConActor(actor, 'UpdateUsuario', [
+    { name: 'IdUsuario', type: sql.Int, value: id },
+    { name: 'Nombre', type: sql.VarChar(50), value: data.Nombre },
+    { name: 'Apellido1', type: sql.VarChar(50), value: data.Apellido1 },
+    { name: 'Apellido2', type: sql.VarChar(50), value: data.Apellido2 ?? null },
+    { name: 'Ident', type: sql.VarChar(25), value: data.Ident },
+    { name: 'Telefono', type: sql.VarChar(20), value: data.Telefono ?? null },
+    { name: 'Correo', type: sql.VarChar(100), value: data.Correo },
+    { name: 'NombreUsuario', type: sql.VarChar(50), value: data.NombreUsuario },
+    { name: 'Contrasena', type: sql.VarChar(255), value: data.Contrasena },
+    { name: 'Estado', type: sql.Char(1), value: data.Estado },
+    { name: 'IdRol', type: sql.Int, value: data.IdRol },
+  ]);
 };
 
-export const camEstadoUsuario = async (id: number, estado: 'A' | 'I') => {
-  const pool = await poolPromise;
-  await pool.request()
-    .input('IdUsuario', sql.Int, id)
-    .input('Estado', sql.Char(1), estado)
-    .execute('CamEstadoUsuario');
+export const camEstadoUsuario = async (id: number, estado: 'A' | 'I', actor: ActorInfo | null = null) => {
+  await ejecutarConActor(actor, 'CamEstadoUsuario', [
+    { name: 'IdUsuario', type: sql.Int, value: id },
+    { name: 'Estado', type: sql.Char(1), value: estado },
+  ]);
 };

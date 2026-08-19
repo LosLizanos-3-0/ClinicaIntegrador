@@ -1,13 +1,13 @@
 import sql from 'mssql';
 import poolPromise from '../config/db';
+import { ejecutarConActor, ActorInfo } from '../config/actor';
 import { Especialidad } from '../types';
 
-export const insertEspecialidad = async (data: Especialidad) => {
-  const pool = await poolPromise;
-  await pool.request()
-    .input('Estado', sql.Char(1), data.Estado)
-    .input('NombreEspecialidad', sql.VarChar(80), data.NombreEspecialidad)
-    .execute('InsertEspecialidad');
+export const insertEspecialidad = async (data: Especialidad, actor: ActorInfo | null = null) => {
+  await ejecutarConActor(actor, 'InsertEspecialidad', [
+    { name: 'Estado', type: sql.Char(1), value: data.Estado },
+    { name: 'NombreEspecialidad', type: sql.VarChar(80), value: data.NombreEspecialidad },
+  ]);
 };
 
 export const selectEspecialidad = async (): Promise<Especialidad[]> => {
@@ -22,19 +22,17 @@ export const selectEspecialidadById = async (id: number): Promise<Especialidad |
   return result.recordset[0];
 };
 
-export const updateEspecialidad = async (id: number, data: Especialidad) => {
-  const pool = await poolPromise;
-  await pool.request()
-    .input('IdEspecialidad', sql.Int, id)
-    .input('Estado', sql.Char(1), data.Estado)
-    .input('NombreEspecialidad', sql.VarChar(80), data.NombreEspecialidad)
-    .execute('UpdateEspecialidad');
+export const updateEspecialidad = async (id: number, data: Especialidad, actor: ActorInfo | null = null) => {
+  await ejecutarConActor(actor, 'UpdateEspecialidad', [
+    { name: 'IdEspecialidad', type: sql.Int, value: id },
+    { name: 'Estado', type: sql.Char(1), value: data.Estado },
+    { name: 'NombreEspecialidad', type: sql.VarChar(80), value: data.NombreEspecialidad },
+  ]);
 };
 
-export const camEstadoEspecialidad = async (id: number, estado: 'A' | 'I') => {
-  const pool = await poolPromise;
-  await pool.request()
-    .input('IdEspecialidad', sql.Int, id)
-    .input('Estado', sql.Char(1), estado)
-    .execute('CamEstadoEspecialidad');
+export const camEstadoEspecialidad = async (id: number, estado: 'A' | 'I', actor: ActorInfo | null = null) => {
+  await ejecutarConActor(actor, 'CamEstadoEspecialidad', [
+    { name: 'IdEspecialidad', type: sql.Int, value: id },
+    { name: 'Estado', type: sql.Char(1), value: estado },
+  ]);
 };

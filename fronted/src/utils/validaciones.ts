@@ -12,4 +12,4 @@ export const validarNombre = (valor: string): boolean => REGEX_NOMBRE.test(valor
 export const validarCedula = (valor: string): boolean => REGEX_CEDULA.test(valor.trim());
 export const validarTelefono = (valor: string): boolean => REGEX_TELEFONO.test(valor.trim());
 export const validarNombreUsuario = (valor: string): boolean => REGEX_USUARIO.test(valor.trim());
-export const validarContrasena = (valor: string): boolean => valor.trim().length >= 4;
+export const validarContrasena = (valor: string): boolean => valor.trim().length >= 3;

@@ -89,7 +89,11 @@ export const usuarioService = {
     // desde Gestión de especialidades — no en este formulario.
   },
 
-  async actualizar(id: number, datos: DatosUsuarioForm) {
+  // actorId: id del usuario con sesión iniciada que realiza la edición.
+  // El backend lo usa para aplicar las reglas de protección entre
+  // administradores (nadie se edita a sí mismo, y solo el admin principal
+  // puede editar a otros administradores).
+  async actualizar(id: number, datos: DatosUsuarioForm, actorId?: number) {
     const [roles, actualRes] = await Promise.all([
       rolService.listar(),
       api.get<UsuarioBD>(`/usuarios/${id}`),
@@ -97,24 +101,30 @@ export const usuarioService = {
     const rolBD = roles.find((r) => r.NombreRol === datos.rol);
     if (!rolBD) throw new Error(`No existe el rol "${datos.rol}" en la base de datos.`);
 
-    await api.put(`/usuarios/${id}`, {
-      Nombre: datos.nombre,
-      Apellido1: datos.apellido1,
-      Apellido2: datos.apellido2 || null,
-      Ident: datos.ident,
-      Telefono: datos.telefono || null,
-      Correo: datos.correo,
-      NombreUsuario: datos.nombreUsuario,
-      Contrasena: actualRes.data.Contrasena,
-      Estado: datos.estado === "Activo" ? "A" : "I",
-      IdRol: rolBD.IdRol,
-    });
+    await api.put(
+      `/usuarios/${id}`,
+      {
+        Nombre: datos.nombre,
+        Apellido1: datos.apellido1,
+        Apellido2: datos.apellido2 || null,
+        Ident: datos.ident,
+        Telefono: datos.telefono || null,
+        Correo: datos.correo,
+        NombreUsuario: datos.nombreUsuario,
+        Contrasena: actualRes.data.Contrasena,
+        Estado: datos.estado === "Activo" ? "A" : "I",
+        IdRol: rolBD.IdRol,
+      },
+      actorId ? { headers: { "x-usuario-id": String(actorId) } } : undefined
+    );
   },
 
-  async cambiarEstado(id: number, estadoActual: "Activo" | "Inactivo") {
-    await api.patch(`/usuarios/${id}/estado`, {
-      Estado: estadoActual === "Activo" ? "I" : "A",
-    });
+  async cambiarEstado(id: number, estadoActual: "Activo" | "Inactivo", actorId?: number) {
+    await api.patch(
+      `/usuarios/${id}/estado`,
+      { Estado: estadoActual === "Activo" ? "I" : "A" },
+      actorId ? { headers: { "x-usuario-id": String(actorId) } } : undefined
+    );
   },
 
   // Solo agrega la relación — NO borra las especialidades que el médico

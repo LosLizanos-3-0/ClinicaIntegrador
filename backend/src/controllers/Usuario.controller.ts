@@ -1,5 +1,7 @@
 import { Request, Response } from 'express';
 import * as UsuarioModel from '../models/Usuario.model';
+import * as RolModel from '../models/Rol.model';
+import { obtenerActor as obtenerActorBitacora } from '../config/actor';
 import bcrypt from 'bcryptjs';
 
 const SOLO_LETRAS_REGEX = /^[A-Za-zÁÉÍÓÚáéíóúÑñÜü\s]{2,50}$/;
@@ -7,6 +9,12 @@ const CORREO_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const TELEFONO_REGEX = /^\d{4}-\d{4}$/;
 const IDENT_REGEX = /^\d-\d{4}-\d{4}$/;
 const USUARIO_REGEX = /^[A-Za-z0-9._-]{3,50}$/;
+
+const ROL_ADMINISTRADOR = 'Administrador';
+// Usuario de acceso único del administrador principal (Juan Daniel Venegas
+// Tellez), precargado automáticamente al iniciar el backend (server.ts).
+// Es el único que puede editar a otros administradores.
+const USUARIO_ADMIN_PRINCIPAL = 'admin';
 
 const validarDatosUsuario = (body: any, requiereContrasena: boolean): string | null => {
   if (typeof body.Nombre !== 'string' || !SOLO_LETRAS_REGEX.test(body.Nombre.trim())) {
@@ -35,8 +43,9 @@ const validarDatosUsuario = (body: any, requiereContrasena: boolean): string | n
     return 'El usuario de acceso debe tener entre 3 y 50 caracteres (letras, números, puntos, guiones)';
   }
   if (requiereContrasena) {
-    if (typeof body.Contrasena !== 'string' || body.Contrasena.trim().length < 4) {
-      return 'La contraseña es obligatoria y debe tener al menos 4 caracteres';
+    // Mínimo 3 caracteres (antes era 4).
+    if (typeof body.Contrasena !== 'string' || body.Contrasena.trim().length < 3) {
+      return 'La contraseña es obligatoria y debe tener al menos 3 caracteres';
     }
   }
   if (body.Estado !== undefined && body.Estado !== 'A' && body.Estado !== 'I') {
@@ -46,6 +55,57 @@ const validarDatosUsuario = (body: any, requiereContrasena: boolean): string | n
     return 'Debes seleccionar un rol válido';
   }
   return null;
+};
+
+// ─── Protección entre administradores ──────────────────────────────────────
+// Reglas:
+//  1) Ningún administrador puede editarse a sí mismo (ni el principal ni
+//     uno secundario).
+//  2) Un administrador secundario NO puede editar a otro administrador
+//     (incluyendo al principal).
+//  3) El administrador principal (usuario "admin") SÍ puede editar a
+//     cualquier otro administrador y a cualquier usuario de cualquier rol.
+//  4) Cualquier administrador puede editar libremente usuarios que NO
+//     sean administradores (Médico, Recepcionista, Farmacéutico, etc.).
+const esAdminPrincipal = (nombreUsuario: string): boolean =>
+  nombreUsuario.trim().toLowerCase() === USUARIO_ADMIN_PRINCIPAL;
+
+const obtenerActor = async (req: Request) => {
+  const idHeader = req.header('x-usuario-id');
+  const actorId = Number(idHeader);
+  if (!idHeader || !Number.isFinite(actorId) || actorId <= 0) return null;
+
+  const actor = await UsuarioModel.selectUsuarioById(actorId);
+  if (!actor) return null;
+
+  const roles = await RolModel.selectRol();
+  const rolActor = roles.find((r) => r.IdRol === actor.IdRol)?.NombreRol ?? '';
+
+  return { IdUsuario: actor.IdUsuario as number, NombreUsuario: actor.NombreUsuario, Rol: rolActor };
+};
+
+// Devuelve null si la edición está permitida, o un mensaje de error si no.
+const validarPermisoEdicion = async (
+  actor: { IdUsuario: number; NombreUsuario: string; Rol: string },
+  idObjetivo: number
+): Promise<string | null> => {
+  const objetivo = await UsuarioModel.selectUsuarioById(idObjetivo);
+  if (!objetivo) return 'Usuario no encontrado';
+
+  const roles = await RolModel.selectRol();
+  const rolObjetivo = roles.find((r) => r.IdRol === objetivo.IdRol)?.NombreRol ?? '';
+
+  // El usuario objetivo no es administrador: cualquier administrador puede editarlo.
+  if (rolObjetivo !== ROL_ADMINISTRADOR) return null;
+
+  // El usuario objetivo SÍ es administrador:
+  if (actor.IdUsuario === idObjetivo) {
+    return 'Un administrador no puede editar ni desactivar su propio usuario';
+  }
+  if (esAdminPrincipal(actor.NombreUsuario)) {
+    return null; // el administrador principal puede editar a otros administradores
+  }
+  return 'Solo el administrador principal puede modificar a otro administrador';
 };
 
 export const getUsuarios = async (req: Request, res: Response) => {
@@ -87,6 +147,7 @@ export const createUsuario = async (req: Request, res: Response) => {
       return res.status(409).json({ error: 'Ya existe un usuario con ese usuario de acceso, correo o cédula' });
     }
 
+    const actorBitacora = await obtenerActorBitacora(req);
     const hash = await bcrypt.hash(req.body.Contrasena, 10);
     await UsuarioModel.insertUsuario({
       ...req.body,
@@ -98,7 +159,7 @@ export const createUsuario = async (req: Request, res: Response) => {
       Correo: req.body.Correo.trim(),
       NombreUsuario: req.body.NombreUsuario.trim(),
       Contrasena: hash,
-    });
+    }, actorBitacora);
     res.status(201).json({ mensaje: 'Usuario creado correctamente' });
   } catch (error) {
     console.error(error);
@@ -108,10 +169,18 @@ export const createUsuario = async (req: Request, res: Response) => {
 
 export const updateUsuario = async (req: Request, res: Response) => {
   try {
+    const idActual = Number(req.params.id);
+
+    const actor = await obtenerActor(req);
+    if (!actor) {
+      return res.status(401).json({ error: 'No se pudo identificar al usuario que realiza esta acción' });
+    }
+    const errorPermiso = await validarPermisoEdicion(actor, idActual);
+    if (errorPermiso) return res.status(403).json({ error: errorPermiso });
+
     const errorValidacion = validarDatosUsuario(req.body, false);
     if (errorValidacion) return res.status(400).json({ error: errorValidacion });
 
-    const idActual = Number(req.params.id);
     const usuariosExistentes = await UsuarioModel.selectUsuario();
     const nombreUsuario = req.body.NombreUsuario.trim().toLowerCase();
     const correo = req.body.Correo.trim().toLowerCase();
@@ -143,7 +212,8 @@ export const updateUsuario = async (req: Request, res: Response) => {
       datos.Contrasena = await bcrypt.hash(datos.Contrasena, 10);
     }
 
-    await UsuarioModel.updateUsuario(idActual, datos);
+    const actorBitacora = await obtenerActorBitacora(req);
+    await UsuarioModel.updateUsuario(idActual, datos, actorBitacora);
     res.json({ mensaje: 'Usuario actualizado correctamente' });
   } catch (error) {
     console.error(error);
@@ -153,10 +223,20 @@ export const updateUsuario = async (req: Request, res: Response) => {
 
 export const cambiarEstadoUsuario = async (req: Request, res: Response) => {
   try {
+    const idActual = Number(req.params.id);
+
+    const actor = await obtenerActor(req);
+    if (!actor) {
+      return res.status(401).json({ error: 'No se pudo identificar al usuario que realiza esta acción' });
+    }
+    const errorPermiso = await validarPermisoEdicion(actor, idActual);
+    if (errorPermiso) return res.status(403).json({ error: errorPermiso });
+
     if (req.body.Estado !== 'A' && req.body.Estado !== 'I') {
       return res.status(400).json({ error: 'El estado no es válido' });
     }
-    await UsuarioModel.camEstadoUsuario(Number(req.params.id), req.body.Estado);
+    const actorBitacora = await obtenerActorBitacora(req);
+    await UsuarioModel.camEstadoUsuario(idActual, req.body.Estado, actorBitacora);
     res.json({ mensaje: 'Estado del usuario actualizado correctamente' });
   } catch (error) {
     console.error(error);

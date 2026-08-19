@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import * as EspecialidadModel from '../models/Especialidad.model';
+import { obtenerActor } from '../config/actor';
 
 export const getEspecialidades = async (req: Request, res: Response) => {
   try {
@@ -23,7 +24,8 @@ export const getEspecialidadById = async (req: Request, res: Response) => {
 
 export const createEspecialidad = async (req: Request, res: Response) => {
   try {
-    await EspecialidadModel.insertEspecialidad(req.body);
+    const actor = await obtenerActor(req);
+    await EspecialidadModel.insertEspecialidad(req.body, actor);
     res.status(201).json({ mensaje: 'Especialidad creada correctamente' });
   } catch (error) {
     console.error(error);
@@ -33,7 +35,8 @@ export const createEspecialidad = async (req: Request, res: Response) => {
 
 export const updateEspecialidad = async (req: Request, res: Response) => {
   try {
-    await EspecialidadModel.updateEspecialidad(Number(req.params.id), req.body);
+    const actor = await obtenerActor(req);
+    await EspecialidadModel.updateEspecialidad(Number(req.params.id), req.body, actor);
     res.json({ mensaje: 'Especialidad actualizada correctamente' });
   } catch (error) {
     console.error(error);
@@ -43,7 +46,8 @@ export const updateEspecialidad = async (req: Request, res: Response) => {
 
 export const cambiarEstadoEspecialidad = async (req: Request, res: Response) => {
   try {
-    await EspecialidadModel.camEstadoEspecialidad(Number(req.params.id), req.body.Estado);
+    const actor = await obtenerActor(req);
+    await EspecialidadModel.camEstadoEspecialidad(Number(req.params.id), req.body.Estado, actor);
     res.json({ mensaje: 'Estado de la especialidad actualizado correctamente' });
   } catch (error) {
     console.error(error);

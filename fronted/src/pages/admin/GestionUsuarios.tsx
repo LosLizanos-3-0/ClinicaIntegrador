@@ -166,8 +166,8 @@ function ModalUsuario({ usuario, rolesActivos, onGuardar, onCerrar }: ModalUsuar
       setError("La cédula/identificación debe tener el formato 1-2345-6789.");
       return;
     }
-    if (esNuevo && !validarContrasena(contrasena)) {
-      setError("La contraseña debe tener al menos 4 caracteres.");
+       if (esNuevo && !validarContrasena(contrasena)) {
+      setError("La contraseña debe tener al menos 3 caracteres.");
       return;
     }
     if (!form.rol) {
@@ -506,8 +506,9 @@ export default function GestionUsuarios() {
                   <p className="px-3 py-5 text-center fs-6 text-secondary mb-0">No se encontraron usuarios.</p>
                 )}
 
-                {paginados.map((u, i) => {
+                               {paginados.map((u, i) => {
                   const especialidadTexto = especialidadesDe(u, especialidades);
+                  const puedeEditar = clinicaStore.puedeEditarUsuario(u);
                   return (
                     <div
                       key={u.id}
@@ -540,12 +541,21 @@ export default function GestionUsuarios() {
                         </span>
                       </div>
                       <div className="d-flex align-items-center justify-content-center gap-1">
-                        <IconBtn label="Editar" onClick={() => setModalUsuario(u)}>
+                        <IconBtn
+                          label={puedeEditar ? "Editar" : "No tienes permiso para editar a este administrador"}
+                          onClick={() => puedeEditar && setModalUsuario(u)}
+                          disabled={!puedeEditar}
+                        >
                           <i className="bi bi-pencil-square" aria-hidden="true" />
                         </IconBtn>
                         <IconBtn
-                          label={u.estado === "Activo" ? "Desactivar" : "Activar"}
-                          onClick={() => solicitarCambioEstado(u)}
+                          label={
+                            !puedeEditar
+                              ? "No tienes permiso para modificar a este administrador"
+                              : u.estado === "Activo" ? "Desactivar" : "Activar"
+                          }
+                          onClick={() => puedeEditar && solicitarCambioEstado(u)}
+                          disabled={!puedeEditar}
                         >
                           <i className={`bi ${u.estado === "Activo" ? "bi-lock-fill" : "bi-unlock-fill"}`} aria-hidden="true" />
                         </IconBtn>
@@ -596,17 +606,19 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 }
 
 function IconBtn({
-  children, label, onClick,
+  children, label, onClick, disabled = false,
 }: {
   children: React.ReactNode;
   label: string;
   onClick: () => void;
+  disabled?: boolean;
 }) {
   return (
     <button
       aria-label={label}
       title={label}
       onClick={onClick}
+      disabled={disabled}
       className="btn btn-outline-secondary btn-icon-sm bg-white text-secondary"
     >
       {children}
