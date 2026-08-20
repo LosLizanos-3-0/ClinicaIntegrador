@@ -24,7 +24,7 @@ const SUBTIPOS: Record<TipoPrincipal, { value: string; label: string }[]> = {
     { value: "especialidad", label: "Reporte de citas por especialidad" },
   ],
   Inventario: [
-    { value: "categoria", label: "Reporte de medicamentos por categoría (ver stock actual)" },
+    { value: "categoria", label: "Reporte de medicamentos por categoría del stock actual" },
   ],
   "Facturación": [
     { value: "ingresos", label: "Reporte de ingresos por rango de fecha" },
@@ -130,6 +130,18 @@ const ETIQUETA_ESTADO: Record<string, string> = {
   Cancelada: "Canceladas",
 };
 
+function formatoHora(hora: string): string {
+  try {
+    return new Date(hora).toLocaleTimeString("es-CR", {
+      hour: "2-digit",
+      minute: "2-digit",
+      timeZone: "UTC",
+    });
+  } catch {
+    return hora;
+  }
+}
+
 function columnasYFilas(resultado: ResultadoReporte): { headers: string[]; rows: (string | number)[][] } {
   switch (resultado.tipo) {
     case "citas":
@@ -137,7 +149,7 @@ function columnasYFilas(resultado: ResultadoReporte): { headers: string[]; rows:
         headers: ["Fecha", "Hora", "Paciente", "Médico", "Especialidad", "Estado"],
         rows: resultado.filas.map((c) => [
           new Date(c.FechaCita).toLocaleDateString("es-CR"),
-          c.HoraCita,
+          formatoHora(c.HoraCita),
           c.Paciente,
           c.Medico,
           c.Especialidad,
@@ -198,7 +210,7 @@ function nombreDistintivo(meta: MetaReporte): string {
     case "Citas:especialidad":
       return `Citas de ${meta.especialidadNombre} — ${f(meta.desde)} al ${f(meta.hasta)}`;
     case "Inventario:categoria":
-      return `Medicamentos de ${meta.categoriaNombre} (stock actual)`;
+      return `Medicamentos de ${meta.categoriaNombre} del stock actual`;
     case "Facturación:ingresos":
       return `Ingresos — ${f(meta.desde)} al ${f(meta.hasta)}`;
     case "Facturación:especialidad":
@@ -227,8 +239,6 @@ function detallesReporte(meta: MetaReporte): string[] {
   return detalles;
 }
 
-// Líneas de resumen al final del reporte, según su tipo — se usan tanto en el
-// PDF como en el CSV para que ambos digan lo mismo.
 // Líneas de resumen al final del reporte, según su tipo — se usan tanto en el
 // PDF como en el CSV. El formato de moneda se recibe como parámetro porque el
 // PDF y el CSV necesitan formatos distintos (ver formatoColonesPdf más abajo).
@@ -301,7 +311,7 @@ function construirPdf(resultado: ResultadoReporte, meta: MetaReporte): jsPDF {
   doc.setFont("helvetica", "normal");
   doc.setFontSize(16);
   doc.setTextColor(30, 41, 59);
-  doc.text("Clínica Integradora", margenX, y);
+  doc.text("ClinicSoft", margenX, y);
 
   y += 7;
   doc.setFontSize(11);
@@ -378,15 +388,22 @@ export default function GestionReportes() {
     : [];
 
   const barrasEspecialidad: BarraEspecialidad[] = useMemo(() => {
-    if (!dashboard) return [];
-    const max = Math.max(1, ...dashboard.consultasPorEspecialidad.map((e) => e.Cantidad));
-    return dashboard.consultasPorEspecialidad.map((e, i) => ({
-      nombre: e.Especialidad,
-      valor: e.Cantidad,
+    const conteos = new Map<string, number>();
+    (dashboard?.consultasPorEspecialidad ?? []).forEach((e) => conteos.set(e.Especialidad, e.Cantidad));
+
+    const datos = especialidadesActivas.map((e) => ({
+      nombre: e.nombre,
+      valor: conteos.get(e.nombre) ?? 0,
+    }));
+
+    const max = Math.max(1, ...datos.map((d) => d.valor));
+    return datos.map((d, i) => ({
+      nombre: d.nombre,
+      valor: d.valor,
       max,
       colorClase: COLOR_BARRA[i % COLOR_BARRA.length],
     }));
-  }, [dashboard]);
+  }, [dashboard, especialidadesActivas]);
 
   const segmentosEstado: SegmentoDonut[] = useMemo(() => {
     if (!dashboard) return [];
@@ -521,11 +538,11 @@ export default function GestionReportes() {
     if (seleccionadoId === id) setSeleccionadoId(null);
   };
 
-    const handleExportarCsv = () => {
+  const handleExportarCsv = () => {
     if (!reporteSeleccionado) return;
     const { headers, rows } = columnasYFilas(reporteSeleccionado.resultado);
     descargarCsv(`${slug(reporteSeleccionado.nombre)}.csv`, headers, rows, {
-      titulo: "Clínica Integradora",
+      titulo: "ClinicSoft",
       subtitulo: nombreReporte(reporteSeleccionado.tipo, reporteSeleccionado.subtipo),
       detalles: detallesReporte(reporteSeleccionado.meta),
       resumen: lineasResumen(reporteSeleccionado.resultado, formatoColones),
@@ -737,9 +754,9 @@ export default function GestionReportes() {
             <div className="row g-3">
               <div className="col-md-6">
                 <div className="bg-soft border rounded p-3 h-100">
-                  <h3 className="fs-6 fw-medium text-dark mb-3">Consultas por especialidad (mes actual)</h3>
+                  <h3 className="fs-6 fw-medium text-dark mb-3">Consultas por especialidad del mes actual</h3>
                   {barrasEspecialidad.length === 0 ? (
-                    <p className="fs-12 text-secondary mb-0">Aún no hay citas este mes.</p>
+                    <p className="fs-12 text-secondary mb-0">No hay especialidades activas registradas.</p>
                   ) : (
                     <div className="d-flex flex-column gap-2">
                       {barrasEspecialidad.map((e) => (
@@ -758,7 +775,7 @@ export default function GestionReportes() {
 
               <div className="col-md-6">
                 <div className="bg-soft border rounded p-3 h-100">
-                  <h3 className="fs-6 fw-medium text-dark mb-3">Estado de citas (mes actual)</h3>
+                  <h3 className="fs-6 fw-medium text-dark mb-3">Estado de citas del mes actual</h3>
                   {segmentosEstado.length === 0 ? (
                     <p className="fs-12 text-secondary mb-0">Aún no hay citas este mes.</p>
                   ) : (

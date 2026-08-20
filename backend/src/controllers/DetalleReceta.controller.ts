@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import * as DetalleModel from '../models/DetalleReceta.model';
+import { obtenerActor } from '../config/actor';
 
 export const getDetalles = async (req: Request, res: Response) => {
   try {
@@ -23,7 +24,8 @@ export const getDetalleById = async (req: Request, res: Response) => {
 
 export const createDetalle = async (req: Request, res: Response) => {
   try {
-    await DetalleModel.insertDetalleReceta(req.body);
+    const actor = await obtenerActor(req);
+    await DetalleModel.insertDetalleReceta(req.body, actor);
     res.status(201).json({ mensaje: 'Detalle creado correctamente' });
   } catch (error) {
     console.error(error);
@@ -33,7 +35,8 @@ export const createDetalle = async (req: Request, res: Response) => {
 
 export const updateDetalle = async (req: Request, res: Response) => {
   try {
-    await DetalleModel.updateDetalleReceta(Number(req.params.id), req.body);
+    const actor = await obtenerActor(req);
+    await DetalleModel.updateDetalleReceta(Number(req.params.id), req.body, actor);
     res.json({ mensaje: 'Detalle actualizado correctamente' });
   } catch (error) {
     console.error(error);
@@ -43,7 +46,8 @@ export const updateDetalle = async (req: Request, res: Response) => {
 
 export const cambiarEstadoDetalle = async (req: Request, res: Response) => {
   try {
-    await DetalleModel.camEstadoDetalleReceta(Number(req.params.id), req.body.Estado);
+    const actor = await obtenerActor(req);
+    await DetalleModel.camEstadoDetalleReceta(Number(req.params.id), req.body.Estado, actor);
     res.json({ mensaje: 'Estado del detalle actualizado correctamente' });
   } catch (error) {
     console.error(error);
@@ -54,7 +58,8 @@ export const cambiarEstadoDetalle = async (req: Request, res: Response) => {
 // Checkbox del frontend: "cobrar aqui" / "lo retiro en otra farmacia"
 export const marcarIncluirFactura = async (req: Request, res: Response) => {
   try {
-    await DetalleModel.marcarIncluirFacturaDetalleReceta(Number(req.params.id), req.body.IncluirFactura);
+    const actor = await obtenerActor(req);
+    await DetalleModel.marcarIncluirFacturaDetalleReceta(Number(req.params.id), req.body.IncluirFactura, actor);
     res.json({ mensaje: 'Preferencia de facturación actualizada correctamente' });
   } catch (error) {
     console.error(error);

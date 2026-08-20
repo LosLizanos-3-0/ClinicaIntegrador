@@ -1,0 +1,27 @@
+/* Estilos exclusivos de la pantalla de Inicio (topbar azul, igual al sidebar) */
+
+.inicio-topbar {
+  background: linear-gradient(180deg, #12467A 0%, #0B3866 100%) !important;
+  border-bottom: none !important;
+}
+
+.inicio-topbar,
+.inicio-topbar * {
+  color: #ffffff !important;
+}
+
+.inicio-topbar .avatar-circle {
+  background: rgba(255, 255, 255, 0.18) !important;
+  color: #ffffff !important;
+}
+
+.inicio-topbar .btn-outline-secondary {
+  color: #ffffff !important;
+  border-color: rgba(255, 255, 255, 0.5) !important;
+  background: transparent !important;
+}
+
+.inicio-topbar .btn-outline-secondary:hover {
+  background: rgba(255, 255, 255, 0.12) !important;
+  border-color: rgba(255, 255, 255, 0.85) !important;
+}

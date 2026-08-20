@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import * as DetalleModel from '../models/DetalleFactura.model';
+import { obtenerActor } from '../config/actor';
 
 export const getDetalles = async (req: Request, res: Response) => {
   try {
@@ -23,7 +24,8 @@ export const getDetalleById = async (req: Request, res: Response) => {
 
 export const createDetalle = async (req: Request, res: Response) => {
   try {
-    await DetalleModel.insertDetalleFactura(req.body);
+    const actor = await obtenerActor(req);
+    await DetalleModel.insertDetalleFactura(req.body, actor);
     res.status(201).json({ mensaje: 'Detalle creado correctamente' });
   } catch (error) {
     console.error(error);
@@ -33,7 +35,8 @@ export const createDetalle = async (req: Request, res: Response) => {
 
 export const updateDetalle = async (req: Request, res: Response) => {
   try {
-    await DetalleModel.updateDetalleFactura(Number(req.params.id), req.body);
+    const actor = await obtenerActor(req);
+    await DetalleModel.updateDetalleFactura(Number(req.params.id), req.body, actor);
     res.json({ mensaje: 'Detalle actualizado correctamente' });
   } catch (error) {
     console.error(error);
@@ -43,7 +46,8 @@ export const updateDetalle = async (req: Request, res: Response) => {
 
 export const cambiarEstadoDetalle = async (req: Request, res: Response) => {
   try {
-    await DetalleModel.camEstadoDetalleFactura(Number(req.params.id), req.body.Estado);
+    const actor = await obtenerActor(req);
+    await DetalleModel.camEstadoDetalleFactura(Number(req.params.id), req.body.Estado, actor);
     res.json({ mensaje: 'Estado del detalle actualizado correctamente' });
   } catch (error) {
     console.error(error);
@@ -57,7 +61,8 @@ export const cambiarEstadoDetalle = async (req: Request, res: Response) => {
 export const generarDesdeReceta = async (req: Request, res: Response) => {
   try {
     const { IdFactura, IdReceta } = req.body;
-    await DetalleModel.generarDetalleFacturaDesdeReceta(IdFactura, IdReceta);
+    const actor = await obtenerActor(req);
+    await DetalleModel.generarDetalleFacturaDesdeReceta(IdFactura, IdReceta, actor);
     res.status(201).json({ mensaje: 'Medicamentos agregados a la factura correctamente' });
   } catch (error) {
     console.error(error);

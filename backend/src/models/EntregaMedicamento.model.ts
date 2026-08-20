@@ -1,14 +1,14 @@
 import sql from 'mssql';
 import poolPromise from '../config/db';
+import { ejecutarConActor, ActorInfo } from '../config/actor';
 import { EntregaMedicamento } from '../types';
 
-export const insertEntregaMedicamento = async (data: EntregaMedicamento) => {
-  const pool = await poolPromise;
-  await pool.request()
-    .input('IdReceta', sql.Int, data.IdReceta)
-    .input('IdUsuario', sql.Int, data.IdUsuario)
-    .input('Estado', sql.Char(1), data.Estado ?? 'A')
-    .execute('InsertEntregaMedicamento');
+export const insertEntregaMedicamento = async (data: EntregaMedicamento, actor: ActorInfo | null = null) => {
+  await ejecutarConActor(actor, 'InsertEntregaMedicamento', [
+    { name: 'IdReceta', type: sql.Int, value: data.IdReceta },
+    { name: 'IdUsuario', type: sql.Int, value: data.IdUsuario },
+    { name: 'Estado', type: sql.Char(1), value: data.Estado ?? 'A' },
+  ]);
 };
 
 export const selectEntregaMedicamento = async (): Promise<EntregaMedicamento[]> => {
@@ -23,20 +23,18 @@ export const selectEntregaMedicamentoById = async (id: number): Promise<EntregaM
   return result.recordset[0];
 };
 
-export const updateEntregaMedicamento = async (id: number, data: EntregaMedicamento) => {
-  const pool = await poolPromise;
-  await pool.request()
-    .input('IdEntrega', sql.Int, id)
-    .input('IdReceta', sql.Int, data.IdReceta)
-    .input('IdUsuario', sql.Int, data.IdUsuario)
-    .input('Estado', sql.Char(1), data.Estado ?? 'A')
-    .execute('UpdateEntregaMedicamento');
+export const updateEntregaMedicamento = async (id: number, data: EntregaMedicamento, actor: ActorInfo | null = null) => {
+  await ejecutarConActor(actor, 'UpdateEntregaMedicamento', [
+    { name: 'IdEntrega', type: sql.Int, value: id },
+    { name: 'IdReceta', type: sql.Int, value: data.IdReceta },
+    { name: 'IdUsuario', type: sql.Int, value: data.IdUsuario },
+    { name: 'Estado', type: sql.Char(1), value: data.Estado ?? 'A' },
+  ]);
 };
 
-export const camEstadoEntregaMedicamento = async (id: number, estado: 'A' | 'I') => {
-  const pool = await poolPromise;
-  await pool.request()
-    .input('IdEntrega', sql.Int, id)
-    .input('Estado', sql.Char(1), estado)
-    .execute('CamEstadoEntregaMedicamento');
+export const camEstadoEntregaMedicamento = async (id: number, estado: 'A' | 'I', actor: ActorInfo | null = null) => {
+  await ejecutarConActor(actor, 'CamEstadoEntregaMedicamento', [
+    { name: 'IdEntrega', type: sql.Int, value: id },
+    { name: 'Estado', type: sql.Char(1), value: estado },
+  ]);
 };

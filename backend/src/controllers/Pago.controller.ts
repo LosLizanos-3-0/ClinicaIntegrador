@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import * as PagoModel from '../models/Pago.model';
+import { obtenerActor } from '../config/actor';
 
 export const getPagos = async (req: Request, res: Response) => {
   try {
@@ -23,7 +24,8 @@ export const getPagoById = async (req: Request, res: Response) => {
 
 export const createPago = async (req: Request, res: Response) => {
   try {
-    await PagoModel.insertPago(req.body);
+    const actor = await obtenerActor(req);
+    await PagoModel.insertPago(req.body, actor);
     res.status(201).json({ mensaje: 'Pago registrado correctamente' });
   } catch (error) {
     console.error(error);
@@ -33,7 +35,8 @@ export const createPago = async (req: Request, res: Response) => {
 
 export const updatePago = async (req: Request, res: Response) => {
   try {
-    await PagoModel.updatePago(Number(req.params.id), req.body);
+    const actor = await obtenerActor(req);
+    await PagoModel.updatePago(Number(req.params.id), req.body, actor);
     res.json({ mensaje: 'Pago actualizado correctamente' });
   } catch (error) {
     console.error(error);
@@ -43,7 +46,8 @@ export const updatePago = async (req: Request, res: Response) => {
 
 export const cambiarEstadoPago = async (req: Request, res: Response) => {
   try {
-    await PagoModel.camEstadoPago(Number(req.params.id), req.body.Estado);
+    const actor = await obtenerActor(req);
+    await PagoModel.camEstadoPago(Number(req.params.id), req.body.Estado, actor);
     res.json({ mensaje: 'Estado del pago actualizado correctamente' });
   } catch (error) {
     console.error(error);

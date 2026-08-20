@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import * as EntregaModel from '../models/EntregaMedicamento.model';
+import { obtenerActor } from '../config/actor';
 
 export const getEntregas = async (req: Request, res: Response) => {
   try {
@@ -23,7 +24,8 @@ export const getEntregaById = async (req: Request, res: Response) => {
 
 export const createEntrega = async (req: Request, res: Response) => {
   try {
-    await EntregaModel.insertEntregaMedicamento(req.body);
+    const actor = await obtenerActor(req);
+    await EntregaModel.insertEntregaMedicamento(req.body, actor);
     res.status(201).json({ mensaje: 'Entrega registrada correctamente' });
   } catch (error: any) {
     console.error(error);
@@ -36,7 +38,8 @@ export const createEntrega = async (req: Request, res: Response) => {
 
 export const updateEntrega = async (req: Request, res: Response) => {
   try {
-    await EntregaModel.updateEntregaMedicamento(Number(req.params.id), req.body);
+    const actor = await obtenerActor(req);
+    await EntregaModel.updateEntregaMedicamento(Number(req.params.id), req.body, actor);
     res.json({ mensaje: 'Entrega actualizada correctamente' });
   } catch (error) {
     console.error(error);
@@ -46,7 +49,8 @@ export const updateEntrega = async (req: Request, res: Response) => {
 
 export const cambiarEstadoEntrega = async (req: Request, res: Response) => {
   try {
-    await EntregaModel.camEstadoEntregaMedicamento(Number(req.params.id), req.body.Estado);
+    const actor = await obtenerActor(req);
+    await EntregaModel.camEstadoEntregaMedicamento(Number(req.params.id), req.body.Estado, actor);
     res.json({ mensaje: 'Estado de la entrega actualizado correctamente' });
   } catch (error) {
     console.error(error);

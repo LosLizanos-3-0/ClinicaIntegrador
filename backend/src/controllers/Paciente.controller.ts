@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import * as PacienteModel from '../models/Paciente.model';
+import { obtenerActor } from '../config/actor';
 
 export const getPacientes = async (req: Request, res: Response) => {
   try {
@@ -32,7 +33,8 @@ export const getPacienteById = async (req: Request, res: Response) => {
 
 export const createPaciente = async (req: Request, res: Response) => {
   try {
-    await PacienteModel.insertPaciente(req.body);
+    const actor = await obtenerActor(req);
+    await PacienteModel.insertPaciente(req.body, actor);
     res.status(201).json({ mensaje: 'Paciente creado correctamente' });
   } catch (error) {
     console.error(error);
@@ -42,7 +44,8 @@ export const createPaciente = async (req: Request, res: Response) => {
 
 export const updatePaciente = async (req: Request, res: Response) => {
   try {
-    await PacienteModel.updatePaciente(Number(req.params.id), req.body);
+    const actor = await obtenerActor(req);
+    await PacienteModel.updatePaciente(Number(req.params.id), req.body, actor);
     res.json({ mensaje: 'Paciente actualizado correctamente' });
   } catch (error) {
     console.error(error);
@@ -52,7 +55,8 @@ export const updatePaciente = async (req: Request, res: Response) => {
 
 export const cambiarEstadoPaciente = async (req: Request, res: Response) => {
   try {
-    await PacienteModel.camEstadoPaciente(Number(req.params.id), req.body.Estado);
+    const actor = await obtenerActor(req);
+    await PacienteModel.camEstadoPaciente(Number(req.params.id), req.body.Estado, actor);
     res.json({ mensaje: 'Estado del paciente actualizado correctamente' });
   } catch (error) {
     console.error(error);

@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import * as CitaModel from '../models/Cita.model';
+import { obtenerActor } from '../config/actor';
 
 export const getCitas = async (req: Request, res: Response) => {
   try {
@@ -30,7 +31,8 @@ export const createCita = async (req: Request, res: Response) => {
         return res.status(400).json({ error: 'No se puede agendar una cita en una fecha u hora que ya pasó' });
       }
     }
-    await CitaModel.insertCita(req.body);
+    const actor = await obtenerActor(req);
+    await CitaModel.insertCita(req.body, actor);
     res.status(201).json({ mensaje: 'Cita creada correctamente' });
   } catch (error: any) {
     console.error(error);
@@ -53,7 +55,8 @@ export const updateCita = async (req: Request, res: Response) => {
         return res.status(400).json({ error: 'No se puede reprogramar una cita a una fecha u hora que ya pasó' });
       }
     }
-    await CitaModel.updateCita(Number(req.params.id), req.body);
+    const actor = await obtenerActor(req);
+    await CitaModel.updateCita(Number(req.params.id), req.body, actor);
     res.json({ mensaje: 'Cita actualizada correctamente' });
   } catch (error: any) {
     console.error(error);
@@ -66,7 +69,8 @@ export const updateCita = async (req: Request, res: Response) => {
 
 export const cambiarEstadoCita = async (req: Request, res: Response) => {
   try {
-    await CitaModel.camEstadoCita(Number(req.params.id), req.body.Estado);
+    const actor = await obtenerActor(req);
+    await CitaModel.camEstadoCita(Number(req.params.id), req.body.Estado, actor);
     res.json({ mensaje: 'Estado de la cita actualizado correctamente' });
   } catch (error) {
     console.error(error);

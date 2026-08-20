@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import * as RecetaModel from '../models/Receta.model';
+import { obtenerActor } from '../config/actor';
 
 export const getRecetas = async (req: Request, res: Response) => {
   try {
@@ -23,7 +24,8 @@ export const getRecetaById = async (req: Request, res: Response) => {
 
 export const createReceta = async (req: Request, res: Response) => {
   try {
-    await RecetaModel.insertReceta(req.body);
+    const actor = await obtenerActor(req);
+    await RecetaModel.insertReceta(req.body, actor);
     res.status(201).json({ mensaje: 'Receta creada correctamente' });
   } catch (error) {
     console.error(error);
@@ -33,7 +35,8 @@ export const createReceta = async (req: Request, res: Response) => {
 
 export const updateReceta = async (req: Request, res: Response) => {
   try {
-    await RecetaModel.updateReceta(Number(req.params.id), req.body);
+    const actor = await obtenerActor(req);
+    await RecetaModel.updateReceta(Number(req.params.id), req.body, actor);
     res.json({ mensaje: 'Receta actualizada correctamente' });
   } catch (error) {
     console.error(error);
@@ -43,7 +46,8 @@ export const updateReceta = async (req: Request, res: Response) => {
 
 export const cambiarEstadoReceta = async (req: Request, res: Response) => {
   try {
-    await RecetaModel.camEstadoReceta(Number(req.params.id), req.body.Estado);
+    const actor = await obtenerActor(req);
+    await RecetaModel.camEstadoReceta(Number(req.params.id), req.body.Estado, actor);
     res.json({ mensaje: 'Estado de la receta actualizado correctamente' });
   } catch (error) {
     console.error(error);

@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import * as ExpedienteModel from '../models/ExpedienteMedico.model';
+import { obtenerActor } from '../config/actor';
 
 export const getExpedientes = async (req: Request, res: Response) => {
   try {
@@ -23,7 +24,8 @@ export const getExpedienteById = async (req: Request, res: Response) => {
 
 export const createExpediente = async (req: Request, res: Response) => {
   try {
-    await ExpedienteModel.insertExpedienteMedico(req.body);
+    const actor = await obtenerActor(req);
+    await ExpedienteModel.insertExpedienteMedico(req.body, actor);
     res.status(201).json({ mensaje: 'Expediente creado correctamente' });
   } catch (error) {
     console.error(error);
@@ -33,7 +35,8 @@ export const createExpediente = async (req: Request, res: Response) => {
 
 export const updateExpediente = async (req: Request, res: Response) => {
   try {
-    await ExpedienteModel.updateExpedienteMedico(Number(req.params.id), req.body);
+    const actor = await obtenerActor(req);
+    await ExpedienteModel.updateExpedienteMedico(Number(req.params.id), req.body, actor);
     res.json({ mensaje: 'Expediente actualizado correctamente' });
   } catch (error) {
     console.error(error);
@@ -43,7 +46,8 @@ export const updateExpediente = async (req: Request, res: Response) => {
 
 export const cambiarEstadoExpediente = async (req: Request, res: Response) => {
   try {
-    await ExpedienteModel.camEstadoExpedienteMedico(Number(req.params.id), req.body.Estado);
+    const actor = await obtenerActor(req);
+    await ExpedienteModel.camEstadoExpedienteMedico(Number(req.params.id), req.body.Estado, actor);
     res.json({ mensaje: 'Estado del expediente actualizado correctamente' });
   } catch (error) {
     console.error(error);

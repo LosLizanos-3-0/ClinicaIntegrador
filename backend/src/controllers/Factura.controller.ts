@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import * as FacturaModel from '../models/Factura.model';
+import { obtenerActor } from '../config/actor';
 
 export const getFacturas = async (req: Request, res: Response) => {
   try {
@@ -23,7 +24,8 @@ export const getFacturaById = async (req: Request, res: Response) => {
 
 export const createFactura = async (req: Request, res: Response) => {
   try {
-    const idFactura = await FacturaModel.insertFactura(req.body);
+    const actor = await obtenerActor(req);
+    const idFactura = await FacturaModel.insertFactura(req.body, actor);
     res.status(201).json({ mensaje: 'Factura creada correctamente', IdFactura: idFactura });
   } catch (error) {
     console.error(error);
@@ -33,7 +35,8 @@ export const createFactura = async (req: Request, res: Response) => {
 
 export const updateFactura = async (req: Request, res: Response) => {
   try {
-    await FacturaModel.updateFactura(Number(req.params.id), req.body);
+    const actor = await obtenerActor(req);
+    await FacturaModel.updateFactura(Number(req.params.id), req.body, actor);
     res.json({ mensaje: 'Factura actualizada correctamente' });
   } catch (error: any) {
     console.error(error);
@@ -46,7 +49,8 @@ export const updateFactura = async (req: Request, res: Response) => {
 
 export const updateMontoConsultaFactura = async (req: Request, res: Response) => {
   try {
-    await FacturaModel.updateMontoConsultaFactura(Number(req.params.id), req.body.MontoConsulta);
+    const actor = await obtenerActor(req);
+    await FacturaModel.updateMontoConsultaFactura(Number(req.params.id), req.body.MontoConsulta, actor);
     res.json({ mensaje: 'Monto de consulta actualizado correctamente' });
   } catch (error) {
     console.error(error);
@@ -56,7 +60,8 @@ export const updateMontoConsultaFactura = async (req: Request, res: Response) =>
 
 export const cambiarEstadoFactura = async (req: Request, res: Response) => {
   try {
-    await FacturaModel.camEstadoFactura(Number(req.params.id), req.body.Estado);
+    const actor = await obtenerActor(req);
+    await FacturaModel.camEstadoFactura(Number(req.params.id), req.body.Estado, actor);
     res.json({ mensaje: 'Estado de la factura actualizado correctamente' });
   } catch (error) {
     console.error(error);

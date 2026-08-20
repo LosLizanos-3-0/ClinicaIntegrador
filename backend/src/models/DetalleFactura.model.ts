@@ -1,17 +1,17 @@
 import sql from 'mssql';
 import poolPromise from '../config/db';
+import { ejecutarConActor, ActorInfo } from '../config/actor';
 import { DetalleFactura } from '../types';
 
-export const insertDetalleFactura = async (data: DetalleFactura) => {
-  const pool = await poolPromise;
-  await pool.request()
-    .input('IdFactura', sql.Int, data.IdFactura)
-    .input('Concepto', sql.VarChar(250), data.Concepto)
-    .input('Cantidad', sql.Int, data.Cantidad)
-    .input('PrecioUnitario', sql.Decimal(10, 2), data.PrecioUnitario)
-    .input('IdDetalleReceta', sql.Int, data.IdDetalleReceta ?? null)
-    .input('Estado', sql.Char(1), data.Estado ?? 'A')
-    .execute('InsertDetalleFactura');
+export const insertDetalleFactura = async (data: DetalleFactura, actor: ActorInfo | null = null) => {
+  await ejecutarConActor(actor, 'InsertDetalleFactura', [
+    { name: 'IdFactura', type: sql.Int, value: data.IdFactura },
+    { name: 'Concepto', type: sql.VarChar(250), value: data.Concepto },
+    { name: 'Cantidad', type: sql.Int, value: data.Cantidad },
+    { name: 'PrecioUnitario', type: sql.Decimal(10, 2), value: data.PrecioUnitario },
+    { name: 'IdDetalleReceta', type: sql.Int, value: data.IdDetalleReceta ?? null },
+    { name: 'Estado', type: sql.Char(1), value: data.Estado ?? 'A' },
+  ]);
 };
 
 export const selectDetalleFactura = async (): Promise<DetalleFactura[]> => {
@@ -26,32 +26,33 @@ export const selectDetalleFacturaById = async (id: number): Promise<DetalleFactu
   return result.recordset[0];
 };
 
-export const updateDetalleFactura = async (id: number, data: DetalleFactura) => {
-  const pool = await poolPromise;
-  await pool.request()
-    .input('IdDetalleFactura', sql.Int, id)
-    .input('IdFactura', sql.Int, data.IdFactura)
-    .input('Concepto', sql.VarChar(250), data.Concepto)
-    .input('Cantidad', sql.Int, data.Cantidad)
-    .input('PrecioUnitario', sql.Decimal(10, 2), data.PrecioUnitario)
-    .input('Estado', sql.Char(1), data.Estado ?? 'A')
-    .execute('UpdateDetalleFactura');
+export const updateDetalleFactura = async (id: number, data: DetalleFactura, actor: ActorInfo | null = null) => {
+  await ejecutarConActor(actor, 'UpdateDetalleFactura', [
+    { name: 'IdDetalleFactura', type: sql.Int, value: id },
+    { name: 'IdFactura', type: sql.Int, value: data.IdFactura },
+    { name: 'Concepto', type: sql.VarChar(250), value: data.Concepto },
+    { name: 'Cantidad', type: sql.Int, value: data.Cantidad },
+    { name: 'PrecioUnitario', type: sql.Decimal(10, 2), value: data.PrecioUnitario },
+    { name: 'Estado', type: sql.Char(1), value: data.Estado ?? 'A' },
+  ]);
 };
 
-export const camEstadoDetalleFactura = async (id: number, estado: 'A' | 'I') => {
-  const pool = await poolPromise;
-  await pool.request()
-    .input('IdDetalleFactura', sql.Int, id)
-    .input('Estado', sql.Char(1), estado)
-    .execute('CamEstadoDetalleFactura');
+export const camEstadoDetalleFactura = async (id: number, estado: 'A' | 'I', actor: ActorInfo | null = null) => {
+  await ejecutarConActor(actor, 'CamEstadoDetalleFactura', [
+    { name: 'IdDetalleFactura', type: sql.Int, value: id },
+    { name: 'Estado', type: sql.Char(1), value: estado },
+  ]);
 };
 
 // Genera automaticamente las lineas de medicamentos (cantidad * precio) que el
 // paciente marco para cobrar aqui (IncluirFactura = 1) en esa receta.
-export const generarDetalleFacturaDesdeReceta = async (idFactura: number, idReceta: number) => {
-  const pool = await poolPromise;
-  await pool.request()
-    .input('IdFactura', sql.Int, idFactura)
-    .input('IdReceta', sql.Int, idReceta)
-    .execute('GenerarDetalleFacturaDesdeReceta');
+export const generarDetalleFacturaDesdeReceta = async (
+  idFactura: number,
+  idReceta: number,
+  actor: ActorInfo | null = null
+) => {
+  await ejecutarConActor(actor, 'GenerarDetalleFacturaDesdeReceta', [
+    { name: 'IdFactura', type: sql.Int, value: idFactura },
+    { name: 'IdReceta', type: sql.Int, value: idReceta },
+  ]);
 };

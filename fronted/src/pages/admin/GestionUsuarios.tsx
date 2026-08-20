@@ -22,7 +22,6 @@ const AVATAR_COLORS: string[] = [
 
 const COLUMNAS_TABLA_USUARIOS = "44px 1.7fr 1.8fr 0.9fr 1.1fr 0.8fr 0.9fr";
 
-// ─── Tipos internos ───────────────────────────────────────────────────────────
 type FormUsuario = Omit<UsuarioClinica, "id" | "especialidadIds"> & { id?: number };
 
 interface ModalUsuarioProps {
@@ -540,25 +539,22 @@ export default function GestionUsuarios() {
                           {u.estado}
                         </span>
                       </div>
-                      <div className="d-flex align-items-center justify-content-center gap-1">
-                        <IconBtn
-                          label={puedeEditar ? "Editar" : "No tienes permiso para editar a este administrador"}
-                          onClick={() => puedeEditar && setModalUsuario(u)}
-                          disabled={!puedeEditar}
-                        >
-                          <i className="bi bi-pencil-square" aria-hidden="true" />
-                        </IconBtn>
-                        <IconBtn
-                          label={
-                            !puedeEditar
-                              ? "No tienes permiso para modificar a este administrador"
-                              : u.estado === "Activo" ? "Desactivar" : "Activar"
-                          }
-                          onClick={() => puedeEditar && solicitarCambioEstado(u)}
-                          disabled={!puedeEditar}
-                        >
-                          <i className={`bi ${u.estado === "Activo" ? "bi-lock-fill" : "bi-unlock-fill"}`} aria-hidden="true" />
-                        </IconBtn>
+                                           <div className="d-flex align-items-center justify-content-center gap-1">
+                        {puedeEditar ? (
+                          <>
+                            <IconBtn label="Editar" onClick={() => setModalUsuario(u)}>
+                              <i className="bi bi-pencil-square" aria-hidden="true" />
+                            </IconBtn>
+                            <IconBtn
+                              label={u.estado === "Activo" ? "Desactivar" : "Activar"}
+                              onClick={() => solicitarCambioEstado(u)}
+                            >
+                              <i className={`bi ${u.estado === "Activo" ? "bi-lock-fill" : "bi-unlock-fill"}`} aria-hidden="true" />
+                            </IconBtn>
+                          </>
+                        ) : (
+                          <span className="fs-11 text-secondary" title="Solo el administrador principal puede modificar a otro administrador">—</span>
+                        )}
                       </div>
                     </div>
                   );
