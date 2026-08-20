@@ -1,6 +1,10 @@
 import { Request, Response } from 'express';
 import * as MedicamentoModel from '../models/Medicamento.model';
+<<<<<<< Updated upstream
 import { obtenerActor } from '../config/actor';
+=======
+import * as CategoriaMedicamentoModel from '../models/CategoriaMedicamento.model';
+>>>>>>> Stashed changes
 
 const NOMBRE_REGEX = /^[A-Za-zÁÉÍÓÚáéíóúÑñ0-9.,+%/() -]{2,100}$/;
 const TEXTO_LIBRE_REGEX = /^[A-Za-zÁÉÍÓÚáéíóúÑñ0-9.,+%/() -]{0,300}$/;
@@ -9,12 +13,16 @@ const esNumeroValido = (valor: unknown): valor is number => {
   return typeof valor === 'number' && Number.isFinite(valor);
 };
 
+const esCampoVacio = (valor: unknown): boolean => {
+  return valor === undefined || valor === null || (typeof valor === 'string' && valor.trim() === '');
+};
+
 const validarDatosMedicamento = (body: any, requiereStockActual: boolean): string | null => {
   if (typeof body.NombreMedicamento !== 'string' || !NOMBRE_REGEX.test(body.NombreMedicamento.trim())) {
     return 'El nombre del medicamento es obligatorio y contiene caracteres no válidos';
   }
-  if (!esNumeroValido(Number(body.IdCategoria)) || Number(body.IdCategoria) <= 0) {
-    return 'La categoria seleccionada no es válida';
+  if (esCampoVacio(body.IdCategoria) || !esNumeroValido(Number(body.IdCategoria)) || Number(body.IdCategoria) <= 0) {
+    return 'La categoria es obligatoria y debe ser válida';
   }
   if (body.Descripcion !== undefined && body.Descripcion !== null && body.Descripcion !== '') {
     if (typeof body.Descripcion !== 'string' || !TEXTO_LIBRE_REGEX.test(body.Descripcion.trim()) || body.Descripcion.trim().length > 300) {
@@ -26,22 +34,33 @@ const validarDatosMedicamento = (body: any, requiereStockActual: boolean): strin
       return 'La presentación contiene caracteres no válidos';
     }
   }
-  if (typeof body.Ubicacion !== 'string' || body.Ubicacion.trim().length < 2 || !TEXTO_LIBRE_REGEX.test(body.Ubicacion.trim()) || body.Ubicacion.trim().length > 200) {
+  if (esCampoVacio(body.Ubicacion) || typeof body.Ubicacion !== 'string' || body.Ubicacion.trim().length < 2 || !TEXTO_LIBRE_REGEX.test(body.Ubicacion.trim()) || body.Ubicacion.trim().length > 200) {
     return 'La ubicación es obligatoria y contiene caracteres no válidos';
   }
   if (requiereStockActual) {
-    if (!esNumeroValido(Number(body.StockActual)) || Number(body.StockActual) < 0) {
-      return 'El stock actual debe ser un número mayor o igual a cero';
+    if (esCampoVacio(body.StockActual) || !esNumeroValido(Number(body.StockActual)) || Number(body.StockActual) < 0) {
+      return 'El stock actual es obligatorio y debe ser un número mayor o igual a cero';
     }
   }
-  if (!esNumeroValido(Number(body.StockMinimo)) || Number(body.StockMinimo) < 0) {
-    return 'El stock mínimo debe ser un número mayor o igual a cero';
+  if (esCampoVacio(body.StockMinimo) || !esNumeroValido(Number(body.StockMinimo)) || Number(body.StockMinimo) < 0) {
+    return 'El stock mínimo es obligatorio y debe ser un número mayor o igual a cero';
   }
-  if (!esNumeroValido(Number(body.PrecioUnitario)) || Number(body.PrecioUnitario) < 0) {
-    return 'El precio unitario debe ser un número mayor o igual a cero';
+  if (esCampoVacio(body.PrecioUnitario) || !esNumeroValido(Number(body.PrecioUnitario)) || Number(body.PrecioUnitario) < 0) {
+    return 'El precio unitario es obligatorio y debe ser un número mayor o igual a cero';
   }
   if (body.Estado !== undefined && body.Estado !== 'A' && body.Estado !== 'I') {
     return 'El estado no es válido';
+  }
+  return null;
+};
+
+const validarCategoriaDeMedicamento = async (idCategoria: number): Promise<string | null> => {
+  const categoria = await CategoriaMedicamentoModel.selectCategoriaMedicamentoById(idCategoria);
+  if (!categoria) {
+    return 'La categoría seleccionada no existe';
+  }
+  if (categoria.Estado !== 'A') {
+    return 'La categoría seleccionada está inactiva, no se puede usar en un medicamento';
   }
   return null;
 };
@@ -71,7 +90,13 @@ export const createMedicamento = async (req: Request, res: Response) => {
     const errorValidacion = validarDatosMedicamento(req.body, true);
     if (errorValidacion) return res.status(400).json({ error: errorValidacion });
 
+<<<<<<< Updated upstream
     const actor = await obtenerActor(req);
+=======
+    const errorCategoria = await validarCategoriaDeMedicamento(Number(req.body.IdCategoria));
+    if (errorCategoria) return res.status(400).json({ error: errorCategoria });
+
+>>>>>>> Stashed changes
     await MedicamentoModel.insertMedicamento({
       NombreMedicamento: req.body.NombreMedicamento.trim(),
       Descripcion: req.body.Descripcion ? req.body.Descripcion.trim() : undefined,
@@ -95,7 +120,13 @@ export const updateMedicamento = async (req: Request, res: Response) => {
     const errorValidacion = validarDatosMedicamento(req.body, false);
     if (errorValidacion) return res.status(400).json({ error: errorValidacion });
 
+<<<<<<< Updated upstream
     const actor = await obtenerActor(req);
+=======
+    const errorCategoria = await validarCategoriaDeMedicamento(Number(req.body.IdCategoria));
+    if (errorCategoria) return res.status(400).json({ error: errorCategoria });
+
+>>>>>>> Stashed changes
     await MedicamentoModel.updateMedicamento(Number(req.params.id), {
       NombreMedicamento: req.body.NombreMedicamento.trim(),
       Descripcion: req.body.Descripcion ? req.body.Descripcion.trim() : undefined,
@@ -135,6 +166,9 @@ export const updateStockMedicamento = async (req: Request, res: Response) => {
     const rol = req.header('x-rol');
     if (rol !== 'Administrador') {
       return res.status(403).json({ error: 'Solo un administrador puede modificar el stock actual.' });
+    }
+    if (esCampoVacio(req.body.StockActual)) {
+      return res.status(400).json({ error: 'El stock actual es obligatorio' });
     }
     const stockActual = Number(req.body.StockActual);
     if (!Number.isFinite(stockActual) || stockActual < 0) {

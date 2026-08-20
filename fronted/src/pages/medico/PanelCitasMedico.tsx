@@ -46,7 +46,12 @@ export default function PanelCitasMedico() {
   );
 
   const medicamentosDisponibles = useMemo(
-    () => snap.medicamentos.filter((m) => m.estado === "A"),
+    () => snap.medicamentos.filter((m) => m.estado === "A" && m.stockActual > 0),
+    [snap.medicamentos]
+  );
+
+  const medicamentosPorId = useMemo(
+    () => new Map(snap.medicamentos.map((m) => [m.id, m])),
     [snap.medicamentos]
   );
 
@@ -159,6 +164,22 @@ export default function PanelCitasMedico() {
         cantidad: Number(m.cantidad),
         indicaciones: m.indicaciones.trim() || undefined,
       }));
+
+    for (const item of items) {
+      const medicamento = medicamentosPorId.get(item.medicamentoId);
+      if (!medicamento || medicamento.estado !== "A") {
+        setError("Uno de los medicamentos seleccionados ya no está disponible.");
+        return;
+      }
+      if (!Number.isFinite(item.cantidad) || item.cantidad <= 0) {
+        setError("La cantidad de cada medicamento debe ser mayor a cero.");
+        return;
+      }
+      if (item.cantidad > medicamento.stockActual) {
+        setError(`No hay stock suficiente de ${medicamento.nombre}. Disponible: ${medicamento.stockActual}.`);
+        return;
+      }
+    }
 
     setGuardando(true);
     setError("");
@@ -433,6 +454,7 @@ export default function PanelCitasMedico() {
                       <input
                         type="number"
                         min={1}
+                        max={m.medicamentoId ? medicamentosPorId.get(m.medicamentoId)?.stockActual : undefined}
                         className="form-control form-control-sm"
                         style={{ maxWidth: 90 }}
                         placeholder="Cant."
