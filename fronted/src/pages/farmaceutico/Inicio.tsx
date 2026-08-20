@@ -28,12 +28,17 @@ const MODULOS_POR_ROL: Record<RolUsuario, ModuloInicio[]> = {
     { id: "citas-medico", label: "Recepción de citas", descripcion: "Consulta y expediente del paciente", icono: "clipboard2-pulse-fill", colorClase: "badge-soft-emerald" },
   ],
   Farmacéutico: [
+<<<<<<< Updated upstream
     { id: "recetas",              label: "Consulta de recetas",         descripcion: "Validar y entregar medicamentos",     icono: "file-earmark-medical-fill", colorClase: "badge-soft-blue" },
     { id: "inventario",           label: "Gestión de inventario",       descripcion: "Añadir y modificar medicamentos",     icono: "box-seam-fill",             colorClase: "badge-soft-teal" },
     { id: "categoriaMedicamento", label: "Categorías de medicamentos",  descripcion: "Organiza el catálogo por categoría",  icono: "tags-fill",                 colorClase: "badge-soft-purple" },
+=======
+    { id: "recetas",             label: "Consulta de recetas",       descripcion: "Validar y entregar medicamentos",     icono: "file-earmark-medical-fill", colorClase: "badge-soft-blue" },
+    { id: "inventario",          label: "Gestión de inventario",     descripcion: "Añadir y modificar medicamentos",     icono: "box-seam-fill",             colorClase: "badge-soft-teal" },
+    { id: "categoriaMedicamento", label: "Categorías de medicamento", descripcion: "Organizar medicamentos por categoría", icono: "tags-fill",                colorClase: "badge-soft-purple" },
+>>>>>>> Stashed changes
   ],
 };
-
 interface InicioProps {
   credencial: Credencial;
   onSeleccionarModulo: (id: string) => void;

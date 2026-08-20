@@ -5,8 +5,12 @@ import { obtenerActor } from '../config/actor';
 const NOMBRE_REGEX = /^[A-Za-zÁÉÍÓÚáéíóúÑñ0-9.,+%/() -]{2,100}$/;
 const COMENTARIO_REGEX = /^[A-Za-zÁÉÍÓÚáéíóúÑñ0-9.,+%/() -]{0,300}$/;
 
+const esCampoVacio = (valor: unknown): boolean => {
+  return valor === undefined || valor === null || (typeof valor === 'string' && valor.trim() === '');
+};
+
 const validarDatosCategoria = (body: any): string | null => {
-  if (typeof body.NombreCategoria !== 'string' || !NOMBRE_REGEX.test(body.NombreCategoria.trim())) {
+  if (esCampoVacio(body.NombreCategoria) || typeof body.NombreCategoria !== 'string' || !NOMBRE_REGEX.test(body.NombreCategoria.trim())) {
     return 'El nombre de la categoría es obligatorio y contiene caracteres no válidos';
   }
   if (body.Comentario !== undefined && body.Comentario !== null && body.Comentario !== '') {
