@@ -1,10 +1,6 @@
 import { Request, Response } from 'express';
 import * as MedicamentoModel from '../models/Medicamento.model';
-<<<<<<< Updated upstream
-import { obtenerActor } from '../config/actor';
-=======
 import * as CategoriaMedicamentoModel from '../models/CategoriaMedicamento.model';
->>>>>>> Stashed changes
 
 const NOMBRE_REGEX = /^[A-Za-zÁÉÍÓÚáéíóúÑñ0-9.,+%/() -]{2,100}$/;
 const TEXTO_LIBRE_REGEX = /^[A-Za-zÁÉÍÓÚáéíóúÑñ0-9.,+%/() -]{0,300}$/;
@@ -90,13 +86,9 @@ export const createMedicamento = async (req: Request, res: Response) => {
     const errorValidacion = validarDatosMedicamento(req.body, true);
     if (errorValidacion) return res.status(400).json({ error: errorValidacion });
 
-<<<<<<< Updated upstream
-    const actor = await obtenerActor(req);
-=======
     const errorCategoria = await validarCategoriaDeMedicamento(Number(req.body.IdCategoria));
     if (errorCategoria) return res.status(400).json({ error: errorCategoria });
 
->>>>>>> Stashed changes
     await MedicamentoModel.insertMedicamento({
       NombreMedicamento: req.body.NombreMedicamento.trim(),
       Descripcion: req.body.Descripcion ? req.body.Descripcion.trim() : undefined,
@@ -107,7 +99,7 @@ export const createMedicamento = async (req: Request, res: Response) => {
       StockMinimo: Number(req.body.StockMinimo),
       PrecioUnitario: Number(req.body.PrecioUnitario),
       Estado: req.body.Estado,
-    }, actor);
+    });
     res.status(201).json({ mensaje: 'Medicamento creado correctamente' });
   } catch (error) {
     console.error(error);
@@ -120,13 +112,9 @@ export const updateMedicamento = async (req: Request, res: Response) => {
     const errorValidacion = validarDatosMedicamento(req.body, false);
     if (errorValidacion) return res.status(400).json({ error: errorValidacion });
 
-<<<<<<< Updated upstream
-    const actor = await obtenerActor(req);
-=======
     const errorCategoria = await validarCategoriaDeMedicamento(Number(req.body.IdCategoria));
     if (errorCategoria) return res.status(400).json({ error: errorCategoria });
 
->>>>>>> Stashed changes
     await MedicamentoModel.updateMedicamento(Number(req.params.id), {
       NombreMedicamento: req.body.NombreMedicamento.trim(),
       Descripcion: req.body.Descripcion ? req.body.Descripcion.trim() : undefined,
@@ -136,7 +124,7 @@ export const updateMedicamento = async (req: Request, res: Response) => {
       StockMinimo: Number(req.body.StockMinimo),
       PrecioUnitario: Number(req.body.PrecioUnitario),
       Estado: req.body.Estado,
-    }, actor);
+    });
     res.json({ mensaje: 'Medicamento actualizado correctamente' });
   } catch (error) {
     console.error(error);
@@ -149,8 +137,7 @@ export const cambiarEstadoMedicamento = async (req: Request, res: Response) => {
     if (req.body.Estado !== 'A' && req.body.Estado !== 'I') {
       return res.status(400).json({ error: 'El estado no es válido' });
     }
-    const actor = await obtenerActor(req);
-    await MedicamentoModel.camEstadoMedicamento(Number(req.params.id), req.body.Estado, actor);
+    await MedicamentoModel.camEstadoMedicamento(Number(req.params.id), req.body.Estado);
     res.json({ mensaje: 'Estado del medicamento actualizado correctamente' });
   } catch (error) {
     console.error(error);
@@ -174,8 +161,7 @@ export const updateStockMedicamento = async (req: Request, res: Response) => {
     if (!Number.isFinite(stockActual) || stockActual < 0) {
       return res.status(400).json({ error: 'El stock actual debe ser un número mayor o igual a cero' });
     }
-    const actor = await obtenerActor(req);
-    await MedicamentoModel.updateStockMedicamento(Number(req.params.id), stockActual, actor);
+    await MedicamentoModel.updateStockMedicamento(Number(req.params.id), stockActual);
     res.json({ mensaje: 'Stock actualizado correctamente' });
   } catch (error) {
     console.error(error);

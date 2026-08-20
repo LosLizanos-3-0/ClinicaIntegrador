@@ -1,6 +1,5 @@
 import { Request, Response } from 'express';
 import * as DetalleModel from '../models/DetalleReceta.model';
-import { obtenerActor } from '../config/actor';
 
 const INDICACIONES_REGEX = /^[A-Za-zÁÉÍÓÚáéíóúÑñ0-9.,+%/() -]{0,300}$/;
 
@@ -56,10 +55,6 @@ export const getDetalleById = async (req: Request, res: Response) => {
 
 export const createDetalle = async (req: Request, res: Response) => {
   try {
-<<<<<<< Updated upstream
-    const actor = await obtenerActor(req);
-    await DetalleModel.insertDetalleReceta(req.body, actor);
-=======
     const errorValidacion = validarDatosDetalle(req.body);
     if (errorValidacion) return res.status(400).json({ error: errorValidacion });
 
@@ -71,7 +66,6 @@ export const createDetalle = async (req: Request, res: Response) => {
       IncluirFactura: req.body.IncluirFactura ?? false,
       Estado: req.body.Estado,
     });
->>>>>>> Stashed changes
     res.status(201).json({ mensaje: 'Detalle creado correctamente' });
   } catch (error: any) {
     console.error(error);
@@ -90,10 +84,6 @@ export const createDetalle = async (req: Request, res: Response) => {
 
 export const updateDetalle = async (req: Request, res: Response) => {
   try {
-<<<<<<< Updated upstream
-    const actor = await obtenerActor(req);
-    await DetalleModel.updateDetalleReceta(Number(req.params.id), req.body, actor);
-=======
     const errorValidacion = validarDatosDetalle(req.body);
     if (errorValidacion) return res.status(400).json({ error: errorValidacion });
 
@@ -105,7 +95,6 @@ export const updateDetalle = async (req: Request, res: Response) => {
       IncluirFactura: req.body.IncluirFactura ?? false,
       Estado: req.body.Estado,
     });
->>>>>>> Stashed changes
     res.json({ mensaje: 'Detalle actualizado correctamente' });
   } catch (error) {
     console.error(error);
@@ -115,15 +104,10 @@ export const updateDetalle = async (req: Request, res: Response) => {
 
 export const cambiarEstadoDetalle = async (req: Request, res: Response) => {
   try {
-<<<<<<< Updated upstream
-    const actor = await obtenerActor(req);
-    await DetalleModel.camEstadoDetalleReceta(Number(req.params.id), req.body.Estado, actor);
-=======
     if (esCampoVacio(req.body.Estado) || (req.body.Estado !== 'A' && req.body.Estado !== 'I')) {
       return res.status(400).json({ error: 'El estado no es válido' });
     }
     await DetalleModel.camEstadoDetalleReceta(Number(req.params.id), req.body.Estado);
->>>>>>> Stashed changes
     res.json({ mensaje: 'Estado del detalle actualizado correctamente' });
   } catch (error) {
     console.error(error);
@@ -134,15 +118,10 @@ export const cambiarEstadoDetalle = async (req: Request, res: Response) => {
 // Checkbox del frontend: "cobrar aqui" / "lo retiro en otra farmacia"
 export const marcarIncluirFactura = async (req: Request, res: Response) => {
   try {
-<<<<<<< Updated upstream
-    const actor = await obtenerActor(req);
-    await DetalleModel.marcarIncluirFacturaDetalleReceta(Number(req.params.id), req.body.IncluirFactura, actor);
-=======
     if (typeof req.body.IncluirFactura !== 'boolean') {
       return res.status(400).json({ error: 'La preferencia de facturación no es válida' });
     }
     await DetalleModel.marcarIncluirFacturaDetalleReceta(Number(req.params.id), req.body.IncluirFactura);
->>>>>>> Stashed changes
     res.json({ mensaje: 'Preferencia de facturación actualizada correctamente' });
   } catch (error) {
     console.error(error);

@@ -46,10 +46,8 @@ export const getEntregaById = async (req: Request, res: Response) => {
 
 export const createEntrega = async (req: Request, res: Response) => {
   try {
-<<<<<<< Updated upstream
     const actor = await obtenerActor(req);
     await EntregaModel.insertEntregaMedicamento(req.body, actor);
-=======
     const errorValidacion = validarDatosEntrega(req.body);
     if (errorValidacion) return res.status(400).json({ error: errorValidacion });
 
@@ -58,7 +56,6 @@ export const createEntrega = async (req: Request, res: Response) => {
       IdUsuario: Number(req.body.IdUsuario),
       Estado: req.body.Estado,
     });
->>>>>>> Stashed changes
     res.status(201).json({ mensaje: 'Entrega registrada correctamente' });
   } catch (error: any) {
     console.error(error);
@@ -71,10 +68,8 @@ export const createEntrega = async (req: Request, res: Response) => {
 
 export const updateEntrega = async (req: Request, res: Response) => {
   try {
-<<<<<<< Updated upstream
     const actor = await obtenerActor(req);
     await EntregaModel.updateEntregaMedicamento(Number(req.params.id), req.body, actor);
-=======
     const errorValidacion = validarDatosEntrega(req.body);
     if (errorValidacion) return res.status(400).json({ error: errorValidacion });
 
@@ -83,7 +78,6 @@ export const updateEntrega = async (req: Request, res: Response) => {
       IdUsuario: Number(req.body.IdUsuario),
       Estado: req.body.Estado,
     });
->>>>>>> Stashed changes
     res.json({ mensaje: 'Entrega actualizada correctamente' });
   } catch (error) {
     console.error(error);
@@ -93,15 +87,12 @@ export const updateEntrega = async (req: Request, res: Response) => {
 
 export const cambiarEstadoEntrega = async (req: Request, res: Response) => {
   try {
-<<<<<<< Updated upstream
     const actor = await obtenerActor(req);
     await EntregaModel.camEstadoEntregaMedicamento(Number(req.params.id), req.body.Estado, actor);
-=======
     if (esCampoVacio(req.body.Estado) || (req.body.Estado !== 'A' && req.body.Estado !== 'I')) {
       return res.status(400).json({ error: 'El estado no es válido' });
     }
     await EntregaModel.camEstadoEntregaMedicamento(Number(req.params.id), req.body.Estado);
->>>>>>> Stashed changes
     res.json({ mensaje: 'Estado de la entrega actualizado correctamente' });
   } catch (error) {
     console.error(error);
