@@ -3,7 +3,6 @@ import type { EstadoEspecialidad } from "../../types/clinica.types";
 import { clinicaStore, useClinicaStore, type UsuarioClinica, type EspecialidadClinica } from "../../types/clinicaStore";
 import { validarNombre } from "../../utils/validaciones";
 
-// ─── Tipos internos ───────────────────────────────────────────────────────────
 type Vista = "grid" | "list";
 type FormEspecialidad = { nombre: string; estado: EstadoEspecialidad; id?: number };
 
@@ -31,7 +30,6 @@ interface ModalConfirmarEstadoProps {
 
 const COLUMNAS_TABLA_ESPECIALIDADES = "1.6fr 0.8fr 0.8fr 0.9fr";
 
-// ─── Modal: confirmar activar/desactivar especialidad ─────────────────────────
 function ModalConfirmarEstado({ especialidad, onConfirmar, onCerrar }: ModalConfirmarEstadoProps) {
   const vaADesactivar = especialidad.estado === "Activa";
   const accion = vaADesactivar ? "desactivar" : "activar";
@@ -82,7 +80,6 @@ function ModalConfirmarEstado({ especialidad, onConfirmar, onCerrar }: ModalConf
   );
 }
 
-// ─── Modal: gestionar médicos de una especialidad ─────────────────────────────
 function ModalGestionMedicos({
   titulo,
   todosMedicos,
@@ -217,7 +214,6 @@ function ModalGestionMedicos({
   );
 }
 
-// ─── Modal Crear / Editar ─────────────────────────────────────────────────────
 function ModalEspecialidad({ especialidad, onGuardar, onCerrar }: ModalEspecialidadProps) {
   const esNueva = !especialidad?.id;
   const { usuarios } = useClinicaStore();

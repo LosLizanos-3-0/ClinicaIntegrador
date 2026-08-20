@@ -1,0 +1,128 @@
+/* =========================================================================
+   login.css — Estilos exclusivos de la pantalla de Login
+   Se importa SOLO desde Login.tsx, independiente de index.css
+   ========================================================================= */
+
+.login-page {
+  min-height: 100vh;
+  background: #EAF2FA;
+}
+
+.login-hero {
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(155deg, #12467A 0%, #0B3866 55%, #082A4D 100%);
+  color: #fff;
+  isolation: isolate;
+}
+
+.login-hero::before,
+.login-hero::after {
+  content: "";
+  position: absolute;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.06);
+  z-index: -1;
+}
+.login-hero::before {
+  width: 420px;
+  height: 420px;
+  top: -140px;
+  right: -120px;
+}
+.login-hero::after {
+  width: 300px;
+  height: 300px;
+  bottom: -100px;
+  left: -80px;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.login-hero-badge {
+  width: 3.25rem;
+  height: 3.25rem;
+  border-radius: 1rem;
+  background: rgba(255, 255, 255, 0.14);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  backdrop-filter: blur(2px);
+}
+
+.login-feature {
+  display: flex;
+  align-items: flex-start;
+  gap: .75rem;
+}
+.login-feature .icon-wrap {
+  width: 2rem;
+  height: 2rem;
+  flex-shrink: 0;
+  border-radius: .6rem;
+  background: rgba(255, 255, 255, 0.14);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: .9rem;
+}
+
+.login-card {
+  width: 100%;
+  max-width: 400px;
+}
+
+.login-input-group {
+  border-radius: .6rem;
+  overflow: hidden;
+}
+.login-input-group .input-group-text {
+  background-color: #F4F7F9;
+  border-right: none;
+  color: #51667A;
+}
+.login-input-group .form-control {
+  border-left: none;
+}
+.login-input-group .form-control:focus {
+  box-shadow: none;
+  border-color: #A8D3DF;
+}
+.login-input-group:focus-within {
+  box-shadow: 0 0 0 0.2rem rgba(11, 110, 140, .15);
+  border-radius: .6rem;
+}
+
+.btn-login {
+  background: linear-gradient(135deg, #1565C0 0%, #0B3866 100%);
+  border: none;
+  font-weight: 600;
+  letter-spacing: .2px;
+  transition: filter .15s ease, transform .1s ease;
+}
+.btn-login:hover { filter: brightness(1.08); }
+.btn-login:active { transform: translateY(1px); }
+
+.login-input-group .btn.btn-outline-secondary {
+  background-color: #ffffff !important;
+  border: none !important;
+  border-left: 1px solid #E1E7EC !important;
+  border-radius: 0 !important;
+  color: #8598AA !important;
+  box-shadow: none !important;
+}
+.login-input-group .btn.btn-outline-secondary:hover,
+.login-input-group .btn.btn-outline-secondary:focus,
+.login-input-group .btn.btn-outline-secondary:active,
+.login-input-group .btn.btn-outline-secondary:focus-visible {
+  background-color: #ffffff !important;
+  border: none !important;
+  border-left: 1px solid #E1E7EC !important;
+  color: #1565C0 !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
+.login-input-group .btn.btn-outline-secondary i {
+  color: inherit !important;
+}

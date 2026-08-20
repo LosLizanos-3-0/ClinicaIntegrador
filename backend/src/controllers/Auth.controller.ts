@@ -11,11 +11,11 @@ export const login = async (req: Request, res: Response) => {
   // realizó la acción (nunca se revela el nombre real de la cuenta,
   // exista o no, aunque el detalle interno del intento sí queda en el
   // campo Registro para auditoría).
-  const registrarIntento = async (
+    const registrarIntento = async (
     resultado: 'EXITOSO' | 'FALLIDO',
     detalle: string,
     usuarioMostrar: string = 'Desconocido',
-    rol?: string
+    rol: string = 'Desconocido'
   ) => {
     try {
       await BitacoraModel.insertBitacoraLogin(usuario || '(vacío)', resultado, detalle, usuarioMostrar, rol);

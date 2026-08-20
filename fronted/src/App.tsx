@@ -1,17 +1,3 @@
-/**
- * App.tsx
- * Integra las pantallas generales (login, registro, inicio) y los módulos
- * de Admin y Farmacéutico con navegación lateral.
- *
- * Requiere: React 18+ · TypeScript · Bootstrap 5.3 · Bootstrap Icons 1.11+
- * Agregar en el <head> del proyecto (si no está ya):
- *   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
- * (usa clases auxiliares definidas en clinica-admin.css)
- *
- * Los íconos del menú lateral usan Bootstrap Icons (mismo set que el resto
- * del sistema) en vez de emojis, para un tono más formal/profesional.
- */
-
 import React, { useEffect, useState } from "react";
 import Login from "./pages/farmaceutico/Login";
 import Inicio from "./pages/farmaceutico/Inicio";
@@ -68,9 +54,9 @@ const NAV_ITEMS_POR_ROL: Record<string, NavItem[]> = {
     { id: "categoriaMedicamento", label: "Categoría", icono: "tags-fill" },
   ],
   Recepcionista: [
-    { id: "pacientes", label: "Pacientes", icono: "🧾" },
-    { id: "citas", label: "Citas", icono: "📅" },
-    { id: "facturas", label: "Facturas", icono: "🧮" },
+    { id: "pacientes", label: "Pacientes", icono: "person-vcard-fill" },
+    { id: "citas", label: "Citas", icono: "calendar-check-fill" },
+    { id: "facturas", label: "Facturas", icono: "receipt-cutoff" },
   ],
   Médico: [
     { id: "citasMedico", label: "Citas", icono: "calendar-check-fill" },
@@ -81,6 +67,7 @@ export default function App() {
   const [vista, setVista] = useState<Vista>("login");
   const [credencial, setCredencial] = useState<Credencial | null>(null);
   const [seccion, setSeccion] = useState<Seccion | null>(null);
+  const [confirmCerrarSesion, setConfirmCerrarSesion] = useState(false);
 
   // Carga inicial de datos reales desde el backend (pacientes, citas,
   // facturas, usuarios, especialidades). Se ejecuta una sola vez al montar
@@ -126,6 +113,36 @@ export default function App() {
 
   return (
     <div className="min-vh-100 bg-light d-flex">
+      {confirmCerrarSesion && (
+        <div className="modal-overlay d-flex align-items-center justify-content-center p-3" style={{ zIndex: 1070 }}>
+          <div className="bg-white rounded-4 shadow w-100" style={{ maxWidth: 420 }}>
+            <div className="p-4 d-flex flex-column align-items-center text-center">
+              <div
+                className="d-flex align-items-center justify-content-center rounded-circle mb-3 bg-danger-subtle"
+                style={{ width: 56, height: 56 }}
+              >
+                <i className="bi bi-box-arrow-right fs-3 text-danger" aria-hidden="true" />
+              </div>
+              <h3 className="fs-6 fw-semibold text-dark mb-2">¿Deseas cerrar sesión?</h3>
+              <p className="fs-6 text-secondary mb-0">
+                Tendrás que volver a ingresar tu usuario y contraseña para acceder de nuevo al sistema.
+              </p>
+            </div>
+            <div className="px-4 py-3 border-top d-flex justify-content-end gap-2">
+              <button onClick={() => setConfirmCerrarSesion(false)} className="btn btn-outline-secondary btn-sm">
+                Cancelar
+              </button>
+              <button
+                onClick={() => { setConfirmCerrarSesion(false); handleCerrarSesion(); }}
+                className="btn btn-danger btn-sm"
+              >
+                Cerrar sesión
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Sidebar */}
       <aside className="sidebar-width bg-white border-end flex-shrink-0 d-none d-md-flex flex-column">
         {/* Logo */}
@@ -164,7 +181,7 @@ export default function App() {
             <div className="avatar-circle avatar-blue">{credencial.iniciales}</div>
             <p className="fs-11 text-secondary mb-0">{credencial.nombreCompleto}</p>
           </div>
-          <button onClick={handleCerrarSesion} className="btn btn-link text-secondary p-0" title="Cerrar sesión">
+          <button onClick={() => setConfirmCerrarSesion(true)} className="btn btn-link text-secondary p-0" title="Cerrar sesión">
             <i className="bi bi-box-arrow-right" aria-hidden="true" />
           </button>
         </div>
@@ -197,17 +214,7 @@ export default function App() {
       <main className="flex-fill p-3 p-md-4 content-main overflow-auto">
         {seccion === "usuarios" && <GestionUsuarios />}
 
-        {seccion === "reportes" && (
-          <GestionReportes
-            onNuevoReporte={() => console.log("Nuevo reporte")}
-            onVerReporte={(r) =>
-              console.log("Ver reporte:", r.nombre)
-            }
-            onDescargar={(r) =>
-              console.log("Descargar:", r.nombre)
-            }
-          />
-        )}
+               {seccion === "reportes" && <GestionReportes />}
 
         {seccion === "especialidades" && (
           <GestionEspecialidades />

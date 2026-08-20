@@ -1,20 +1,20 @@
 import sql from 'mssql';
 import poolPromise from '../config/db';
+import { ejecutarConActor, ActorInfo } from '../config/actor';
 import { Medicamento, MedicamentoUpdate } from '../types';
 
-export const insertMedicamento = async (data: Medicamento) => {
-  const pool = await poolPromise;
-  await pool.request()
-    .input('NombreMedicamento', sql.VarChar(100), data.NombreMedicamento)
-    .input('Descripcion', sql.VarChar(300), data.Descripcion ?? null)
-    .input('IdCategoria', sql.Int, data.IdCategoria)
-    .input('Presentacion', sql.VarChar(50), data.Presentacion ?? null)
-    .input('Ubicacion', sql.VarChar(200), data.Ubicacion)
-    .input('StockActual', sql.Int, data.StockActual ?? 0)
-    .input('StockMinimo', sql.Int, data.StockMinimo ?? 0)
-    .input('PrecioUnitario', sql.Decimal(10, 2), data.PrecioUnitario ?? 0)
-    .input('Estado', sql.Char(1), data.Estado ?? 'A')
-    .execute('InsertMedicamento');
+export const insertMedicamento = async (data: Medicamento, actor: ActorInfo | null = null) => {
+  await ejecutarConActor(actor, 'InsertMedicamento', [
+    { name: 'NombreMedicamento', type: sql.VarChar(100), value: data.NombreMedicamento },
+    { name: 'Descripcion', type: sql.VarChar(300), value: data.Descripcion ?? null },
+    { name: 'IdCategoria', type: sql.Int, value: data.IdCategoria },
+    { name: 'Presentacion', type: sql.VarChar(50), value: data.Presentacion ?? null },
+    { name: 'Ubicacion', type: sql.VarChar(200), value: data.Ubicacion },
+    { name: 'StockActual', type: sql.Int, value: data.StockActual ?? 0 },
+    { name: 'StockMinimo', type: sql.Int, value: data.StockMinimo ?? 0 },
+    { name: 'PrecioUnitario', type: sql.Decimal(10, 2), value: data.PrecioUnitario ?? 0 },
+    { name: 'Estado', type: sql.Char(1), value: data.Estado ?? 'A' },
+  ]);
 };
 
 export const selectMedicamento = async (): Promise<Medicamento[]> => {
@@ -29,34 +29,33 @@ export const selectMedicamentoById = async (id: number): Promise<Medicamento | u
   return result.recordset[0];
 };
 
-export const updateMedicamento = async (id: number, data: MedicamentoUpdate) => {
-  const pool = await poolPromise;
-  await pool.request()
-    .input('IdMedicamento', sql.Int, id)
-    .input('NombreMedicamento', sql.VarChar(100), data.NombreMedicamento)
-    .input('Descripcion', sql.VarChar(300), data.Descripcion ?? null)
-    .input('IdCategoria', sql.Int, data.IdCategoria)
-    .input('Presentacion', sql.VarChar(50), data.Presentacion ?? null)
-    .input('Ubicacion', sql.VarChar(200), data.Ubicacion)
-    .input('StockMinimo', sql.Int, data.StockMinimo)
-    .input('PrecioUnitario', sql.Decimal(10, 2), data.PrecioUnitario)
-    .input('Estado', sql.Char(1), data.Estado ?? 'A')
-    .execute('UpdateMedicamento');
+export const updateMedicamento = async (id: number, data: MedicamentoUpdate, actor: ActorInfo | null = null) => {
+  await ejecutarConActor(actor, 'UpdateMedicamento', [
+    { name: 'IdMedicamento', type: sql.Int, value: id },
+    { name: 'NombreMedicamento', type: sql.VarChar(100), value: data.NombreMedicamento },
+    { name: 'Descripcion', type: sql.VarChar(300), value: data.Descripcion ?? null },
+    { name: 'IdCategoria', type: sql.Int, value: data.IdCategoria },
+    { name: 'Presentacion', type: sql.VarChar(50), value: data.Presentacion ?? null },
+    { name: 'Ubicacion', type: sql.VarChar(200), value: data.Ubicacion },
+    { name: 'StockMinimo', type: sql.Int, value: data.StockMinimo },
+    { name: 'PrecioUnitario', type: sql.Decimal(10, 2), value: data.PrecioUnitario },
+    { name: 'Estado', type: sql.Char(1), value: data.Estado ?? 'A' },
+  ]);
 };
 
-export const camEstadoMedicamento = async (id: number, estado: 'A' | 'I') => {
-  const pool = await poolPromise;
-  await pool.request()
-    .input('IdMedicamento', sql.Int, id)
-    .input('Estado', sql.Char(1), estado)
-    .execute('CamEstadoMedicamento');
+export const camEstadoMedicamento = async (id: number, estado: 'A' | 'I', actor: ActorInfo | null = null) => {
+  await ejecutarConActor(actor, 'CamEstadoMedicamento', [
+    { name: 'IdMedicamento', type: sql.Int, value: id },
+    { name: 'Estado', type: sql.Char(1), value: estado },
+  ]);
 };
 
-export const updateStockMedicamento = async (id: number, stockActual: number) => {
-  const pool = await poolPromise;
-  await pool.request()
-    .input('IdMedicamento', sql.Int, id)
-    .input('StockActual', sql.Int, stockActual)
-    .execute('UpdateStockMedicamento');
+// Actualiza únicamente el stock actual. Es un procedimiento aparte y
+// exclusivo, pensado para que solo el rol Administrador lo invoque
+// (la validación de rol se hace en el controlador).
+export const updateStockMedicamento = async (id: number, stockActual: number, actor: ActorInfo | null = null) => {
+  await ejecutarConActor(actor, 'UpdateStockMedicamento', [
+    { name: 'IdMedicamento', type: sql.Int, value: id },
+    { name: 'StockActual', type: sql.Int, value: stockActual },
+  ]);
 };
-

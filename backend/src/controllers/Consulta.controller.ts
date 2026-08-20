@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import * as ConsultaModel from '../models/Consulta.model';
+import { obtenerActor } from '../config/actor';
 
 export const getConsultas = async (req: Request, res: Response) => {
   try {
@@ -23,7 +24,8 @@ export const getConsultaById = async (req: Request, res: Response) => {
 
 export const createConsulta = async (req: Request, res: Response) => {
   try {
-    await ConsultaModel.insertConsulta(req.body);
+    const actor = await obtenerActor(req);
+    await ConsultaModel.insertConsulta(req.body, actor);
     res.status(201).json({ mensaje: 'Consulta creada correctamente' });
   } catch (error) {
     console.error(error);
@@ -33,7 +35,8 @@ export const createConsulta = async (req: Request, res: Response) => {
 
 export const updateConsulta = async (req: Request, res: Response) => {
   try {
-    await ConsultaModel.updateConsulta(Number(req.params.id), req.body);
+    const actor = await obtenerActor(req);
+    await ConsultaModel.updateConsulta(Number(req.params.id), req.body, actor);
     res.json({ mensaje: 'Consulta actualizada correctamente' });
   } catch (error) {
     console.error(error);
@@ -43,7 +46,8 @@ export const updateConsulta = async (req: Request, res: Response) => {
 
 export const cambiarEstadoConsulta = async (req: Request, res: Response) => {
   try {
-    await ConsultaModel.camEstadoConsulta(Number(req.params.id), req.body.Estado);
+    const actor = await obtenerActor(req);
+    await ConsultaModel.camEstadoConsulta(Number(req.params.id), req.body.Estado, actor);
     res.json({ mensaje: 'Estado de la consulta actualizado correctamente' });
   } catch (error) {
     console.error(error);

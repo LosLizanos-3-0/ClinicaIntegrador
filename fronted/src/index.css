@@ -1,36 +1,30 @@
 /* ===================================================================
    clinica-admin.css
-   Utilidades complementarias a Bootstrap 5.3 para el módulo admin.
-   Reemplaza los valores "arbitrarios" que existían en Tailwind
-   (text-[11px], bg-purple-100, left-[18px], etc.) que Bootstrap no
-   trae de fábrica. Importar este archivo UNA vez, después del CSS
-   de Bootstrap, por ejemplo en main.tsx:  import "./clinica-admin.css";
+   Utilidades complementarias a Bootstrap 5.3.
+   Único color personalizado: el menú lateral (azul, texto/íconos blancos).
+   El resto del sistema usa los colores por defecto de Bootstrap.
    =================================================================== */
-   /*instalar esta libreria*/
-   /*npm install bootstrap-icons  */
-   /* npm install bootstrap*/
 
-
-/* ---------- Tamaños de texto pequeños (Tailwind text-[10px]/[11px]) --- */
+/* ---------- Tamaños de texto pequeños ---------- */
 .fs-10 { font-size: 10px; }
 .fs-11 { font-size: 11px; }
 .fs-12 { font-size: 12px; }
 
-/* ---------- Opacidad intermedia (Tailwind opacity-60) ------------------ */
+/* ---------- Opacidad intermedia ---------- */
 .opacity-60 { opacity: .6; }
 
-/* ---------- Overlay de modal (Tailwind bg-black/40) --------------------- */
+/* ---------- Overlay de modal ---------- */
 .modal-overlay {
   position: fixed;
   inset: 0;
   background: rgba(0, 0, 0, .4);
-  z-index: 1055; /* por encima de .modal de bootstrap si se mezclan */
+  z-index: 1055;
 }
 
-/* ---------- Tarjetas / contenedores grises (bg-gray-50) ---------------- */
+/* ---------- Tarjetas / contenedores grises ---------- */
 .bg-soft { background-color: #f9fafb; }
 
-/* ---------- Avatares circulares con iniciales --------------------------- */
+/* ---------- Avatares circulares con iniciales ---------- */
 .avatar-circle {
   width: 2rem;
   height: 2rem;
@@ -49,7 +43,7 @@
 .avatar-purple  { background-color: #ede9fe; color: #6d28d9; }
 .avatar-teal    { background-color: #ccfbf1; color: #0f766e; }
 
-/* ---------- Badges de color (roles, estados, tipos de reporte) --------- */
+/* ---------- Badges de color ---------- */
 .badge-soft {
   font-size: 11px;
   font-weight: 500;
@@ -68,7 +62,7 @@
 .badge-soft-gray     { background-color: #f3f4f6; color: #4b5563; }
 .badge-soft-red      { background-color: #fee2e2; color: #b91c1c; }
 
-/* ---------- Icono cuadrado de color (KPIs) ------------------------------ */
+/* ---------- Icono cuadrado de color (KPIs) ---------- */
 .icon-box {
   width: 2rem;
   height: 2rem;
@@ -79,7 +73,7 @@
   font-size: .875rem;
 }
 
-/* ---------- Toggle switch (Gestión de roles) ---------------------------- */
+/* ---------- Toggle switch ---------- */
 .toggle-switch {
   width: 2.25rem;
   height: 1.25rem;
@@ -109,7 +103,7 @@
 }
 .toggle-switch.on .knob { left: 18px; }
 
-/* ---------- Botones icono cuadrados (editar / bloquear / eliminar) ----- */
+/* ---------- Botones icono cuadrados ---------- */
 .btn-icon-sm {
   width: 1.75rem;
   height: 1.75rem;
@@ -121,19 +115,14 @@
 }
 .btn-icon-warn:hover   { background-color: #fef3c7 !important; color: #b45309 !important; border-color: #fde68a !important; }
 .btn-icon-danger:hover { background-color: #fee2e2 !important; color: #dc2626 !important; border-color: #fecaca !important; }
-
-/* Fuerza el mismo gris exacto en el ícono, sin importar el matiz propio
-   del glifo de Bootstrap Icons (p. ej. bi-pencil-square se percibe algo
-   azulado por su antialiasing). Así editar/eliminar/bloquear siempre
-   coinciden en tono en Roles y en Especialidades. */
 .btn-icon-sm.text-secondary i {
   color: #6c757d !important;
 }
 
-/* ---------- Color de texto morado (no incluido en Bootstrap) ----------- */
+/* ---------- Color de texto morado ---------- */
 .text-purple { color: #7c3aed; }
 
-/* ---------- Filas de tabla tipo "grid" personalizado -------------------- */
+/* ---------- Filas de tabla tipo "grid" ---------- */
 .grid-usuarios {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -153,11 +142,11 @@
   }
 }
 
-/* ---------- Colores de barra no incluidos en Bootstrap ------------------ */
+/* ---------- Colores de barra ---------- */
 .bg-purple-bar { background-color: #8b5cf6; }
 .bg-orange-bar { background-color: #f97316; }
 
-/* ---------- Barra de progreso delgada (reportes por especialidad) ------ */
+/* ---------- Barra de progreso delgada ---------- */
 .bar-thin {
   height: .5rem;
   border-radius: 999px;
@@ -168,7 +157,7 @@
 
 .w-fit-content { width: fit-content; }
 
-/* ---------- Layout general de App.tsx (sidebar / contenido) ------------ */
+/* ---------- Layout general de App.tsx ---------- */
 .sidebar-width { width: 13rem; }
 
 .border-end-4 {
@@ -179,12 +168,97 @@
 .z-40 { z-index: 1030; }
 
 .content-main {
-  padding-bottom: 4rem; /* espacio para el nav móvil inferior */
+  padding-bottom: 4rem;
 }
 @media (min-width: 768px) {
   .content-main { padding-bottom: 1.5rem; }
 }
 
-/* ---------- Hover suave para filas/cards -------------------------------- */
+/* =========================================================================
+   EFECTOS VISUALES EN TARJETAS — hover (mouse) + "toque" (click/tap)
+   Aplica a las tarjetas KPI y a cualquier tarjeta con .card-hover-primary
+   ========================================================================= */
+
+/* Tarjetas KPI (Total usuarios, Stock bajo, etc.): se detectan porque
+   contienen el número grande (p.fs-4), sin tocar ningún .tsx */
+.bg-soft.border.rounded:has(p.fs-4) {
+  cursor: pointer;
+  transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease;
+}
+.bg-soft.border.rounded:has(p.fs-4):hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(13, 110, 253, .12);
+  border-color: #93c5fd !important;
+}
+.bg-soft.border.rounded:has(p.fs-4):active {
+  transform: translateY(0) scale(.98);
+  box-shadow: 0 2px 6px rgba(13, 110, 253, .10);
+}
+
+/* Filas de tabla interactivas */
+.hover-row {
+  transition: background-color .12s ease, transform .1s ease;
+  cursor: pointer;
+}
 .hover-row:hover { background-color: #f9fafb; }
-.card-hover-primary:hover { border-color: #93c5fd !important; }
+.hover-row:active { transform: scale(.997); background-color: #f1f5f9; }
+
+/* Tarjetas genéricas que ya usan esta clase (roles, especialidades, etc.) */
+.card-hover-primary {
+  transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease;
+  cursor: pointer;
+}
+.card-hover-primary:hover {
+  border-color: #93c5fd !important;
+  box-shadow: 0 6px 16px rgba(13, 110, 253, .10);
+  transform: translateY(-2px);
+}
+.card-hover-primary:active {
+  transform: translateY(0) scale(.98);
+  box-shadow: 0 2px 6px rgba(13, 110, 253, .08);
+}
+
+/* Efecto "ripple" sutil de foco/click para accesibilidad con teclado */
+.bg-soft.border.rounded:has(p.fs-4):focus-visible,
+.card-hover-primary:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 .2rem rgba(13, 110, 253, .25);
+}
+
+/* =========================================================================
+   MENÚ LATERAL — azul con TODO el texto e íconos en blanco
+   ========================================================================= */
+aside.sidebar-width {
+  background: linear-gradient(180deg, #12467A 0%, #0B3866 100%) !important;
+  border-right: none !important;
+}
+
+aside.sidebar-width,
+aside.sidebar-width * {
+  color: #ffffff !important;
+}
+
+aside.sidebar-width .border-bottom,
+aside.sidebar-width .border-top {
+  border-color: rgba(255, 255, 255, .18) !important;
+}
+
+aside.sidebar-width .avatar-circle {
+  background: rgba(255, 255, 255, .18) !important;
+}
+
+aside.sidebar-width nav button {
+  background: transparent !important;
+  border-right: 4px solid transparent !important;
+  transition: background-color .15s ease;
+}
+aside.sidebar-width nav button:hover {
+  background: rgba(255, 255, 255, .08) !important;
+}
+aside.sidebar-width nav button:active {
+  background: rgba(255, 255, 255, .14) !important;
+}
+aside.sidebar-width nav button[class*="bg-primary"] {
+  background: rgba(255, 255, 255, .16) !important;
+  border-right: 4px solid #ffffff !important;
+}

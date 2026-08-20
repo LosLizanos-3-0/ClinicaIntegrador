@@ -1,17 +1,17 @@
 import sql from 'mssql';
 import poolPromise from '../config/db';
+import { ejecutarConActor, ActorInfo } from '../config/actor';
 import { DetalleReceta } from '../types';
 
-export const insertDetalleReceta = async (data: DetalleReceta) => {
-  const pool = await poolPromise;
-  await pool.request()
-    .input('IdReceta', sql.Int, data.IdReceta)
-    .input('IdMedicamento', sql.Int, data.IdMedicamento)
-    .input('Cantidad', sql.Int, data.Cantidad)
-    .input('Indicaciones', sql.VarChar(300), data.Indicaciones ?? null)
-    .input('IncluirFactura', sql.Bit, data.IncluirFactura ?? false)
-    .input('Estado', sql.Char(1), data.Estado ?? 'A')
-    .execute('InsertDetalleReceta');
+export const insertDetalleReceta = async (data: DetalleReceta, actor: ActorInfo | null = null) => {
+  await ejecutarConActor(actor, 'InsertDetalleReceta', [
+    { name: 'IdReceta', type: sql.Int, value: data.IdReceta },
+    { name: 'IdMedicamento', type: sql.Int, value: data.IdMedicamento },
+    { name: 'Cantidad', type: sql.Int, value: data.Cantidad },
+    { name: 'Indicaciones', type: sql.VarChar(300), value: data.Indicaciones ?? null },
+    { name: 'IncluirFactura', type: sql.Bit, value: data.IncluirFactura ?? false },
+    { name: 'Estado', type: sql.Char(1), value: data.Estado ?? 'A' },
+  ]);
 };
 
 export const selectDetalleReceta = async (): Promise<DetalleReceta[]> => {
@@ -26,32 +26,33 @@ export const selectDetalleRecetaById = async (id: number): Promise<DetalleReceta
   return result.recordset[0];
 };
 
-export const updateDetalleReceta = async (id: number, data: DetalleReceta) => {
-  const pool = await poolPromise;
-  await pool.request()
-    .input('IdDetalleReceta', sql.Int, id)
-    .input('IdReceta', sql.Int, data.IdReceta)
-    .input('IdMedicamento', sql.Int, data.IdMedicamento)
-    .input('Cantidad', sql.Int, data.Cantidad)
-    .input('Indicaciones', sql.VarChar(300), data.Indicaciones ?? null)
-    .input('IncluirFactura', sql.Bit, data.IncluirFactura ?? false)
-    .input('Estado', sql.Char(1), data.Estado ?? 'A')
-    .execute('UpdateDetalleReceta');
+export const updateDetalleReceta = async (id: number, data: DetalleReceta, actor: ActorInfo | null = null) => {
+  await ejecutarConActor(actor, 'UpdateDetalleReceta', [
+    { name: 'IdDetalleReceta', type: sql.Int, value: id },
+    { name: 'IdReceta', type: sql.Int, value: data.IdReceta },
+    { name: 'IdMedicamento', type: sql.Int, value: data.IdMedicamento },
+    { name: 'Cantidad', type: sql.Int, value: data.Cantidad },
+    { name: 'Indicaciones', type: sql.VarChar(300), value: data.Indicaciones ?? null },
+    { name: 'IncluirFactura', type: sql.Bit, value: data.IncluirFactura ?? false },
+    { name: 'Estado', type: sql.Char(1), value: data.Estado ?? 'A' },
+  ]);
 };
 
-export const camEstadoDetalleReceta = async (id: number, estado: 'A' | 'I') => {
-  const pool = await poolPromise;
-  await pool.request()
-    .input('IdDetalleReceta', sql.Int, id)
-    .input('Estado', sql.Char(1), estado)
-    .execute('CamEstadoDetalleReceta');
+export const camEstadoDetalleReceta = async (id: number, estado: 'A' | 'I', actor: ActorInfo | null = null) => {
+  await ejecutarConActor(actor, 'CamEstadoDetalleReceta', [
+    { name: 'IdDetalleReceta', type: sql.Int, value: id },
+    { name: 'Estado', type: sql.Char(1), value: estado },
+  ]);
 };
 
 // Checkbox del frontend: "cobrar aqui" / "lo retiro en otra farmacia"
-export const marcarIncluirFacturaDetalleReceta = async (id: number, incluirFactura: boolean) => {
-  const pool = await poolPromise;
-  await pool.request()
-    .input('IdDetalleReceta', sql.Int, id)
-    .input('IncluirFactura', sql.Bit, incluirFactura)
-    .execute('MarcarIncluirFacturaDetalleReceta');
+export const marcarIncluirFacturaDetalleReceta = async (
+  id: number,
+  incluirFactura: boolean,
+  actor: ActorInfo | null = null
+) => {
+  await ejecutarConActor(actor, 'MarcarIncluirFacturaDetalleReceta', [
+    { name: 'IdDetalleReceta', type: sql.Int, value: id },
+    { name: 'IncluirFactura', type: sql.Bit, value: incluirFactura },
+  ]);
 };
