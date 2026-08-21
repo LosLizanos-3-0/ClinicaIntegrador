@@ -24,8 +24,8 @@ const MODULOS_POR_ROL: Record<RolUsuario, ModuloInicio[]> = {
     { id: "citas",     label: "Gestión de citas",     descripcion: "Agendar, reprogramar y cancelar", icono: "calendar-check-fill", colorClase: "badge-soft-green" },
     { id: "facturas",  label: "Generar facturas",     descripcion: "Facturación de consultas",        icono: "receipt-cutoff",      colorClase: "badge-soft-amber" },
   ],
-  Médico: [
-    { id: "citas-medico", label: "Recepción de citas", descripcion: "Consulta y expediente del paciente", icono: "clipboard2-pulse-fill", colorClase: "badge-soft-emerald" },
+    Médico: [
+    { id: "citasMedico", label: "Recepción de citas", descripcion: "Consulta y expediente del paciente", icono: "clipboard2-pulse-fill", colorClase: "badge-soft-emerald" },
   ],
   Farmacéutico: [
     { id: "recetas",              label: "Consulta de recetas",         descripcion: "Validar y entregar medicamentos",     icono: "file-earmark-medical-fill", colorClase: "badge-soft-blue" },

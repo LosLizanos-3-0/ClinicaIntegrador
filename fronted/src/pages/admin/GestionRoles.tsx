@@ -1114,11 +1114,12 @@ export default function GestionRoles() {
                       </p>
                     </div>
                   ) : (
-                    usuariosDelRol.map((u, i) => {
+                                      usuariosDelRol.map((u, i) => {
                       const especialidadTexto = especialidadesDe(
                         u,
                         especialidades,
                       );
+                      const puedeEditar = clinicaStore.puedeEditarUsuario(u);
                       return (
                         <div
                           key={u.id}
@@ -1158,28 +1159,39 @@ export default function GestionRoles() {
                             </span>
                           </div>
                           <div className="d-flex align-items-center justify-content-center gap-1">
-                            <IconBtn
-                              label="Editar usuario"
-                              onClick={() => setModalUsuario(u)}
-                            >
-                              <i
-                                className="bi bi-pencil-square"
-                                aria-hidden="true"
-                              />
-                            </IconBtn>
-                            <IconBtn
-                              label={
-                                u.estado === "Activo"
-                                  ? "Desactivar usuario"
-                                  : "Activar usuario"
-                              }
-                              onClick={() => solicitarCambioEstadoUsuario(u)}
-                            >
-                              <i
-                                className={`bi ${u.estado === "Activo" ? "bi-lock-fill" : "bi-unlock-fill"}`}
-                                aria-hidden="true"
-                              />
-                            </IconBtn>
+                            {puedeEditar ? (
+                              <>
+                                <IconBtn
+                                  label="Editar usuario"
+                                  onClick={() => setModalUsuario(u)}
+                                >
+                                  <i
+                                    className="bi bi-pencil-square"
+                                    aria-hidden="true"
+                                  />
+                                </IconBtn>
+                                <IconBtn
+                                  label={
+                                    u.estado === "Activo"
+                                      ? "Desactivar usuario"
+                                      : "Activar usuario"
+                                  }
+                                  onClick={() => solicitarCambioEstadoUsuario(u)}
+                                >
+                                  <i
+                                    className={`bi ${u.estado === "Activo" ? "bi-lock-fill" : "bi-unlock-fill"}`}
+                                    aria-hidden="true"
+                                  />
+                                </IconBtn>
+                              </>
+                            ) : (
+                              <span
+                                className="fs-11 text-secondary"
+                                title="Solo el administrador principal puede modificar a otro administrador"
+                              >
+                                —
+                              </span>
+                            )}
                           </div>
                         </div>
                       );

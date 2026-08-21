@@ -7,11 +7,7 @@ import * as BitacoraModel from '../models/Bitacora.model';
 export const login = async (req: Request, res: Response) => {
   const { usuario, contrasena } = req.body;
 
-  // Para todo intento FALLIDO se guarda "Desconocido" como usuario que
-  // realizó la acción (nunca se revela el nombre real de la cuenta,
-  // exista o no, aunque el detalle interno del intento sí queda en el
-  // campo Registro para auditoría).
-    const registrarIntento = async (
+  const registrarIntento = async (
     resultado: 'EXITOSO' | 'FALLIDO',
     detalle: string,
     usuarioMostrar: string = 'Desconocido',
@@ -48,21 +44,42 @@ export const login = async (req: Request, res: Response) => {
       return res.status(403).json({ error: 'Este usuario está inactivo. Contacta al administrador.' });
     }
 
+    // Buscamos el rol ANTES de validar la contraseña: si el rol está
+    // desactivado, ningún usuario de ese rol puede ingresar, sin importar
+    // que su propia cuenta esté activa.
+    const roles = await RolModel.selectRol();
+    const rol = roles.find((r) => r.IdRol === encontrado.IdRol);
+
+    if (!rol) {
+      await registrarIntento('FALLIDO', `El usuario "${usuario}" no tiene un rol válido`);
+      return res.status(403).json({ error: 'Tu usuario no tiene un rol asignado. Contacta al administrador.' });
+    }
+
+    if (rol.Estado === 'I') {
+      await registrarIntento(
+        'FALLIDO',
+        `El rol "${rol.NombreRol}" del usuario "${usuario}" está inactivo`,
+        undefined,
+        rol.NombreRol
+      );
+      return res.status(403).json({
+        error: `El rol "${rol.NombreRol}" está desactivado. Contacta al administrador.`,
+      });
+    }
+
     const coincide = await bcrypt.compare(contrasena, encontrado.Contrasena);
     if (!coincide) {
       await registrarIntento('FALLIDO', `Contraseña incorrecta para "${usuario}"`);
       return res.status(401).json({ error: 'Usuario o contraseña incorrectos' });
     }
 
-    const roles = await RolModel.selectRol();
-    const rol = roles.find((r) => r.IdRol === encontrado.IdRol);
     const nombreMostrar = `${encontrado.Nombre} ${encontrado.Apellido1}`.trim();
 
     await registrarIntento(
       'EXITOSO',
-      `Inicio de sesión de "${encontrado.NombreUsuario}" (${rol?.NombreRol ?? 'Sin rol'})`,
+      `Inicio de sesión de "${encontrado.NombreUsuario}" (${rol.NombreRol})`,
       nombreMostrar,
-      rol?.NombreRol
+      rol.NombreRol
     );
 
     res.json({
@@ -72,7 +89,7 @@ export const login = async (req: Request, res: Response) => {
       Apellido2: encontrado.Apellido2,
       Correo: encontrado.Correo,
       NombreUsuario: encontrado.NombreUsuario,
-      Rol: rol?.NombreRol ?? 'Sin rol',
+      Rol: rol.NombreRol,
     });
   } catch (error) {
     console.error(error);

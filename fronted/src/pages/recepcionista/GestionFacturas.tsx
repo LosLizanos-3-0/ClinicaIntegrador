@@ -1,17 +1,3 @@
-/**
- * GestionFacturas.tsx
- * Módulo de Recepcionista – Facturación de consultas
- *   ✔ Generar facturas SIEMPRE asociadas a una cita "Atendida"
- *   ✔ Monto de consulta digitable (con precio sugerido según especialidad)
- *   ✔ Si el paciente tiene receta pendiente DE ESA CITA, elegir que medicamentos cobrar aqui
- *   ✔ IVA (13%) calculado en código, la base de datos no lo maneja
- *   ✔ Marcar facturas como pagadas / anuladas
- *   ✔ Imprimir comprobante de pago
- *
- * Requiere: React 18+ · TypeScript · Bootstrap 5.3
- * (usa clases auxiliares definidas en clinica-admin.css / index.css)
- */
-
 import React, { useMemo, useState } from "react";
 import type { EstadoFactura, Factura, MetodoPago } from "../../types/clinica.types";
 import { clinicaStore, useClinicaStore } from "../../types/clinicaStore";
