@@ -176,7 +176,7 @@ function ModalMedicamento({ medicamento, categorias, esAdmin, onGuardar, onCerra
           <div className="row g-2">
             <div className="col-md-4">
               <label className="form-label fs-12 text-secondary mb-1">
-                Stock actual {esAdmin && !esNuevo && <span className="text-primary">(editable · admin)</span>}
+                Stock actual
               </label>
               <input
                 type="number"

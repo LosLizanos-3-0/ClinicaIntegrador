@@ -86,7 +86,15 @@ export default function PanelCitasMedico() {
     return dias;
   }, [cursorMes]);
 
-  const fechasConCitas = useMemo(() => new Set(citasMedico.map((c) => c.fecha)), [citasMedico]);
+ const fechasConCitas = useMemo(
+    () =>
+      new Set(
+        citasMedico
+          .filter((c) => !ESTADO_BLOQUEADO.includes(c.estado))
+          .map((c) => c.fecha)
+      ),
+    [citasMedico]
+  );
 
   const citasDelDia = useMemo(
     () =>
@@ -329,9 +337,9 @@ export default function PanelCitasMedico() {
                   <button type="button" className="btn-close" onClick={cerrarModalCita} />
                 </div>
                 <div className="modal-body">
-                  {bloqueado && (
-                    <div className="alert alert-warning py-2 mb-3">
-                      Esta cita está <strong>{citaActual.estado}</strong>, no se pueden agregar ni modificar datos.
+                 {!bloqueado && citaActual.estado === "Programada" && (
+                    <div className="alert alert-info py-2 mb-3">
+                      Esta cita aún no ha sido <strong>confirmada</strong> por recepción. Puedes confirmarla desde aquí, pero no podrás marcarla como atendida ni registrar el expediente hasta que esté confirmada.
                     </div>
                   )}
 
@@ -362,10 +370,11 @@ export default function PanelCitasMedico() {
                         >
                           Confirmar
                         </button>
-                        <button
+                         <button
                           className="btn btn-sm btn-outline-success"
-                          disabled={bloqueado}
+                          disabled={bloqueado || citaActual.estado !== "Confirmada"}
                           onClick={handleMarcarAtendida}
+                          title={citaActual.estado === "Programada" ? "El recepcionista debe confirmar la cita primero" : undefined}
                         >
                           Marcar atendida
                         </button>
@@ -493,8 +502,14 @@ export default function PanelCitasMedico() {
                     <div className="alert alert-danger py-2 mt-3 mb-0 small">{error}</div>
                   )}
                 </div>
-                <div className="modal-footer">
-                  <button type="button" className="btn btn-success" disabled={bloqueado || guardando} onClick={registrarExpediente}>
+                 <div className="modal-footer">
+                  <button
+                    type="button"
+                    className="btn btn-success"
+                    disabled={bloqueado || guardando || citaActual.estado !== "Confirmada"}
+                    onClick={registrarExpediente}
+                    title={citaActual.estado === "Programada" ? "El recepcionista debe confirmar la cita primero" : undefined}
+                  >
                     {guardando ? "Guardando…" : "Registrar expediente"}
                   </button>
                   <button type="button" className="btn btn-secondary" onClick={cerrarModalCita}>
