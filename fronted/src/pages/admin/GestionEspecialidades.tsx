@@ -315,12 +315,13 @@ function ModalEspecialidad({ especialidad, onGuardar, onCerrar }: ModalEspeciali
         </div>
       </div>
 
-      {gestionMedicosAbierta && especialidad && (
+            {gestionMedicosAbierta && especialidad && (
         <ModalGestionMedicos
           titulo="Médicos asignados"
           todosMedicos={todosMedicos}
           medicosAsignados={medicosAsignados}
-          especialidadId={especialidad.id}
+          onAgregar={(medicoId) => clinicaStore.asignarEspecialidadAMedico(medicoId, especialidad.id)}
+          onQuitar={(medicoId) => clinicaStore.quitarEspecialidadDeMedico(medicoId, especialidad.id)}
           onCerrar={() => setGestionMedicosAbierta(false)}
         />
       )}
