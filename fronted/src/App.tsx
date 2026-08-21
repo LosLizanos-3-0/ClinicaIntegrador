@@ -143,10 +143,15 @@ export default function App() {
         </div>
       )}
 
-      {/* Sidebar */}
-      <aside className="sidebar-width bg-white border-end flex-shrink-0 d-none d-md-flex flex-column">
+      {/* Sidebar: fijo al alto de la pantalla (100vh) para que el pie con
+          el nombre y el botón de cerrar sesión SIEMPRE quede visible,
+          sin importar qué tan larga sea la tabla de la pantalla activa. */}
+      <aside
+        className="sidebar-width bg-white border-end flex-shrink-0 d-none d-md-flex flex-column"
+        style={{ position: "sticky", top: 0, height: "100vh", overflow: "hidden" }}
+      >
         {/* Logo */}
-        <div className="px-4 py-4 border-bottom d-flex align-items-center justify-content-between">
+        <div className="px-4 py-4 border-bottom d-flex align-items-center justify-content-between flex-shrink-0">
           <p className="fs-5 fw-bold text-dark mb-0">ClinicSoft</p>
           <button onClick={() => setSeccion(null)} className="btn btn-link text-secondary p-0 d-flex align-items-center gap-1" title="Inicio">
             <i className="bi bi-house-door-fill" aria-hidden="true" />
@@ -154,8 +159,9 @@ export default function App() {
           </button>
         </div>
 
-        {/* Menú */}
-        <nav className="flex-grow-1 py-2">
+        {/* Menú: si hay más opciones de las que caben, hace scroll interno
+            en vez de empujar el pie fuera de la pantalla */}
+        <nav className="flex-grow-1 py-2" style={{ overflowY: "auto", minHeight: 0 }}>
           {NAV_ITEMS.map((item) => (
             <button
               key={item.id}
@@ -175,8 +181,8 @@ export default function App() {
           ))}
         </nav>
 
-        {/* Footer */}
-        <div className="px-4 py-3 border-top d-flex align-items-center justify-content-between">
+        {/* Footer: ahora siempre visible, pegado al fondo del sidebar */}
+        <div className="px-4 py-3 border-top d-flex align-items-center justify-content-between flex-shrink-0">
           <div className="d-flex align-items-center gap-2">
             <div className="avatar-circle avatar-blue">{credencial.iniciales}</div>
             <p className="fs-11 text-secondary mb-0">{credencial.nombreCompleto}</p>
