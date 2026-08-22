@@ -48,17 +48,15 @@ export const createEntrega = async (req: Request, res: Response) => {
   try {
     const actor = await obtenerActor(req);
     await EntregaModel.insertEntregaMedicamento(req.body, actor);
-    const errorValidacion = validarDatosEntrega(req.body);
-    if (errorValidacion) return res.status(400).json({ error: errorValidacion });
-
-    await EntregaModel.insertEntregaMedicamento({
-      IdReceta: Number(req.body.IdReceta),
-      IdUsuario: Number(req.body.IdUsuario),
-      Estado: req.body.Estado,
-    });
     res.status(201).json({ mensaje: 'Entrega registrada correctamente' });
   } catch (error: any) {
     console.error(error);
+    if (error?.number === 2627) {
+      return res.status(409).json({
+        error: 'Esta receta ya tiene una entrega registrada.',
+        yaEntregada: true,
+      });
+    }
     if (error?.message?.includes('Stock insuficiente')) {
       return res.status(400).json({ error: 'Stock insuficiente para completar la entrega' });
     }

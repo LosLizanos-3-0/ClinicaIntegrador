@@ -68,15 +68,6 @@ interface ModalUsuarioProps {
   onCerrar: () => void;
 }
 
-interface ModalRolProps {
-  onGuardar: (
-    nombre: string,
-    cita: boolean,
-    estado: "A" | "I",
-  ) => Promise<void>;
-  onCerrar: () => void;
-}
-
 interface ModalEditarRolProps {
   rol: RolBD;
   onGuardar: (
@@ -247,117 +238,6 @@ function ModalConfirmarEstadoRol({
             className={`btn btn-sm ${vaADesactivar ? "btn-danger" : "btn-success"}`}
           >
             Aceptar
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ─── Modal Nuevo rol ───────────────────────────────────────────────────────────
-function ModalRol({ onGuardar, onCerrar }: ModalRolProps) {
-  const [nombre, setNombre] = useState("");
-  const [cita, setCita] = useState(false);
-  const [estado, setEstado] = useState<"A" | "I">("A");
-  const [guardando, setGuardando] = useState(false);
-  const [error, setError] = useState("");
-
-   const handleSubmit = async () => {
-    if (!validarNombre(nombre)) {
-      setError("El nombre del rol debe tener solo letras, entre 2 y 50 caracteres.");
-      return;
-    }
-    setGuardando(true);
-    setError("");
-    try {
-      await onGuardar(nombre.trim(), cita, estado);
-    } catch (err) {
-      console.error(err);
-      setError("Ocurrió un error al crear el rol. Intenta de nuevo.");
-    } finally {
-      setGuardando(false);
-    }
-  };
-
-  return (
-    <div className="modal-overlay d-flex align-items-center justify-content-center p-3">
-      <div
-        className="bg-white rounded-4 shadow w-100"
-        style={{ maxWidth: 384 }}
-      >
-        <div className="px-4 py-3 border-bottom d-flex align-items-center justify-content-between">
-          <h3 className="fs-6 fw-medium text-dark mb-0">Nuevo rol</h3>
-          <button
-            onClick={onCerrar}
-            aria-label="Cerrar"
-            className="btn btn-link text-secondary fs-5 text-decoration-none p-0"
-          >
-            <i className="bi bi-x-lg" aria-hidden="true" />
-          </button>
-        </div>
-        <div className="p-4 d-flex flex-column gap-3">
-          <div>
-            <label className="form-label fs-12 text-secondary mb-1">
-              Nombre del rol
-            </label>
-            <input
-              value={nombre}
-              onChange={(e) => setNombre(e.target.value)}
-              placeholder="Ej: Médico"
-              className="form-control form-control-sm"
-            />
-          </div>
-
-          <div>
-            <label className="form-label fs-12 text-secondary mb-1">
-              Estado
-            </label>
-            <select
-              value={estado}
-              onChange={(e) => setEstado(e.target.value as "A" | "I")}
-              className="form-select form-select-sm"
-            >
-              <option value="A">Activo</option>
-              <option value="I">Inactivo</option>
-            </select>
-          </div>
-
-          <div className="form-check">
-            <input
-              type="checkbox"
-              id="rol-cita"
-              checked={cita}
-              onChange={(e) => setCita(e.target.checked)}
-              className="form-check-input"
-            />
-            <label
-              htmlFor="rol-cita"
-              className="form-check-label fs-12 text-secondary"
-            >
-              Este rol atiende citas médicas
-            </label>
-          </div>
-
-          {error && (
-            <div className="badge-soft badge-soft-red w-100 text-start py-2 px-3 fs-12">
-              {error}
-            </div>
-          )}
-        </div>
-        <div className="px-4 py-3 border-top d-flex justify-content-end gap-2">
-          <button
-            onClick={onCerrar}
-            className="btn btn-outline-secondary btn-sm"
-            disabled={guardando}
-          >
-            Cancelar
-          </button>
-          <button
-            onClick={handleSubmit}
-            className="btn btn-primary btn-sm"
-            disabled={guardando}
-          >
-            {guardando ? "Creando…" : "Crear rol"}
           </button>
         </div>
       </div>
@@ -764,7 +644,6 @@ export default function GestionRoles() {
   const [modalUsuario, setModalUsuario] = useState<UsuarioClinica | undefined>(
     undefined,
   );
-  const [modalRolAbierto, setModalRolAbierto] = useState<boolean>(false);
   const [modalEditarRol, setModalEditarRol] = useState<RolBD | null>(null);
   const [confirmEstadoUsuario, setConfirmEstadoUsuario] =
     useState<UsuarioClinica | null>(null);
@@ -853,12 +732,6 @@ export default function GestionRoles() {
     setConfirmEstadoUsuario(null);
   };
 
-  const crearRol = async (nombre: string, cita: boolean, estado: "A" | "I") => {
-    await clinicaStore.crearRol(nombre, cita, estado);
-    setRolActual(nombre);
-    setModalRolAbierto(false);
-  };
-
   const guardarEdicionRol = async (
     nombre: string,
     cita: boolean,
@@ -890,13 +763,6 @@ export default function GestionRoles() {
 
   return (
     <>
-      {modalRolAbierto && (
-        <ModalRol
-          onGuardar={crearRol}
-          onCerrar={() => setModalRolAbierto(false)}
-        />
-      )}
-
       {modalEditarRol && (
         <ModalEditarRol
           rol={modalEditarRol}
@@ -934,12 +800,6 @@ export default function GestionRoles() {
         {/* Topbar */}
         <div className="px-4 py-3 border-bottom bg-soft d-flex flex-wrap gap-3 align-items-center justify-content-between">
           <h2 className="fs-6 fw-bold text-dark mb-0">Gestión de roles</h2>
-          <button
-            onClick={() => setModalRolAbierto(true)}
-            className="btn btn-primary btn-sm"
-          >
-            + Crear rol
-          </button>
         </div>
 
         <div className="p-4">
@@ -950,7 +810,7 @@ export default function GestionRoles() {
           ) : catalogoRoles.length === 0 ? (
             <div className="bg-soft border rounded p-4 text-center">
               <p className="fs-6 text-secondary mb-0">
-                Aún no hay roles registrados. Crea el primero con "+ Crear rol".
+                Aún no hay roles registrados.
               </p>
             </div>
           ) : (

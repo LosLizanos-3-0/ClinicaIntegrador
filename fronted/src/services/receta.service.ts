@@ -19,23 +19,21 @@ interface ConsultaBD {
 }
 
 export const recetaService = {
-  async crear(datos: {
+   async crear(datos: {
     IdConsulta: number;
     IdPaciente: number;
     IdUsuario: number;
     items: { IdMedicamento: number; Cantidad: number; Indicaciones?: string }[];
   }): Promise<void> {
-    await api.post("/recetas", {
+    const { data } = await api.post<{ IdReceta: number }>("/recetas", {
       IdConsulta: datos.IdConsulta,
       IdPaciente: datos.IdPaciente,
       IdUsuario: datos.IdUsuario,
     });
-    const { data: recetas } = await api.get<RecetaBD[]>("/recetas");
-    const creada = recetas.sort((a, b) => b.IdReceta - a.IdReceta)[0];
 
     for (const item of datos.items) {
       await api.post("/detalle-receta", {
-        IdReceta: creada.IdReceta,
+        IdReceta: data.IdReceta,
         IdMedicamento: item.IdMedicamento,
         Cantidad: item.Cantidad,
         Indicaciones: item.Indicaciones || null,
