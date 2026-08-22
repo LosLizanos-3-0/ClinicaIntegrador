@@ -18,6 +18,7 @@ const FORM_VACIO: FormMedicamento = {
 };
 
 const TEXTO_LIBRE_REGEX = /^[A-Za-zÁÉÍÓÚáéíóúÑñ0-9.,+%/() -]*$/;
+const NOMBRE_REGEX = /^[A-Za-zÁÉÍÓÚáéíóúÑñ0-9.,+%/() -]{2,100}$/;
 
 interface ModalMedicamentoProps {
   medicamento?: Medicamento;
@@ -36,6 +37,21 @@ function ModalMedicamento({ medicamento, categorias, esAdmin, onGuardar, onCerra
   const [form, setForm] = useState<FormMedicamento>(
     medicamento ? { ...medicamento } : { ...FORM_VACIO }
   );
+
+  // Los campos numéricos se guardan también como texto "en crudo", para
+  // poder distinguir un campo realmente vacío ("") de un cero legítimo.
+  // Number("") da 0 en JavaScript, así que sin esto un campo borrado por
+  // el usuario se guardaría silenciosamente como "0" sin avisar nada.
+  const [stockActualTexto, setStockActualTexto] = useState<string>(
+    medicamento ? String(medicamento.stockActual) : ""
+  );
+  const [stockMinimoTexto, setStockMinimoTexto] = useState<string>(
+    medicamento ? String(medicamento.stockMinimo) : ""
+  );
+  const [precioUnitarioTexto, setPrecioUnitarioTexto] = useState<string>(
+    medicamento ? String(medicamento.precioUnitario) : ""
+  );
+
   const [error, setError] = useState<string>("");
   const [guardando, setGuardando] = useState<boolean>(false);
 
@@ -53,52 +69,103 @@ function ModalMedicamento({ medicamento, categorias, esAdmin, onGuardar, onCerra
     const descripcion = (form.descripcion ?? "").trim();
     const presentacion = (form.presentacion ?? "").trim();
 
-    if (!nombre || nombre.length < 2) {
+    // ── Nombre (obligatorio) ────────────────────────────────────────────
+    if (!nombre) {
       setError("El nombre del medicamento es obligatorio.");
       return;
     }
-    if (!TEXTO_LIBRE_REGEX.test(nombre)) {
-      setError("El nombre del medicamento contiene caracteres no válidos.");
+    if (!NOMBRE_REGEX.test(nombre)) {
+      setError("El nombre del medicamento debe tener entre 2 y 100 caracteres, sin símbolos no permitidos.");
       return;
     }
+
+    // ── Categoría (obligatoria) ─────────────────────────────────────────
     if (!form.idCategoria || form.idCategoria <= 0) {
       setError("Debes seleccionar una categoría.");
       return;
     }
-    if (descripcion && !TEXTO_LIBRE_REGEX.test(descripcion)) {
+    // ── Descripción (obligatoria) ────────────────────────────────────────
+    if (!descripcion) {
+      setError("La descripción es obligatoria.");
+      return;
+    }
+    if (!TEXTO_LIBRE_REGEX.test(descripcion)) {
       setError("La descripción contiene caracteres no válidos.");
       return;
     }
-    if (presentacion && !TEXTO_LIBRE_REGEX.test(presentacion)) {
+
+    // ── Presentación (obligatoria) ───────────────────────────────────────
+    if (!presentacion) {
+      setError("La presentación es obligatoria.");
+      return;
+    }
+    if (!TEXTO_LIBRE_REGEX.test(presentacion)) {
       setError("La presentación contiene caracteres no válidos.");
       return;
     }
-    if (!ubicacion || ubicacion.length < 2) {
+
+    // ── Ubicación (obligatoria) ──────────────────────────────────────────
+    if (!ubicacion) {
       setError("La ubicación es obligatoria.");
       return;
     }
-    if (!TEXTO_LIBRE_REGEX.test(ubicacion)) {
-      setError("La ubicación contiene caracteres no válidos.");
+    if (ubicacion.length < 2 || !TEXTO_LIBRE_REGEX.test(ubicacion)) {
+      setError("La ubicación debe tener al menos 2 caracteres y no contener símbolos no permitidos.");
       return;
     }
-    if (puedeEditarStock && (!Number.isFinite(form.stockActual) || form.stockActual < 0)) {
-      setError("El stock actual no puede ser negativo.");
+
+    // ── Stock actual (obligatorio solo si se puede editar en este modal) ─
+    let stockActualNum = form.stockActual;
+    if (puedeEditarStock) {
+      if (stockActualTexto.trim() === "") {
+        setError("El stock actual es obligatorio.");
+        return;
+      }
+      stockActualNum = Number(stockActualTexto);
+      if (!Number.isFinite(stockActualNum) || !Number.isInteger(stockActualNum) || stockActualNum < 0) {
+        setError("El stock actual debe ser un número entero mayor o igual a cero.");
+        return;
+      }
+    }
+
+    // ── Stock mínimo (obligatorio) ───────────────────────────────────────
+    if (stockMinimoTexto.trim() === "") {
+      setError("El stock mínimo es obligatorio.");
       return;
     }
-    if (!Number.isFinite(form.stockMinimo) || form.stockMinimo < 0) {
-      setError("El stock mínimo no puede ser negativo.");
+    const stockMinimoNum = Number(stockMinimoTexto);
+    if (!Number.isFinite(stockMinimoNum) || !Number.isInteger(stockMinimoNum) || stockMinimoNum < 0) {
+      setError("El stock mínimo debe ser un número entero mayor o igual a cero.");
       return;
     }
-    if (!Number.isFinite(form.precioUnitario) || form.precioUnitario < 0) {
-      setError("El precio unitario no puede ser negativo.");
+
+    // ── Precio unitario (obligatorio) ────────────────────────────────────
+    if (precioUnitarioTexto.trim() === "") {
+      setError("El precio unitario es obligatorio.");
       return;
     }
+    const precioUnitarioNum = Number(precioUnitarioTexto);
+    if (!Number.isFinite(precioUnitarioNum) || precioUnitarioNum < 0) {
+      setError("El precio unitario debe ser un número mayor o igual a cero.");
+      return;
+    }
+
+    const formFinal: FormMedicamento = {
+      ...form,
+      nombre,
+      ubicacion,
+      descripcion,
+      presentacion,
+      stockActual: stockActualNum,
+      stockMinimo: stockMinimoNum,
+      precioUnitario: precioUnitarioNum,
+    };
 
     setGuardando(true);
     setError("");
     try {
-      const stockCambio = !esNuevo && esAdmin && form.stockActual !== medicamento?.stockActual;
-      await onGuardar({ ...form, nombre, ubicacion, descripcion, presentacion }, stockCambio);
+      const stockCambio = !esNuevo && esAdmin && formFinal.stockActual !== medicamento?.stockActual;
+      await onGuardar(formFinal, stockCambio);
     } catch (err) {
       console.error(err);
       setError("Ocurrió un error al guardar el medicamento. Intenta de nuevo.");
@@ -119,21 +186,23 @@ function ModalMedicamento({ medicamento, categorias, esAdmin, onGuardar, onCerra
 
         <div className="p-4 d-flex flex-column gap-3">
           <div>
-            <label className="form-label fs-12 text-secondary mb-1">Nombre</label>
+            <label className="form-label fs-12 text-secondary mb-1">Nombre *</label>
             <input
               value={form.nombre}
               onChange={(e) => handleChange("nombre", e.target.value)}
               placeholder="Ej: Acetaminofén 500mg"
               className="form-control form-control-sm"
+              required
             />
           </div>
 
           <div>
-            <label className="form-label fs-12 text-secondary mb-1">Categoría</label>
+            <label className="form-label fs-12 text-secondary mb-1">Categoría *</label>
             <select
               value={form.idCategoria || ""}
               onChange={(e) => handleChange("idCategoria", Number(e.target.value))}
               className="form-select form-select-sm"
+              required
             >
               <option value="">Selecciona una categoría</option>
               {categoriasDisponibles.map((c) => (
@@ -142,33 +211,36 @@ function ModalMedicamento({ medicamento, categorias, esAdmin, onGuardar, onCerra
             </select>
           </div>
 
-          <div>
-            <label className="form-label fs-12 text-secondary mb-1">Descripción</label>
+                <div>
+            <label className="form-label fs-12 text-secondary mb-1">Descripción *</label>
             <input
               value={form.descripcion ?? ""}
               onChange={(e) => handleChange("descripcion", e.target.value)}
               placeholder="Analgésico y antipirético"
               className="form-control form-control-sm"
+              required
             />
           </div>
 
           <div className="row g-2">
             <div className="col-md-6">
-              <label className="form-label fs-12 text-secondary mb-1">Presentación</label>
+              <label className="form-label fs-12 text-secondary mb-1">Presentación *</label>
               <input
                 value={form.presentacion ?? ""}
                 onChange={(e) => handleChange("presentacion", e.target.value)}
                 placeholder="Tabletas"
                 className="form-control form-control-sm"
+                required
               />
             </div>
             <div className="col-md-6">
-              <label className="form-label fs-12 text-secondary mb-1">Ubicación</label>
+              <label className="form-label fs-12 text-secondary mb-1">Ubicación *</label>
               <input
                 value={form.ubicacion}
                 onChange={(e) => handleChange("ubicacion", e.target.value)}
                 placeholder="Estante A1"
                 className="form-control form-control-sm"
+                required
               />
             </div>
           </div>
@@ -176,32 +248,38 @@ function ModalMedicamento({ medicamento, categorias, esAdmin, onGuardar, onCerra
           <div className="row g-2">
             <div className="col-md-4">
               <label className="form-label fs-12 text-secondary mb-1">
-                Stock actual
+                Stock actual {puedeEditarStock ? "*" : ""}
               </label>
               <input
                 type="number"
-                value={form.stockActual}
-                onChange={(e) => handleChange("stockActual", Number(e.target.value))}
+                min={0}
+                step={1}
+                value={stockActualTexto}
+                onChange={(e) => setStockActualTexto(e.target.value)}
                 className="form-control form-control-sm"
                 disabled={!puedeEditarStock}
                 title={!puedeEditarStock ? "Solo un administrador puede modificar el stock actual" : undefined}
               />
             </div>
             <div className="col-md-4">
-              <label className="form-label fs-12 text-secondary mb-1">Stock mínimo</label>
+              <label className="form-label fs-12 text-secondary mb-1">Stock mínimo *</label>
               <input
                 type="number"
-                value={form.stockMinimo}
-                onChange={(e) => handleChange("stockMinimo", Number(e.target.value))}
+                min={0}
+                step={1}
+                value={stockMinimoTexto}
+                onChange={(e) => setStockMinimoTexto(e.target.value)}
                 className="form-control form-control-sm"
               />
             </div>
             <div className="col-md-4">
-              <label className="form-label fs-12 text-secondary mb-1">Precio unitario (₡)</label>
+              <label className="form-label fs-12 text-secondary mb-1">Precio unitario (₡) *</label>
               <input
                 type="number"
-                value={form.precioUnitario}
-                onChange={(e) => handleChange("precioUnitario", Number(e.target.value))}
+                min={0}
+                step="0.01"
+                value={precioUnitarioTexto}
+                onChange={(e) => setPrecioUnitarioTexto(e.target.value)}
                 className="form-control form-control-sm"
               />
             </div>

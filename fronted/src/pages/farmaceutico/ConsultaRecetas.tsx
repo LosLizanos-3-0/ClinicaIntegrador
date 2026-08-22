@@ -2,16 +2,20 @@ import { useState } from "react";
 import type { Receta } from "../../types/clinica.types";
 import { useClinicaStore, clinicaStore } from "../../types/clinicaStore";
 
-const ESTADO_LABEL: Record<Receta["estado"], string> = {
+type EstadoVisualReceta = Receta["estado"] | "OtraFarmacia";
+
+const ESTADO_LABEL: Record<EstadoVisualReceta, string> = {
   Pendiente: "Pendiente",
   Despachada: "Entregada",
   Anulada: "Anulada",
+  OtraFarmacia: "Otra farmacia",
 };
 
-const ESTADO_COLOR: Record<Receta["estado"], string> = {
+const ESTADO_COLOR: Record<EstadoVisualReceta, string> = {
   Pendiente: "badge-soft-amber",
   Despachada: "badge-soft-green",
   Anulada: "badge-soft-red",
+  OtraFarmacia: "badge-soft-gray",
 };
 
 type EstadoPagoItem = "pagado" | "no_pagado" | "otra_farmacia";
@@ -42,8 +46,34 @@ export default function ConsultaRecetas() {
   const [error, setError] = useState<string>("");
   const [procesando, setProcesando] = useState(false);
 
+  // ── Cálculo de estado de pago (por medicamento y a nivel de receta) ────────
+  function facturaDe(r: Receta) {
+    return facturas.find((f) => f.citaId === r.citaId);
+  }
+
+  function estadoPagoItem(r: Receta, incluirFactura: boolean): EstadoPagoItem {
+    const factura = facturaDe(r);
+    if (!factura) return "no_pagado";
+    if (incluirFactura) {
+      return factura.estado === "Pagada" ? "pagado" : "no_pagado";
+    }
+    return "otra_farmacia";
+  }
+
+  // Estado visual de la receta completa: si ya existe factura y NINGÚN
+  // medicamento se compra en esta farmacia, toda la receta pasa a
+  // "Otra farmacia" (no hay nada que entregar aquí, se oculta el botón).
+  function estadoVisualReceta(r: Receta): EstadoVisualReceta {
+    if (r.estado !== "Pendiente") return r.estado;
+    const factura = facturaDe(r);
+    if (!factura) return "Pendiente";
+    const hayAlgoParaEntregarAqui = r.items.some((i) => i.incluirFactura);
+    return hayAlgoParaEntregarAqui ? "Pendiente" : "OtraFarmacia";
+  }
+
   const recetasFiltradas = recetas.filter((r) => {
-    const coincideEstado = filtroEstado === "Todos" || r.estado === filtroEstado;
+    const visual = estadoVisualReceta(r);
+    const coincideEstado = filtroEstado === "Todos" || visual === filtroEstado;
     const texto = busqueda.trim().toLowerCase();
     const coincideBusqueda =
       texto === "" ||
@@ -54,30 +84,17 @@ export default function ConsultaRecetas() {
   });
 
   const stats = {
-    pendientes: recetas.filter((r) => r.estado === "Pendiente").length,
+    // Solo cuentan como "pendientes" las que realmente tienen algo por
+    // entregar en esta farmacia (excluye las que son 100% "otra farmacia").
+    pendientes: recetas.filter((r) => estadoVisualReceta(r) === "Pendiente").length,
     entregadas: recetas.filter((r) => r.estado === "Despachada").length,
   };
 
-  // ── Validación de pago ────────────────────────────────────────────────────
-  // La factura asociada es la de la MISMA cita de la que salió la receta.
-  const facturaAsociada = recetaActiva
-    ? facturas.find((f) => f.citaId === recetaActiva.citaId)
-    : undefined;
-
-  // Mientras recepción no haya generado ninguna factura para esta cita,
-  // TODO se considera "no pagado" — no se asume "otra farmacia" por defecto.
-  function estadoPagoItem(incluirFactura: boolean): EstadoPagoItem {
-    if (!facturaAsociada) return "no_pagado";
-    if (incluirFactura) {
-      return facturaAsociada.estado === "Pagada" ? "pagado" : "no_pagado";
-    }
-    // La factura ya existe y este medicamento quedó deliberadamente fuera
-    // (el paciente solo pagó/pagará la consulta, no estos medicamentos aquí).
-    return "otra_farmacia";
-  }
+  const estadoVisualActiva = recetaActiva ? estadoVisualReceta(recetaActiva) : undefined;
+  const facturaAsociada = recetaActiva ? facturaDe(recetaActiva) : undefined;
 
   const itemsConEstadoPago = recetaActiva
-    ? recetaActiva.items.map((item) => ({ ...item, estadoPago: estadoPagoItem(item.incluirFactura) }))
+    ? recetaActiva.items.map((item) => ({ ...item, estadoPago: estadoPagoItem(recetaActiva, item.incluirFactura) }))
     : [];
 
   const medicamentosNoPagados = itemsConEstadoPago.some((i) => i.estadoPago === "no_pagado");
@@ -115,8 +132,6 @@ export default function ConsultaRecetas() {
   const handleEntregar = async () => {
     if (!recetaActiva) return;
     if (medicamentosNoPagados) {
-      // No debería poder llegar aquí porque el botón está deshabilitado,
-      // pero se valida también aquí por seguridad.
       setError("Estos medicamentos aún no están pagados.");
       return;
     }
@@ -144,7 +159,7 @@ export default function ConsultaRecetas() {
 
   return (
     <>
-      {recetaActiva && (
+      {recetaActiva && estadoVisualActiva && (
         <div className="modal-overlay d-flex align-items-center justify-content-center p-3">
           <div className="bg-white rounded-4 shadow w-100" style={{ maxWidth: 480 }}>
             <div className="px-4 py-3 border-bottom d-flex align-items-center justify-content-between">
@@ -158,8 +173,8 @@ export default function ConsultaRecetas() {
                   <p className="fw-medium text-dark mb-0">{recetaActiva.paciente}</p>
                   <p className="fs-11 text-secondary mb-0">Cédula {recetaActiva.cedulaPaciente}</p>
                 </div>
-                <span className={`badge-soft ${ESTADO_COLOR[recetaActiva.estado]}`}>
-                  {ESTADO_LABEL[recetaActiva.estado]}
+                <span className={`badge-soft ${ESTADO_COLOR[estadoVisualActiva]}`}>
+                  {ESTADO_LABEL[estadoVisualActiva]}
                 </span>
               </div>
 
@@ -186,9 +201,16 @@ export default function ConsultaRecetas() {
                 </div>
               </div>
 
-              {recetaActiva.estado === "Pendiente" && medicamentosNoPagados && (
+              {estadoVisualActiva === "OtraFarmacia" && (
+                <div className="badge-soft badge-soft-gray w-100 text-start py-2 px-3 fs-12">
+                  El paciente pagó la consulta pero no adquirió estos medicamentos en nuestra
+                  farmacia. No hay nada que entregar aquí.
+                </div>
+              )}
+
+              {estadoVisualActiva === "Pendiente" && medicamentosNoPagados && (
                 <div className="badge-soft badge-soft-red w-100 text-start py-2 px-3 fs-12">
-                  ⚠️ Estos medicamentos aún no están pagados.
+                  Estos medicamentos aún no están pagados.
                   {!facturaAsociada
                     ? " Aún no se ha generado la factura de esta cita en recepción."
                     : " Envía al paciente a facturación para cancelar los medicamentos marcados como \"No pagado\" antes de entregarlos."}
@@ -199,7 +221,7 @@ export default function ConsultaRecetas() {
                 <div className="badge-soft badge-soft-red w-100 text-start py-2 px-3 fs-12">{error}</div>
               )}
 
-              {recetaActiva.estado === "Pendiente" && !numeroValidado && (
+              {estadoVisualActiva === "Pendiente" && !numeroValidado && (
                 <div>
                   <label className="form-label fs-12 text-secondary mb-1">
                     Número de receta que presenta el paciente
@@ -208,7 +230,7 @@ export default function ConsultaRecetas() {
                     <input
                       value={idIngresado}
                       onChange={(e) => setIdIngresado(e.target.value)}
-                      placeholder="Ej: 1001"
+                      placeholder="Ej: 01"
                       className="form-control form-control-sm"
                     />
                     <button onClick={handleValidar} className="btn btn-primary btn-sm flex-shrink-0">
@@ -218,7 +240,7 @@ export default function ConsultaRecetas() {
                 </div>
               )}
 
-              {recetaActiva.estado === "Pendiente" && numeroValidado && (
+              {estadoVisualActiva === "Pendiente" && numeroValidado && (
                 <button
                   onClick={handleEntregar}
                   className="btn btn-success btn-sm w-100"
@@ -271,6 +293,7 @@ export default function ConsultaRecetas() {
               <option value="Todos">Todos los estados</option>
               <option value="Pendiente">Pendiente</option>
               <option value="Despachada">Entregada</option>
+              <option value="OtraFarmacia">Otra farmacia</option>
             </select>
           </div>
 
@@ -279,21 +302,24 @@ export default function ConsultaRecetas() {
           )}
 
           <div className="d-flex flex-column gap-2">
-            {recetasFiltradas.map((r) => (
-              <div key={r.id} className="border rounded p-3 d-flex align-items-center justify-content-between hover-row">
-                <div>
-                  <p className="fs-12 text-secondary mb-0">Receta #{r.id}</p>
-                  <p className="fw-medium text-dark mb-0">{r.paciente}</p>
-                  <p className="fs-11 text-secondary mb-0">{r.medico} · {r.especialidad} · {r.fecha}</p>
+            {recetasFiltradas.map((r) => {
+              const visual = estadoVisualReceta(r);
+              return (
+                <div key={r.id} className="border rounded p-3 d-flex align-items-center justify-content-between hover-row">
+                  <div>
+                    <p className="fs-12 text-secondary mb-0">Receta #{r.id}</p>
+                    <p className="fw-medium text-dark mb-0">{r.paciente}</p>
+                    <p className="fs-11 text-secondary mb-0">{r.medico} · {r.especialidad} · {r.fecha}</p>
+                  </div>
+                  <div className="d-flex align-items-center gap-2 flex-shrink-0">
+                    <span className={`badge-soft ${ESTADO_COLOR[visual]}`}>{ESTADO_LABEL[visual]}</span>
+                    <button onClick={() => abrirReceta(r)} className="btn btn-outline-secondary btn-sm">
+                      Ver detalle
+                    </button>
+                  </div>
                 </div>
-                <div className="d-flex align-items-center gap-2 flex-shrink-0">
-                  <span className={`badge-soft ${ESTADO_COLOR[r.estado]}`}>{ESTADO_LABEL[r.estado]}</span>
-                  <button onClick={() => abrirReceta(r)} className="btn btn-outline-secondary btn-sm">
-                    Ver detalle
-                  </button>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       </div>

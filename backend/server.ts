@@ -26,24 +26,36 @@ app.get('/api/test-db', async (req: Request, res: Response) => {
   }
 });
 
-// ─── Precarga del rol y usuario Administrador ──────────────────────────────
-// Se ejecuta cada vez que arranca el servidor. Es idempotente: si el rol o el
-// usuario ya existen (porque el sistema ya se corrió antes), NO se vuelven a
-// crear ni se duplican.
+
+const ROLES_BASE: { nombre: string; cita: boolean }[] = [
+  { nombre: 'Administrador', cita: false },
+  { nombre: 'Médico', cita: true },
+  { nombre: 'Recepcionista', cita: false },
+  { nombre: 'Farmacéutico', cita: false },
+];
+
+async function seedRolesBase() {
+  try {
+    const roles = await RolModel.selectRol();
+    for (const base of ROLES_BASE) {
+      const yaExiste = roles.some((r) => r.NombreRol === base.nombre);
+      if (!yaExiste) {
+        await RolModel.insertRol({ cita: base.cita, NombreRol: base.nombre, Estado: 'A' });
+        console.log(`✔ Rol "${base.nombre}" creado automáticamente.`);
+      }
+    }
+  } catch (error) {
+    console.error('✘ Error al precargar los roles base del sistema:', error);
+  }
+}
+
 async function seedAdministrador() {
   try {
     const roles = await RolModel.selectRol();
-    let rolAdmin = roles.find((r) => r.NombreRol === 'Administrador');
-
-    if (!rolAdmin) {
-      await RolModel.insertRol({ cita: false, NombreRol: 'Administrador', Estado: 'A' });
-      const rolesActualizados = await RolModel.selectRol();
-      rolAdmin = rolesActualizados.find((r) => r.NombreRol === 'Administrador');
-      console.log('✔ Rol "Administrador" creado automáticamente.');
-    }
+    const rolAdmin = roles.find((r) => r.NombreRol === 'Administrador');
 
     if (!rolAdmin || !rolAdmin.IdRol) {
-      console.error('✘ No se pudo crear/encontrar el rol Administrador. Se omite el usuario admin.');
+      console.error(' No se encontró el rol Administrador. Se omite la creación del usuario admin.');
       return;
     }
 
@@ -56,7 +68,7 @@ async function seedAdministrador() {
     );
 
     if (yaExiste) {
-      console.log('ℹ El usuario administrador ya existe, no se vuelve a crear.');
+      console.log(' El usuario administrador ya existe, no se vuelve a crear.');
       return;
     }
 
@@ -73,14 +85,15 @@ async function seedAdministrador() {
       Estado: 'A',
       IdRol: rolAdmin.IdRol,
     });
-    console.log('✔ Usuario administrador "Juan Venegas Tellez" (admin / 123) creado automáticamente.');
+    console.log(' Usuario administrador "Juan Venegas Tellez" (admin / 123) creado automáticamente.');
   } catch (error) {
-    console.error('✘ Error al verificar/crear el rol y usuario administrador por defecto:', error);
+    console.error(' Error al verificar/crear el usuario administrador por defecto:', error);
   }
 }
 
 const PORT = process.env.PORT || 4000;
 app.listen(PORT, async () => {
   console.log(`Servidor corriendo en http://localhost:${PORT}`);
+  await seedRolesBase();
   await seedAdministrador();
 });

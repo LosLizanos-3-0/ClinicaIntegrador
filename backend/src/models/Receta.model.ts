@@ -3,13 +3,14 @@ import poolPromise from '../config/db';
 import { ejecutarConActor, ActorInfo } from '../config/actor';
 import { Receta } from '../types';
 
-export const insertReceta = async (data: Receta, actor: ActorInfo | null = null) => {
-  await ejecutarConActor(actor, 'InsertReceta', [
+export const insertReceta = async (data: Receta, actor: ActorInfo | null = null): Promise<number> => {
+  const result = await ejecutarConActor(actor, 'InsertReceta', [
     { name: 'IdConsulta', type: sql.Int, value: data.IdConsulta },
     { name: 'IdPaciente', type: sql.Int, value: data.IdPaciente },
     { name: 'IdUsuario', type: sql.Int, value: data.IdUsuario },
     { name: 'Estado', type: sql.VarChar(20), value: data.Estado ?? 'Pendiente' },
   ]);
+  return result.recordset[0].IdReceta;
 };
 
 export const selectReceta = async (): Promise<Receta[]> => {

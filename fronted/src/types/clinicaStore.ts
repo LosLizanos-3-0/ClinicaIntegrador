@@ -503,9 +503,13 @@ function validarNumeroReceta(idReceta: number, idIngresado: number): boolean {
 }
 
 async function marcarRecetaEntregada(idReceta: number, idUsuarioFarmaceutico: number) {
-  await entregaMedicamentoService.crear({ IdReceta: idReceta, IdUsuario: idUsuarioFarmaceutico });
+  try {
+    await entregaMedicamentoService.crear({ IdReceta: idReceta, IdUsuario: idUsuarioFarmaceutico });
+  } catch (err: any) {
+    if (err?.response?.status !== 409) throw err;
+  }
   await recetaService.camEstado(idReceta, "Despachada");
-  await refrescarRecetas();
+  await Promise.all([refrescarRecetas(), refrescarMedicamentos()]);
 }
 
 async function iniciarSesion(usuario: string, contrasena: string): Promise<Credencial | null> {

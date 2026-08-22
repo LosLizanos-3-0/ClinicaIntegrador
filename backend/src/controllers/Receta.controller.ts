@@ -51,18 +51,20 @@ export const getRecetaById = async (req: Request, res: Response) => {
 
 export const createReceta = async (req: Request, res: Response) => {
   try {
-    const actor = await obtenerActor(req);
-    await RecetaModel.insertReceta(req.body, actor);
     const errorValidacion = validarDatosReceta(req.body);
     if (errorValidacion) return res.status(400).json({ error: errorValidacion });
 
-    await RecetaModel.insertReceta({
-      IdConsulta: Number(req.body.IdConsulta),
-      IdPaciente: Number(req.body.IdPaciente),
-      IdUsuario: Number(req.body.IdUsuario),
-      Estado: req.body.Estado,
-    });
-    res.status(201).json({ mensaje: 'Receta creada correctamente' });
+    const actor = await obtenerActor(req);
+    const idReceta = await RecetaModel.insertReceta(
+      {
+        IdConsulta: Number(req.body.IdConsulta),
+        IdPaciente: Number(req.body.IdPaciente),
+        IdUsuario: Number(req.body.IdUsuario),
+        Estado: req.body.Estado,
+      },
+      actor
+    );
+    res.status(201).json({ mensaje: 'Receta creada correctamente', IdReceta: idReceta });
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Error al crear la receta' });
@@ -71,17 +73,20 @@ export const createReceta = async (req: Request, res: Response) => {
 
 export const updateReceta = async (req: Request, res: Response) => {
   try {
-    const actor = await obtenerActor(req);
-    await RecetaModel.updateReceta(Number(req.params.id), req.body, actor);
     const errorValidacion = validarDatosReceta(req.body);
     if (errorValidacion) return res.status(400).json({ error: errorValidacion });
 
-    await RecetaModel.updateReceta(Number(req.params.id), {
-      IdConsulta: Number(req.body.IdConsulta),
-      IdPaciente: Number(req.body.IdPaciente),
-      IdUsuario: Number(req.body.IdUsuario),
-      Estado: req.body.Estado,
-    });
+    const actor = await obtenerActor(req);
+    await RecetaModel.updateReceta(
+      Number(req.params.id),
+      {
+        IdConsulta: Number(req.body.IdConsulta),
+        IdPaciente: Number(req.body.IdPaciente),
+        IdUsuario: Number(req.body.IdUsuario),
+        Estado: req.body.Estado,
+      },
+      actor
+    );
     res.json({ mensaje: 'Receta actualizada correctamente' });
   } catch (error) {
     console.error(error);
@@ -91,12 +96,12 @@ export const updateReceta = async (req: Request, res: Response) => {
 
 export const cambiarEstadoReceta = async (req: Request, res: Response) => {
   try {
-    const actor = await obtenerActor(req);
-    await RecetaModel.camEstadoReceta(Number(req.params.id), req.body.Estado, actor);
     if (esCampoVacio(req.body.Estado) || !ESTADOS_VALIDOS.includes(req.body.Estado)) {
       return res.status(400).json({ error: 'El estado de la receta no es válido' });
     }
-    await RecetaModel.camEstadoReceta(Number(req.params.id), req.body.Estado);
+
+    const actor = await obtenerActor(req);
+    await RecetaModel.camEstadoReceta(Number(req.params.id), req.body.Estado, actor);
     res.json({ mensaje: 'Estado de la receta actualizado correctamente' });
   } catch (error) {
     console.error(error);
