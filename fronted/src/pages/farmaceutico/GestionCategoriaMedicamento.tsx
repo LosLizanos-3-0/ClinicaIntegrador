@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import type { CategoriaMedicamento } from "../../types/clinica.types";
 import { useClinicaStore, clinicaStore } from "../../types/clinicaStore";
 

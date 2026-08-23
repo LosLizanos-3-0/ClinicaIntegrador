@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import { useState, useMemo } from "react";
 import type { EstadoEspecialidad } from "../../types/clinica.types";
 import { clinicaStore, useClinicaStore, type UsuarioClinica, type EspecialidadClinica } from "../../types/clinicaStore";
 import { validarNombre } from "../../utils/validaciones";
