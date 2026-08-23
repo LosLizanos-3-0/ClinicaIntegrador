@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import type { RegistroBitacora } from "../../types/clinica.types";
 import { bitacoraService } from "../../services/bitacora.service";
 

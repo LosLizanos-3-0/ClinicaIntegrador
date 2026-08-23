@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { useClinicaStore } from "../../types/clinicaStore";
@@ -36,7 +36,7 @@ const SUBTIPOS: Record<TipoPrincipal, { value: string; label: string }[]> = {
 };
 
 const necesitaFechas = (tipo: TipoPrincipal, subtipo: string) => !(tipo === "Inventario" && subtipo === "categoria");
-const necesitaEspecialidad = (tipo: TipoPrincipal, subtipo: string) => subtipo === "especialidad";
+const necesitaEspecialidad = (_tipo: TipoPrincipal, subtipo: string) => subtipo === "especialidad";
 const necesitaCategoria = (tipo: TipoPrincipal, subtipo: string) => tipo === "Inventario" && subtipo === "categoria";
 
 const formatoColones = (valor: number) =>

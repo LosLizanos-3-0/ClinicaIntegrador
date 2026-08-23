@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import Login from "./pages/farmaceutico/Login";
 import Inicio from "./pages/farmaceutico/Inicio";
 import GestionUsuarios from "./pages/admin/GestionUsuarios";
@@ -227,15 +227,7 @@ export default function App() {
         )}
 
         {seccion === "roles" && (
-          <GestionRoles
-            onGuardarCambios={(rolId, permisos) => {
-              console.log(
-                "Guardando permisos del rol",
-                rolId,
-                permisos
-              );
-            }}
-          />
+          <GestionRoles/>
         )}
 
         {seccion === "bitacora" && <GestionBitacora />}

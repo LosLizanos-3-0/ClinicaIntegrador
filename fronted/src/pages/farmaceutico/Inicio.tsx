@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import type { Credencial, RolUsuario } from "../../types/clinica.types";
 import "../../Inicio.css";
 
