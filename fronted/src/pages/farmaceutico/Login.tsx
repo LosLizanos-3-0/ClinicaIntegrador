@@ -37,9 +37,12 @@ export default function Login({ onIngresar }: LoginProps) {
         return;
       }
       onIngresar(credencial);
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      setError("Ocurrió un error al iniciar sesión. Intenta de nuevo.");
+      setError(
+        err?.response?.data?.error ||
+          "Ocurrió un error al iniciar sesión. Intenta de nuevo.",
+      );
     } finally {
       setCargando(false);
     }
@@ -57,7 +60,9 @@ export default function Login({ onIngresar }: LoginProps) {
               </div>
               <div>
                 <p className="fs-4 fw-bold mb-0">ClinicSoft</p>
-                <p className="fs-12 mb-0 opacity-75">Sistema de gestión clínica</p>
+                <p className="fs-12 mb-0 opacity-75">
+                  Sistema de gestión clínica
+                </p>
               </div>
             </div>
 
@@ -83,7 +88,8 @@ export default function Login({ onIngresar }: LoginProps) {
             </div>
 
             <p className="fs-12 opacity-50 mb-0">
-              © {new Date().getFullYear()} ClinicSoft · Acceso exclusivo para personal autorizado
+              © {new Date().getFullYear()} ClinicSoft · Acceso exclusivo para
+              personal autorizado
             </p>
           </div>
 
@@ -101,15 +107,23 @@ export default function Login({ onIngresar }: LoginProps) {
                 <p className="fs-5 fw-bold text-dark mb-0">ClinicSoft</p>
               </div>
 
-              <h1 className="fs-3 fw-bold text-dark mb-1">Bienvenido de nuevo</h1>
+              <h1 className="fs-3 fw-bold text-dark mb-1">
+                Bienvenido de nuevo
+              </h1>
               <p className="text-secondary mb-4">
                 Ingresa tus credenciales para acceder al sistema.
               </p>
 
-              <form onSubmit={handleSubmit} className="d-flex flex-column gap-3">
+              <form
+                onSubmit={handleSubmit}
+                className="d-flex flex-column gap-3"
+              >
                 {error && (
                   <div className="badge-soft badge-soft-red w-100 text-start py-2 px-3 fs-12 d-flex align-items-center gap-2">
-                    <i className="bi bi-exclamation-circle-fill" aria-hidden="true" />
+                    <i
+                      className="bi bi-exclamation-circle-fill"
+                      aria-hidden="true"
+                    />
                     {error}
                   </div>
                 )}
@@ -150,7 +164,7 @@ export default function Login({ onIngresar }: LoginProps) {
                       className="form-control"
                       autoComplete="current-password"
                     />
-                                       <button
+                    <button
                       type="button"
                       onClick={() => setVerContrasena((v) => !v)}
                       className="btn d-flex align-items-center border-0 bg-transparent shadow-none text-secondary px-3"

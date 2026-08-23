@@ -16,7 +16,12 @@ import type { KPI, BarraEspecialidad } from "../../types/clinica.types";
 // ─── Config de tipos/sub-tipos de reporte ──────────────────────────────────────
 type TipoPrincipal = "Citas" | "Inventario" | "Facturación" | "Pacientes";
 
-const TIPOS: TipoPrincipal[] = ["Citas", "Inventario", "Facturación", "Pacientes"];
+const TIPOS: TipoPrincipal[] = [
+  "Citas",
+  "Inventario",
+  "Facturación",
+  "Pacientes",
+];
 
 const SUBTIPOS: Record<TipoPrincipal, { value: string; label: string }[]> = {
   Citas: [
@@ -24,23 +29,36 @@ const SUBTIPOS: Record<TipoPrincipal, { value: string; label: string }[]> = {
     { value: "especialidad", label: "Reporte de citas por especialidad" },
   ],
   Inventario: [
-    { value: "categoria", label: "Reporte de medicamentos por categoría del stock actual" },
+    {
+      value: "categoria",
+      label: "Reporte de medicamentos por categoría del stock actual",
+    },
   ],
-  "Facturación": [
+  Facturación: [
     { value: "ingresos", label: "Reporte de ingresos por rango de fecha" },
     { value: "especialidad", label: "Reporte de facturación por especialidad" },
   ],
   Pacientes: [
-    { value: "nuevos", label: "Reporte de nuevos pacientes por rango de fecha" },
+    {
+      value: "nuevos",
+      label: "Reporte de nuevos pacientes por rango de fecha",
+    },
   ],
 };
 
-const necesitaFechas = (tipo: TipoPrincipal, subtipo: string) => !(tipo === "Inventario" && subtipo === "categoria");
-const necesitaEspecialidad = (_tipo: TipoPrincipal, subtipo: string) => subtipo === "especialidad";
-const necesitaCategoria = (tipo: TipoPrincipal, subtipo: string) => tipo === "Inventario" && subtipo === "categoria";
+const necesitaFechas = (tipo: TipoPrincipal, subtipo: string) =>
+  !(tipo === "Inventario" && subtipo === "categoria");
+const necesitaEspecialidad = (_tipo: TipoPrincipal, subtipo: string) =>
+  subtipo === "especialidad";
+const necesitaCategoria = (tipo: TipoPrincipal, subtipo: string) =>
+  tipo === "Inventario" && subtipo === "categoria";
 
 const formatoColones = (valor: number) =>
-  valor.toLocaleString("es-CR", { style: "currency", currency: "CRC", maximumFractionDigits: 0 });
+  valor.toLocaleString("es-CR", {
+    style: "currency",
+    currency: "CRC",
+    maximumFractionDigits: 0,
+  });
 
 type ResultadoReporte =
   | { tipo: "citas"; filas: CitaReporte[] }
@@ -82,28 +100,53 @@ function cargarHistorialLocal(): ReporteGuardado[] {
 
 function guardarHistorialLocal(historial: ReporteGuardado[]) {
   try {
-    localStorage.setItem(CLAVE_HISTORIAL, JSON.stringify(historial.slice(0, MAX_HISTORIAL)));
+    localStorage.setItem(
+      CLAVE_HISTORIAL,
+      JSON.stringify(historial.slice(0, MAX_HISTORIAL)),
+    );
   } catch (err) {
     console.error("No se pudo guardar el historial de reportes:", err);
   }
 }
 
 // ─── Dona SVG ───────────────────────────────────────────────────────────────
-interface SegmentoDonut { porcentaje: number; color: string; label: string; }
+interface SegmentoDonut {
+  porcentaje: number;
+  color: string;
+  label: string;
+}
 
-function DonutChart({ segmentos, size = 100, grosor = 14 }: { segmentos: SegmentoDonut[]; size?: number; grosor?: number }) {
+function DonutChart({
+  segmentos,
+  size = 100,
+  grosor = 14,
+}: {
+  segmentos: SegmentoDonut[];
+  size?: number;
+  grosor?: number;
+}) {
   const radio = (size - grosor) / 2;
   const circunferencia = 2 * Math.PI * radio;
   let acumulado = 0;
 
   return (
-    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="flex-shrink-0">
+    <svg
+      width={size}
+      height={size}
+      viewBox={`0 0 ${size} ${size}`}
+      className="flex-shrink-0"
+    >
       {segmentos.map((s, i) => {
         const dash = (s.porcentaje / 100) * circunferencia;
         const el = (
           <circle
-            key={i} cx={size / 2} cy={size / 2} r={radio} fill="none"
-            stroke={s.color} strokeWidth={grosor}
+            key={i}
+            cx={size / 2}
+            cy={size / 2}
+            r={radio}
+            fill="none"
+            stroke={s.color}
+            strokeWidth={grosor}
             strokeDasharray={`${dash} ${circunferencia - dash}`}
             strokeDashoffset={-acumulado}
             transform={`rotate(-90 ${size / 2} ${size / 2})`}
@@ -116,7 +159,13 @@ function DonutChart({ segmentos, size = 100, grosor = 14 }: { segmentos: Segment
   );
 }
 
-const COLOR_BARRA = ["bg-primary", "bg-success", "bg-purple-bar", "bg-warning", "bg-orange-bar"];
+const COLOR_BARRA = [
+  "bg-primary",
+  "bg-success",
+  "bg-purple-bar",
+  "bg-warning",
+  "bg-orange-bar",
+];
 const COLOR_ESTADO: Record<string, string> = {
   Atendida: "#378ADD",
   Confirmada: "#1D9E75",
@@ -142,11 +191,21 @@ function formatoHora(hora: string): string {
   }
 }
 
-function columnasYFilas(resultado: ResultadoReporte): { headers: string[]; rows: (string | number)[][] } {
+function columnasYFilas(resultado: ResultadoReporte): {
+  headers: string[];
+  rows: (string | number)[][];
+} {
   switch (resultado.tipo) {
     case "citas":
       return {
-        headers: ["Fecha", "Hora", "Paciente", "Médico", "Especialidad", "Estado"],
+        headers: [
+          "Fecha",
+          "Hora",
+          "Paciente",
+          "Médico",
+          "Especialidad",
+          "Estado",
+        ],
         rows: resultado.filas.map((c) => [
           new Date(c.FechaCita).toLocaleDateString("es-CR"),
           formatoHora(c.HoraCita),
@@ -158,7 +217,14 @@ function columnasYFilas(resultado: ResultadoReporte): { headers: string[]; rows:
       };
     case "medicamentos":
       return {
-        headers: ["Medicamento", "Presentación", "Ubicación", "Stock actual", "Stock mínimo", "Precio unitario"],
+        headers: [
+          "Medicamento",
+          "Presentación",
+          "Ubicación",
+          "Stock actual",
+          "Stock mínimo",
+          "Precio unitario",
+        ],
         rows: resultado.filas.map((m) => [
           m.NombreMedicamento,
           m.Presentacion ?? "—",
@@ -170,7 +236,15 @@ function columnasYFilas(resultado: ResultadoReporte): { headers: string[]; rows:
       };
     case "facturas":
       return {
-        headers: ["Fecha", "Paciente", ...(resultado.filas[0]?.Especialidad ? ["Especialidad"] : []), "Consulta", "Medicamentos", "Total (IVA incl.)", "Estado"],
+        headers: [
+          "Fecha",
+          "Paciente",
+          ...(resultado.filas[0]?.Especialidad ? ["Especialidad"] : []),
+          "Consulta",
+          "Medicamentos",
+          "Total (IVA incl.)",
+          "Estado",
+        ],
         rows: resultado.filas.map((f) => [
           new Date(f.FechaEmision).toLocaleDateString("es-CR"),
           f.Paciente,
@@ -183,7 +257,13 @@ function columnasYFilas(resultado: ResultadoReporte): { headers: string[]; rows:
       };
     case "pacientes":
       return {
-        headers: ["Nombre completo", "Cédula", "Teléfono", "Correo", "Fecha de registro"],
+        headers: [
+          "Nombre completo",
+          "Cédula",
+          "Teléfono",
+          "Correo",
+          "Fecha de registro",
+        ],
         rows: resultado.filas.map((p) => [
           `${p.Nombre} ${p.Apellido1} ${p.Apellido2 ?? ""}`.trim(),
           p.Cedula,
@@ -224,7 +304,8 @@ function nombreDistintivo(meta: MetaReporte): string {
 
 function slug(texto: string): string {
   return texto
-    .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
     .replace(/[^a-zA-Z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "")
     .toLowerCase();
@@ -232,8 +313,10 @@ function slug(texto: string): string {
 
 function detallesReporte(meta: MetaReporte): string[] {
   const detalles: string[] = [];
-  if (necesitaFechas(meta.tipo, meta.subtipo)) detalles.push(`Rango: ${meta.desde} a ${meta.hasta}`);
-  if (meta.especialidadNombre) detalles.push(`Especialidad: ${meta.especialidadNombre}`);
+  if (necesitaFechas(meta.tipo, meta.subtipo))
+    detalles.push(`Rango: ${meta.desde} a ${meta.hasta}`);
+  if (meta.especialidadNombre)
+    detalles.push(`Especialidad: ${meta.especialidadNombre}`);
   if (meta.categoriaNombre) detalles.push(`Categoría: ${meta.categoriaNombre}`);
   detalles.push(`Generado: ${new Date().toLocaleString("es-CR")}`);
   return detalles;
@@ -242,21 +325,39 @@ function detallesReporte(meta: MetaReporte): string[] {
 // Líneas de resumen al final del reporte, según su tipo — se usan tanto en el
 // PDF como en el CSV. El formato de moneda se recibe como parámetro porque el
 // PDF y el CSV necesitan formatos distintos (ver formatoColonesPdf más abajo).
-function lineasResumen(resultado: ResultadoReporte, formatoMoneda: (valor: number) => string): string[] {
+function lineasResumen(
+  resultado: ResultadoReporte,
+  formatoMoneda: (valor: number) => string,
+): string[] {
   switch (resultado.tipo) {
     case "facturas": {
-      const total = resultado.filas.reduce((acc, f) => acc + calcularTotalConIva(f.Total), 0);
+      const total = resultado.filas.reduce(
+        (acc, f) => acc + calcularTotalConIva(f.Total),
+        0,
+      );
       return [`Ingresos totales en general: ${formatoMoneda(total)}`];
     }
     case "citas": {
-      const atendidas = resultado.filas.filter((c) => c.Estado === "Atendida").length;
-      const canceladas = resultado.filas.filter((c) => c.Estado === "Cancelada").length;
-      return [`Citas atendidas: ${atendidas}`, `Citas canceladas: ${canceladas}`];
+      const atendidas = resultado.filas.filter(
+        (c) => c.Estado === "Atendida",
+      ).length;
+      const canceladas = resultado.filas.filter(
+        (c) => c.Estado === "Cancelada",
+      ).length;
+      return [
+        `Citas atendidas: ${atendidas}`,
+        `Citas canceladas: ${canceladas}`,
+      ];
     }
     case "medicamentos": {
-      const stockMinimo = resultado.filas.filter((m) => m.StockActual <= m.StockMinimo).length;
+      const stockMinimo = resultado.filas.filter(
+        (m) => m.StockActual <= m.StockMinimo,
+      ).length;
       const stockNormal = resultado.filas.length - stockMinimo;
-      return [`Medicamentos con stock normal: ${stockNormal}`, `Medicamentos con stock mínimo: ${stockMinimo}`];
+      return [
+        `Medicamentos con stock normal: ${stockNormal}`,
+        `Medicamentos con stock mínimo: ${stockMinimo}`,
+      ];
     }
     case "pacientes":
       return [`Pacientes nuevos: ${resultado.filas.length}`];
@@ -276,7 +377,12 @@ function descargarCsv(
   nombreArchivo: string,
   encabezados: string[],
   filas: (string | number)[][],
-  meta: { titulo: string; subtitulo: string; detalles: string[]; resumen?: string[] }
+  meta: {
+    titulo: string;
+    subtitulo: string;
+    detalles: string[];
+    resumen?: string[];
+  },
 ) {
   const DELIM = ";";
   const necesitaComillas = (v: string) => /[;"\n]/.test(v);
@@ -286,13 +392,26 @@ function descargarCsv(
     return necesitaComillas(texto) ? `"${texto.replace(/"/g, '""')}"` : texto;
   };
 
-  const encabezadoDocumento = [meta.titulo, meta.subtitulo, ...meta.detalles, ""];
+  const encabezadoDocumento = [
+    meta.titulo,
+    meta.subtitulo,
+    ...meta.detalles,
+    "",
+  ];
   const filaEncabezado = encabezados.join(DELIM);
   const filasDatos = filas.map((f) => f.map(escapar).join(DELIM));
-  const pie = meta.resumen && meta.resumen.length > 0 ? ["", ...meta.resumen] : [];
+  const pie =
+    meta.resumen && meta.resumen.length > 0 ? ["", ...meta.resumen] : [];
 
-  const contenido = [...encabezadoDocumento, filaEncabezado, ...filasDatos, ...pie].join("\r\n");
-  const blob = new Blob(["\uFEFF" + contenido], { type: "text/csv;charset=utf-8;" });
+  const contenido = [
+    ...encabezadoDocumento,
+    filaEncabezado,
+    ...filasDatos,
+    ...pie,
+  ].join("\r\n");
+  const blob = new Blob(["\uFEFF" + contenido], {
+    type: "text/csv;charset=utf-8;",
+  });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
@@ -328,7 +447,12 @@ function construirPdf(resultado: ResultadoReporte, meta: MetaReporte): jsPDF {
     head: [headers],
     body: rows.map((fila) => fila.map((v) => String(v))),
     theme: "striped",
-    headStyles: { fillColor: [55, 138, 221], textColor: 255, fontSize: 9, halign: "left" },
+    headStyles: {
+      fillColor: [55, 138, 221],
+      textColor: 255,
+      fontSize: 9,
+      halign: "left",
+    },
     bodyStyles: { fontSize: 8.5, textColor: [30, 41, 59] },
     alternateRowStyles: { fillColor: [248, 250, 252] },
     margin: { left: margenX, right: margenX },
@@ -341,7 +465,7 @@ function construirPdf(resultado: ResultadoReporte, meta: MetaReporte): jsPDF {
         `Página ${data.pageNumber} de ${totalPaginas}`,
         doc.internal.pageSize.getWidth() - margenX,
         doc.internal.pageSize.getHeight() - 8,
-        { align: "right" }
+        { align: "right" },
       );
     },
   });
@@ -363,8 +487,12 @@ function construirPdf(resultado: ResultadoReporte, meta: MetaReporte): jsPDF {
 // ─── Componente principal ─────────────────────────────────────────────────────
 export default function GestionReportes() {
   const { especialidades, categoriasMedicamento } = useClinicaStore();
-  const especialidadesActivas = especialidades.filter((e) => e.estado === "Activa");
-  const categoriasActivas = categoriasMedicamento.filter((c) => c.estado === "A");
+  const especialidadesActivas = especialidades.filter(
+    (e) => e.estado === "Activa",
+  );
+  const categoriasActivas = categoriasMedicamento.filter(
+    (c) => c.estado === "A",
+  );
 
   // Dashboard
   const [dashboard, setDashboard] = useState<DashboardData | null>(null);
@@ -380,16 +508,40 @@ export default function GestionReportes() {
 
   const kpis: KPI[] = dashboard
     ? [
-        { label: "Citas del día", valor: String(dashboard.kpis.CitasHoy), icono: "bi-calendar-check-fill", colorClase: "badge-soft-blue" },
-        { label: "Ingresos del mes", valor: formatoColones(calcularTotalConIva(dashboard.kpis.IngresosMes)), icono: "bi-cash-stack", colorClase: "badge-soft-emerald" },
-        { label: "Pacientes registrados", valor: String(dashboard.kpis.PacientesRegistrados), icono: "bi-people-fill", colorClase: "badge-soft-amber" },
-        { label: "Medicamentos con stock bajo", valor: String(dashboard.kpis.MedicamentosStockBajo), icono: "bi-exclamation-triangle-fill", colorClase: "badge-soft-purple" },
+        {
+          label: "Citas del día",
+          valor: String(dashboard.kpis.CitasHoy),
+          icono: "bi-calendar-check-fill",
+          colorClase: "badge-soft-blue",
+        },
+        {
+          label: "Ingresos del mes",
+          valor: formatoColones(
+            calcularTotalConIva(dashboard.kpis.IngresosMes),
+          ),
+          icono: "bi-cash-stack",
+          colorClase: "badge-soft-emerald",
+        },
+        {
+          label: "Pacientes registrados",
+          valor: String(dashboard.kpis.PacientesRegistrados),
+          icono: "bi-people-fill",
+          colorClase: "badge-soft-amber",
+        },
+        {
+          label: "Medicamentos con stock bajo",
+          valor: String(dashboard.kpis.MedicamentosStockBajo),
+          icono: "bi-exclamation-triangle-fill",
+          colorClase: "badge-soft-purple",
+        },
       ]
     : [];
 
   const barrasEspecialidad: BarraEspecialidad[] = useMemo(() => {
     const conteos = new Map<string, number>();
-    (dashboard?.consultasPorEspecialidad ?? []).forEach((e) => conteos.set(e.Especialidad, e.Cantidad));
+    (dashboard?.consultasPorEspecialidad ?? []).forEach((e) =>
+      conteos.set(e.Especialidad, e.Cantidad),
+    );
 
     const datos = especialidadesActivas.map((e) => ({
       nombre: e.nombre,
@@ -421,13 +573,19 @@ export default function GestionReportes() {
   const [subtipo, setSubtipo] = useState<string>(SUBTIPOS.Citas[0].value);
   const [idEspecialidad, setIdEspecialidad] = useState<number | "">("");
   const [idCategoria, setIdCategoria] = useState<number | "">("");
-  const [desde, setDesde] = useState<string>(new Date().toISOString().slice(0, 8) + "01");
-  const [hasta, setHasta] = useState<string>(new Date().toISOString().slice(0, 10));
+  const [desde, setDesde] = useState<string>(
+    new Date().toISOString().slice(0, 8) + "01",
+  );
+  const [hasta, setHasta] = useState<string>(
+    new Date().toISOString().slice(0, 10),
+  );
   const [cargandoReporte, setCargandoReporte] = useState<boolean>(false);
   const [error, setError] = useState<string>("");
 
   // Historial de reportes generados (persistido en el navegador)
-  const [historial, setHistorial] = useState<ReporteGuardado[]>(() => cargarHistorialLocal());
+  const [historial, setHistorial] = useState<ReporteGuardado[]>(() =>
+    cargarHistorialLocal(),
+  );
   const [seleccionadoId, setSeleccionadoId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -485,25 +643,57 @@ export default function GestionReportes() {
       subtipo,
       desde,
       hasta,
-      especialidadNombre: idEspecialidad ? especialidadesActivas.find((e) => e.id === idEspecialidad)?.nombre : undefined,
-      categoriaNombre: idCategoria ? categoriasActivas.find((c) => c.id === idCategoria)?.nombre : undefined,
+      especialidadNombre: idEspecialidad
+        ? especialidadesActivas.find((e) => e.id === idEspecialidad)?.nombre
+        : undefined,
+      categoriaNombre: idCategoria
+        ? categoriasActivas.find((c) => c.id === idCategoria)?.nombre
+        : undefined,
     };
 
     setCargandoReporte(true);
     try {
       let resultado: ResultadoReporte;
       if (tipo === "Citas" && subtipo === "rango") {
-        resultado = { tipo: "citas", filas: await reporteService.citasRango(desde, hasta) };
+        resultado = {
+          tipo: "citas",
+          filas: await reporteService.citasRango(desde, hasta),
+        };
       } else if (tipo === "Citas" && subtipo === "especialidad") {
-        resultado = { tipo: "citas", filas: await reporteService.citasEspecialidad(desde, hasta, Number(idEspecialidad)) };
+        resultado = {
+          tipo: "citas",
+          filas: await reporteService.citasEspecialidad(
+            desde,
+            hasta,
+            Number(idEspecialidad),
+          ),
+        };
       } else if (tipo === "Inventario" && subtipo === "categoria") {
-        resultado = { tipo: "medicamentos", filas: await reporteService.medicamentosCategoria(Number(idCategoria)) };
+        resultado = {
+          tipo: "medicamentos",
+          filas: await reporteService.medicamentosCategoria(
+            Number(idCategoria),
+          ),
+        };
       } else if (tipo === "Facturación" && subtipo === "ingresos") {
-        resultado = { tipo: "facturas", filas: await reporteService.ingresosRango(desde, hasta) };
+        resultado = {
+          tipo: "facturas",
+          filas: await reporteService.ingresosRango(desde, hasta),
+        };
       } else if (tipo === "Facturación" && subtipo === "especialidad") {
-        resultado = { tipo: "facturas", filas: await reporteService.facturacionEspecialidad(desde, hasta, Number(idEspecialidad)) };
+        resultado = {
+          tipo: "facturas",
+          filas: await reporteService.facturacionEspecialidad(
+            desde,
+            hasta,
+            Number(idEspecialidad),
+          ),
+        };
       } else {
-        resultado = { tipo: "pacientes", filas: await reporteService.pacientesNuevos(desde, hasta) };
+        resultado = {
+          tipo: "pacientes",
+          filas: await reporteService.pacientesNuevos(desde, hasta),
+        };
       }
 
       const nuevo: ReporteGuardado = {
@@ -518,20 +708,27 @@ export default function GestionReportes() {
 
       setHistorial((prev) => [nuevo, ...prev]);
       abrirPreview(nuevo);
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      setError("Ocurrió un error al generar el reporte. Intenta de nuevo.");
+      setError(
+        err?.response?.data?.error ||
+          "Ocurrió un error al generar reporte. Intenta de nuevo.",
+      );
     } finally {
       setCargandoReporte(false);
     }
   };
 
   const historialDelTipo = useMemo(
-    () => historial.filter((r) => r.tipo === tipo).sort((a, b) => b.generadoEn.localeCompare(a.generadoEn)),
-    [historial, tipo]
+    () =>
+      historial
+        .filter((r) => r.tipo === tipo)
+        .sort((a, b) => b.generadoEn.localeCompare(a.generadoEn)),
+    [historial, tipo],
   );
 
-  const reporteSeleccionado = historial.find((r) => r.id === seleccionadoId) ?? null;
+  const reporteSeleccionado =
+    historial.find((r) => r.id === seleccionadoId) ?? null;
 
   const eliminarDelHistorial = (id: string) => {
     setHistorial((prev) => prev.filter((r) => r.id !== id));
@@ -543,7 +740,10 @@ export default function GestionReportes() {
     const { headers, rows } = columnasYFilas(reporteSeleccionado.resultado);
     descargarCsv(`${slug(reporteSeleccionado.nombre)}.csv`, headers, rows, {
       titulo: "ClinicSoft",
-      subtitulo: nombreReporte(reporteSeleccionado.tipo, reporteSeleccionado.subtipo),
+      subtitulo: nombreReporte(
+        reporteSeleccionado.tipo,
+        reporteSeleccionado.subtipo,
+      ),
       detalles: detallesReporte(reporteSeleccionado.meta),
       resumen: lineasResumen(reporteSeleccionado.resultado, formatoColones),
     });
@@ -551,7 +751,10 @@ export default function GestionReportes() {
 
   const handleExportarPdf = () => {
     if (!reporteSeleccionado) return;
-    const doc = construirPdf(reporteSeleccionado.resultado, reporteSeleccionado.meta);
+    const doc = construirPdf(
+      reporteSeleccionado.resultado,
+      reporteSeleccionado.meta,
+    );
     doc.save(`${slug(reporteSeleccionado.nombre)}.pdf`);
   };
 
@@ -566,19 +769,32 @@ export default function GestionReportes() {
           <div className="d-flex align-items-center justify-content-between px-4 py-3 bg-white border-bottom">
             <div>
               <p className="fw-medium text-dark mb-0">{previewNombre}</p>
-              <p className="fs-11 text-secondary mb-0">Vista previa — no se ha descargado nada todavía</p>
+              <p className="fs-11 text-secondary mb-0">
+                Vista previa — no se ha descargado nada todavía
+              </p>
             </div>
-            <button onClick={cerrarPreview} className="btn btn-outline-secondary btn-sm d-flex align-items-center gap-1">
-              <i className="bi bi-x-lg" aria-hidden="true" /> Cerrar vista previa
+            <button
+              onClick={cerrarPreview}
+              className="btn btn-outline-secondary btn-sm d-flex align-items-center gap-1"
+            >
+              <i className="bi bi-x-lg" aria-hidden="true" /> Cerrar vista
+              previa
             </button>
           </div>
-          <iframe title="Vista previa del reporte" src={previewUrl} className="flex-fill border-0" style={{ background: "#525659" }} />
+          <iframe
+            title="Vista previa del reporte"
+            src={previewUrl}
+            className="flex-fill border-0"
+            style={{ background: "#525659" }}
+          />
         </div>
       )}
 
       {/* Topbar */}
       <div className="px-4 py-3 border-bottom bg-soft d-flex flex-wrap gap-3 align-items-center justify-content-between">
-        <h2 className="fs-6 fw-bold text-dark text-start mb-0">Gestión de reportes</h2>
+        <h2 className="fs-6 fw-bold text-dark text-start mb-0">
+          Gestión de reportes
+        </h2>
         <div className="d-flex gap-2">
           <button
             onClick={handleExportarCsv}
@@ -592,7 +808,8 @@ export default function GestionReportes() {
             disabled={!reporteSeleccionado}
             className="btn btn-outline-danger btn-sm d-flex align-items-center gap-1"
           >
-            <i className="bi bi-file-earmark-pdf" aria-hidden="true" /> Exportar PDF
+            <i className="bi bi-file-earmark-pdf" aria-hidden="true" /> Exportar
+            PDF
           </button>
         </div>
       </div>
@@ -604,51 +821,81 @@ export default function GestionReportes() {
 
           <div className="row g-2 align-items-end">
             <div className="col-md-3">
-              <label className="form-label fs-12 text-secondary mb-1">Consultas de</label>
+              <label className="form-label fs-12 text-secondary mb-1">
+                Consultas de
+              </label>
               <select
                 value={tipo}
-                onChange={(e) => handleCambiarTipo(e.target.value as TipoPrincipal)}
+                onChange={(e) =>
+                  handleCambiarTipo(e.target.value as TipoPrincipal)
+                }
                 className="form-select form-select-sm"
               >
-                {TIPOS.map((t) => <option key={t}>{t}</option>)}
+                {TIPOS.map((t) => (
+                  <option key={t}>{t}</option>
+                ))}
               </select>
             </div>
 
             <div className="col-md-4">
-              <label className="form-label fs-12 text-secondary mb-1">Reporte</label>
+              <label className="form-label fs-12 text-secondary mb-1">
+                Reporte
+              </label>
               <select
                 value={subtipo}
                 onChange={(e) => setSubtipo(e.target.value)}
                 className="form-select form-select-sm"
               >
-                {SUBTIPOS[tipo].map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
+                {SUBTIPOS[tipo].map((s) => (
+                  <option key={s.value} value={s.value}>
+                    {s.label}
+                  </option>
+                ))}
               </select>
             </div>
 
             {necesitaEspecialidad(tipo, subtipo) && (
               <div className="col-md-3">
-                <label className="form-label fs-12 text-secondary mb-1">Especialidad</label>
+                <label className="form-label fs-12 text-secondary mb-1">
+                  Especialidad
+                </label>
                 <select
                   value={idEspecialidad}
-                  onChange={(e) => setIdEspecialidad(e.target.value ? Number(e.target.value) : "")}
+                  onChange={(e) =>
+                    setIdEspecialidad(
+                      e.target.value ? Number(e.target.value) : "",
+                    )
+                  }
                   className="form-select form-select-sm"
                 >
                   <option value="">Selecciona…</option>
-                  {especialidadesActivas.map((e) => <option key={e.id} value={e.id}>{e.nombre}</option>)}
+                  {especialidadesActivas.map((e) => (
+                    <option key={e.id} value={e.id}>
+                      {e.nombre}
+                    </option>
+                  ))}
                 </select>
               </div>
             )}
 
             {necesitaCategoria(tipo, subtipo) && (
               <div className="col-md-3">
-                <label className="form-label fs-12 text-secondary mb-1">Categoría</label>
+                <label className="form-label fs-12 text-secondary mb-1">
+                  Categoría
+                </label>
                 <select
                   value={idCategoria}
-                  onChange={(e) => setIdCategoria(e.target.value ? Number(e.target.value) : "")}
+                  onChange={(e) =>
+                    setIdCategoria(e.target.value ? Number(e.target.value) : "")
+                  }
                   className="form-select form-select-sm"
                 >
                   <option value="">Selecciona…</option>
-                  {categoriasActivas.map((c) => <option key={c.id} value={c.id}>{c.nombre}</option>)}
+                  {categoriasActivas.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.nombre}
+                    </option>
+                  ))}
                 </select>
               </div>
             )}
@@ -657,22 +904,42 @@ export default function GestionReportes() {
           {necesitaFechas(tipo, subtipo) && (
             <div className="row g-2 mt-1">
               <div className="col-md-3">
-                <label className="form-label fs-12 text-secondary mb-1">Desde</label>
-                <input type="date" value={desde} onChange={(e) => setDesde(e.target.value)} className="form-control form-control-sm" />
+                <label className="form-label fs-12 text-secondary mb-1">
+                  Desde
+                </label>
+                <input
+                  type="date"
+                  value={desde}
+                  onChange={(e) => setDesde(e.target.value)}
+                  className="form-control form-control-sm"
+                />
               </div>
               <div className="col-md-3">
-                <label className="form-label fs-12 text-secondary mb-1">Hasta</label>
-                <input type="date" value={hasta} onChange={(e) => setHasta(e.target.value)} className="form-control form-control-sm" />
+                <label className="form-label fs-12 text-secondary mb-1">
+                  Hasta
+                </label>
+                <input
+                  type="date"
+                  value={hasta}
+                  onChange={(e) => setHasta(e.target.value)}
+                  className="form-control form-control-sm"
+                />
               </div>
             </div>
           )}
 
           {error && (
-            <div className="badge-soft badge-soft-red w-100 text-start py-2 px-3 fs-12 mt-3">{error}</div>
+            <div className="badge-soft badge-soft-red w-100 text-start py-2 px-3 fs-12 mt-3">
+              {error}
+            </div>
           )}
 
           <div className="mt-3">
-            <button onClick={handleGenerar} className="btn btn-primary btn-sm" disabled={cargandoReporte}>
+            <button
+              onClick={handleGenerar}
+              className="btn btn-primary btn-sm"
+              disabled={cargandoReporte}
+            >
               {cargandoReporte ? "Generando…" : "Generar reporte"}
             </button>
           </div>
@@ -681,7 +948,9 @@ export default function GestionReportes() {
         {/* ── Historial del tipo seleccionado ── */}
         <div className="border rounded overflow-hidden mb-4">
           <div className="px-3 py-2 bg-soft border-bottom">
-            <span className="fs-12 fw-medium text-dark">Historial de reportes — {tipo}</span>
+            <span className="fs-12 fw-medium text-dark">
+              Historial de reportes — {tipo}
+            </span>
           </div>
 
           {historialDelTipo.length === 0 ? (
@@ -697,8 +966,14 @@ export default function GestionReportes() {
                   className="px-3 py-2 border-bottom d-flex align-items-center justify-content-between hover-row"
                   style={{
                     cursor: "pointer",
-                    background: r.id === seleccionadoId ? "rgba(55,138,221,.08)" : undefined,
-                    borderLeft: r.id === seleccionadoId ? "3px solid #378ADD" : "3px solid transparent",
+                    background:
+                      r.id === seleccionadoId
+                        ? "rgba(55,138,221,.08)"
+                        : undefined,
+                    borderLeft:
+                      r.id === seleccionadoId
+                        ? "3px solid #378ADD"
+                        : "3px solid transparent",
                   }}
                 >
                   <div>
@@ -709,14 +984,20 @@ export default function GestionReportes() {
                   </div>
                   <div className="d-flex align-items-center gap-1 flex-shrink-0">
                     <button
-                      onClick={(e) => { e.stopPropagation(); abrirPreview(r); }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        abrirPreview(r);
+                      }}
                       title="Ver vista previa en PDF"
                       className="btn btn-outline-secondary btn-icon-sm bg-white text-secondary"
                     >
                       <i className="bi bi-eye" aria-hidden="true" />
                     </button>
                     <button
-                      onClick={(e) => { e.stopPropagation(); eliminarDelHistorial(r.id); }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        eliminarDelHistorial(r.id);
+                      }}
                       title="Quitar del historial"
                       className="btn btn-outline-secondary btn-icon-sm bg-white text-secondary"
                     >
@@ -731,7 +1012,9 @@ export default function GestionReportes() {
 
         {/* ── KPIs ── */}
         {cargandoDashboard ? (
-          <p className="fs-6 text-secondary text-center py-4">Cargando indicadores…</p>
+          <p className="fs-6 text-secondary text-center py-4">
+            Cargando indicadores…
+          </p>
         ) : (
           <>
             <div className="row row-cols-2 row-cols-md-4 g-3 mb-4">
@@ -754,18 +1037,38 @@ export default function GestionReportes() {
             <div className="row g-3">
               <div className="col-md-6">
                 <div className="bg-soft border rounded p-3 h-100">
-                  <h3 className="fs-6 fw-medium text-dark mb-3">Consultas por especialidad del mes actual</h3>
+                  <h3 className="fs-6 fw-medium text-dark mb-3">
+                    Consultas por especialidad del mes actual
+                  </h3>
                   {barrasEspecialidad.length === 0 ? (
-                    <p className="fs-12 text-secondary mb-0">No hay especialidades activas registradas.</p>
+                    <p className="fs-12 text-secondary mb-0">
+                      No hay especialidades activas registradas.
+                    </p>
                   ) : (
                     <div className="d-flex flex-column gap-2">
                       {barrasEspecialidad.map((e) => (
-                        <div key={e.nombre} className="d-flex align-items-center gap-2">
-                          <span className="fs-12 text-secondary text-end flex-shrink-0" style={{ width: 96 }}>{e.nombre}</span>
+                        <div
+                          key={e.nombre}
+                          className="d-flex align-items-center gap-2"
+                        >
+                          <span
+                            className="fs-12 text-secondary text-end flex-shrink-0"
+                            style={{ width: 96 }}
+                          >
+                            {e.nombre}
+                          </span>
                           <div className="bar-thin flex-fill">
-                            <div className={e.colorClase} style={{ width: `${(e.valor / e.max) * 100}%` }} />
+                            <div
+                              className={e.colorClase}
+                              style={{ width: `${(e.valor / e.max) * 100}%` }}
+                            />
                           </div>
-                          <span className="fs-11 text-secondary text-end" style={{ width: 32 }}>{e.valor}</span>
+                          <span
+                            className="fs-11 text-secondary text-end"
+                            style={{ width: 32 }}
+                          >
+                            {e.valor}
+                          </span>
                         </div>
                       ))}
                     </div>
@@ -775,16 +1078,30 @@ export default function GestionReportes() {
 
               <div className="col-md-6">
                 <div className="bg-soft border rounded p-3 h-100">
-                  <h3 className="fs-6 fw-medium text-dark mb-3">Estado de citas del mes actual</h3>
+                  <h3 className="fs-6 fw-medium text-dark mb-3">
+                    Estado de citas del mes actual
+                  </h3>
                   {segmentosEstado.length === 0 ? (
-                    <p className="fs-12 text-secondary mb-0">Aún no hay citas este mes.</p>
+                    <p className="fs-12 text-secondary mb-0">
+                      Aún no hay citas este mes.
+                    </p>
                   ) : (
                     <div className="d-flex align-items-center gap-4">
                       <DonutChart segmentos={segmentosEstado} />
                       <ul className="list-unstyled d-flex flex-column gap-2 fs-12 text-secondary mb-0">
                         {segmentosEstado.map((s) => (
-                          <li key={s.label} className="d-flex align-items-center gap-2">
-                            <span className="rounded-circle flex-shrink-0" style={{ width: 10, height: 10, background: s.color }} />
+                          <li
+                            key={s.label}
+                            className="d-flex align-items-center gap-2"
+                          >
+                            <span
+                              className="rounded-circle flex-shrink-0"
+                              style={{
+                                width: 10,
+                                height: 10,
+                                background: s.color,
+                              }}
+                            />
                             {s.label}
                           </li>
                         ))}

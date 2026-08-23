@@ -1,9 +1,13 @@
-
 import React, { useMemo, useState } from "react";
 import type { Cita, EstadoCita } from "../../types/clinica.types";
 import { clinicaStore, useClinicaStore } from "../../types/clinicaStore";
 
-const ESTADOS: EstadoCita[] = ["Programada", "Confirmada", "Atendida", "Cancelada"];
+const ESTADOS: EstadoCita[] = [
+  "Programada",
+  "Confirmada",
+  "Atendida",
+  "Cancelada",
+];
 
 const ESTADO_COLOR: Record<EstadoCita, string> = {
   Programada: "badge-soft-blue",
@@ -12,7 +16,6 @@ const ESTADO_COLOR: Record<EstadoCita, string> = {
   Cancelada: "badge-soft-gray",
 };
 
-// ─── Tipos internos ───────────────────────────────────────────────────────────
 type FormCita = {
   id?: number;
   pacienteId: number | "";
@@ -23,7 +26,14 @@ type FormCita = {
   motivo: string;
 };
 
-const FORM_VACIO: FormCita = { pacienteId: "", especialidadId: "", medicoId: "", fecha: "", hora: "", motivo: "" };
+const FORM_VACIO: FormCita = {
+  pacienteId: "",
+  especialidadId: "",
+  medicoId: "",
+  fecha: "",
+  hora: "",
+  motivo: "",
+};
 
 interface ModalCitaProps {
   cita?: Cita;
@@ -31,7 +41,6 @@ interface ModalCitaProps {
   onCerrar: () => void;
 }
 
-// ─── Modal Agendar / Reprogramar ──────────────────────────────────────────────
 function ModalCita({ cita, onGuardar, onCerrar }: ModalCitaProps) {
   const esNueva = !cita?.id;
   const { pacientes, especialidades } = useClinicaStore();
@@ -39,13 +48,15 @@ function ModalCita({ cita, onGuardar, onCerrar }: ModalCitaProps) {
 
   const especialidadesActivas = useMemo(
     () => especialidades.filter((e) => e.estado === "Activa"),
-    [especialidades]
+    [especialidades],
   );
 
-  // Pacientes activos, incluyendo al ya asignado si se está reprogramando
   const pacientesSeleccionables = useMemo(
-    () => pacientes.filter((p) => p.estado === "Activo" || p.id === cita?.pacienteId),
-    [pacientes, cita]
+    () =>
+      pacientes.filter(
+        (p) => p.estado === "Activo" || p.id === cita?.pacienteId,
+      ),
+    [pacientes, cita],
   );
 
   const [form, setForm] = useState<FormCita>(
@@ -59,17 +70,22 @@ function ModalCita({ cita, onGuardar, onCerrar }: ModalCitaProps) {
           hora: cita.hora,
           motivo: cita.motivo,
         }
-      : { ...FORM_VACIO }
+      : { ...FORM_VACIO },
   );
   const [error, setError] = useState<string>("");
   const [guardando, setGuardando] = useState<boolean>(false);
 
   const medicosDeEspecialidad = useMemo(() => {
     if (!form.especialidadId) return [];
-    return medicos.filter((m) => (m.especialidadIds ?? []).includes(form.especialidadId as number));
+    return medicos.filter((m) =>
+      (m.especialidadIds ?? []).includes(form.especialidadId as number),
+    );
   }, [medicos, form.especialidadId]);
 
-  const handleChange = <K extends keyof FormCita>(campo: K, valor: FormCita[K]) => {
+  const handleChange = <K extends keyof FormCita>(
+    campo: K,
+    valor: FormCita[K],
+  ) => {
     setForm((prev) => ({ ...prev, [campo]: valor }));
   };
 
@@ -96,7 +112,9 @@ function ModalCita({ cita, onGuardar, onCerrar }: ModalCitaProps) {
     }
     const fechaHoraCita = new Date(`${form.fecha}T${form.hora}`);
     if (fechaHoraCita.getTime() < Date.now()) {
-      setError("No puedes agendar ni reprogramar una cita en una fecha u hora que ya pasó.");
+      setError(
+        "No puedes agendar ni reprogramar una cita en una fecha u hora que ya pasó.",
+      );
       return;
     }
     if (!form.motivo.trim()) {
@@ -108,9 +126,12 @@ function ModalCita({ cita, onGuardar, onCerrar }: ModalCitaProps) {
     try {
       const resultado = await onGuardar(form);
       if (resultado) setError(resultado);
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      setError("Ocurrió un error al guardar la cita. Intenta de nuevo.");
+      setError(
+        err?.response?.data?.error ||
+          "Ocurrió un error al guardar la cita. Intenta de nuevo.",
+      );
     } finally {
       setGuardando(false);
     }
@@ -118,19 +139,32 @@ function ModalCita({ cita, onGuardar, onCerrar }: ModalCitaProps) {
 
   return (
     <div className="modal-overlay d-flex align-items-center justify-content-center p-3">
-      <div className="bg-white rounded-4 shadow w-100" style={{ maxWidth: 480 }}>
+      <div
+        className="bg-white rounded-4 shadow w-100"
+        style={{ maxWidth: 480 }}
+      >
         <div className="px-4 py-3 border-bottom d-flex align-items-center justify-content-between">
           <h3 className="fs-6 fw-medium text-dark mb-0">
             {esNueva ? "Agendar nueva cita" : "Reprogramar cita"}
           </h3>
-          <button onClick={onCerrar} className="btn btn-link text-secondary fs-5 lh-1 text-decoration-none p-0">✕</button>
+          <button
+            onClick={onCerrar}
+            className="btn btn-link text-secondary fs-5 lh-1 text-decoration-none p-0"
+          >
+            ✕
+          </button>
         </div>
 
         <div className="p-4 d-flex flex-column gap-3">
           <Field label="Paciente">
             <select
               value={form.pacienteId}
-              onChange={(e) => handleChange("pacienteId", e.target.value ? Number(e.target.value) : "")}
+              onChange={(e) =>
+                handleChange(
+                  "pacienteId",
+                  e.target.value ? Number(e.target.value) : "",
+                )
+              }
               className="form-select form-select-sm"
               disabled={!esNueva}
             >
@@ -143,7 +177,8 @@ function ModalCita({ cita, onGuardar, onCerrar }: ModalCitaProps) {
             </select>
             {pacientesSeleccionables.length === 0 && (
               <p className="fs-11 text-secondary mt-1 mb-0">
-                No hay pacientes activos registrados. Regístralos primero en "Gestión de pacientes".
+                No hay pacientes activos registrados. Regístralos primero en
+                "Gestión de pacientes".
               </p>
             )}
           </Field>
@@ -151,12 +186,18 @@ function ModalCita({ cita, onGuardar, onCerrar }: ModalCitaProps) {
           <Field label="Especialidad">
             <select
               value={form.especialidadId}
-              onChange={(e) => handleEspecialidadChange(e.target.value ? Number(e.target.value) : "")}
+              onChange={(e) =>
+                handleEspecialidadChange(
+                  e.target.value ? Number(e.target.value) : "",
+                )
+              }
               className="form-select form-select-sm"
             >
               <option value="">Selecciona una especialidad…</option>
               {especialidadesActivas.map((esp) => (
-                <option key={esp.id} value={esp.id}>{esp.nombre}</option>
+                <option key={esp.id} value={esp.id}>
+                  {esp.nombre}
+                </option>
               ))}
             </select>
           </Field>
@@ -164,22 +205,32 @@ function ModalCita({ cita, onGuardar, onCerrar }: ModalCitaProps) {
           <Field label="Médico">
             <select
               value={form.medicoId}
-              onChange={(e) => handleChange("medicoId", e.target.value ? Number(e.target.value) : "")}
+              onChange={(e) =>
+                handleChange(
+                  "medicoId",
+                  e.target.value ? Number(e.target.value) : "",
+                )
+              }
               className="form-select form-select-sm"
               disabled={!form.especialidadId}
             >
               <option value="">
-                {form.especialidadId ? "Selecciona un médico…" : "Primero selecciona una especialidad"}
+                {form.especialidadId
+                  ? "Selecciona un médico…"
+                  : "Primero selecciona una especialidad"}
               </option>
               {medicosDeEspecialidad.map((m) => (
-                <option key={m.id} value={m.id}>{m.nombre} {m.apellido1}</option>
+                <option key={m.id} value={m.id}>
+                  {m.nombre} {m.apellido1}
+                </option>
               ))}
             </select>
-            {form.especialidadId !== "" && medicosDeEspecialidad.length === 0 && (
-              <p className="fs-11 text-secondary mt-1 mb-0">
-                No hay médicos activos asignados a esta especialidad.
-              </p>
-            )}
+            {form.especialidadId !== "" &&
+              medicosDeEspecialidad.length === 0 && (
+                <p className="fs-11 text-secondary mt-1 mb-0">
+                  No hay médicos activos asignados a esta especialidad.
+                </p>
+              )}
           </Field>
 
           <div className="row g-3">
@@ -217,16 +268,30 @@ function ModalCita({ cita, onGuardar, onCerrar }: ModalCitaProps) {
           </Field>
 
           {error && (
-            <div className="badge-soft badge-soft-red w-100 text-start py-2 px-3 fs-12">{error}</div>
+            <div className="badge-soft badge-soft-red w-100 text-start py-2 px-3 fs-12">
+              {error}
+            </div>
           )}
         </div>
 
         <div className="px-4 py-3 border-top d-flex justify-content-end gap-2">
-          <button onClick={onCerrar} className="btn btn-outline-secondary btn-sm" disabled={guardando}>
+          <button
+            onClick={onCerrar}
+            className="btn btn-outline-secondary btn-sm"
+            disabled={guardando}
+          >
             Cancelar
           </button>
-          <button onClick={handleSubmit} className="btn btn-primary btn-sm" disabled={guardando}>
-            {guardando ? "Guardando…" : esNueva ? "Agendar cita" : "Guardar cambios"}
+          <button
+            onClick={handleSubmit}
+            className="btn btn-primary btn-sm"
+            disabled={guardando}
+          >
+            {guardando
+              ? "Guardando…"
+              : esNueva
+                ? "Agendar cita"
+                : "Guardar cambios"}
           </button>
         </div>
       </div>
@@ -234,18 +299,17 @@ function ModalCita({ cita, onGuardar, onCerrar }: ModalCitaProps) {
   );
 }
 
-// ─── Modal Confirmar cita ──────────────────────────────────────────────────────
-// Paso intermedio: al recepcionista le puede tocar una cita que en realidad no
-// se puede confirmar (falta algo, el paciente avisó que no puede venir, etc.),
-// así que el botón "Confirmar" ya no cambia el estado al primer clic — abre
-// este modal y solo se confirma si el recepcionista lo aprueba explícitamente.
 interface ModalConfirmarCitaProps {
   cita: Cita;
   onConfirmar: () => Promise<void>;
   onCerrar: () => void;
 }
 
-function ModalConfirmarCita({ cita, onConfirmar, onCerrar }: ModalConfirmarCitaProps) {
+function ModalConfirmarCita({
+  cita,
+  onConfirmar,
+  onCerrar,
+}: ModalConfirmarCitaProps) {
   const [guardando, setGuardando] = useState<boolean>(false);
   const [error, setError] = useState<string>("");
 
@@ -254,38 +318,58 @@ function ModalConfirmarCita({ cita, onConfirmar, onCerrar }: ModalConfirmarCitaP
     setError("");
     try {
       await onConfirmar();
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      setError("Ocurrió un error al confirmar la cita. Intenta de nuevo.");
+      setError(err?.response?.data?.error || "Ocurrió un error al confirmar la cita. Intenta de nuevo.");
       setGuardando(false);
     }
   };
 
-  return (
+  return ( 
     <div className="modal-overlay d-flex align-items-center justify-content-center p-3">
-      <div className="bg-white rounded-4 shadow w-100" style={{ maxWidth: 420 }}>
+      <div
+        className="bg-white rounded-4 shadow w-100"
+        style={{ maxWidth: 420 }}
+      >
         <div className="px-4 py-3 border-bottom d-flex align-items-center justify-content-between">
           <h3 className="fs-6 fw-medium text-dark mb-0">Confirmar cita</h3>
-          <button onClick={onCerrar} className="btn btn-link text-secondary fs-5 lh-1 text-decoration-none p-0">✕</button>
+          <button
+            onClick={onCerrar}
+            className="btn btn-link text-secondary fs-5 lh-1 text-decoration-none p-0"
+          >
+            ✕
+          </button>
         </div>
 
         <div className="p-4 d-flex flex-column gap-2">
           <p className="fs-6 text-dark mb-0">
-            ¿Confirmar la cita de <strong>{cita.paciente}</strong> con {cita.medico} el {cita.fecha} a las {cita.hora}?
+            ¿Confirmar la cita de <strong>{cita.paciente}</strong> con{" "}
+            {cita.medico} el {cita.fecha} a las {cita.hora}?
           </p>
           <p className="fs-12 text-secondary mb-0">
-            Verifica antes de confirmar que el paciente y el médico realmente puedan asistir a este horario.
+            Verifica antes de confirmar que el paciente y el médico realmente
+            puedan asistir a este horario.
           </p>
           {error && (
-            <div className="badge-soft badge-soft-red w-100 text-start py-2 px-3 fs-12 mt-2">{error}</div>
+            <div className="badge-soft badge-soft-red w-100 text-start py-2 px-3 fs-12 mt-2">
+              {error}
+            </div>
           )}
         </div>
 
         <div className="px-4 py-3 border-top d-flex justify-content-end gap-2">
-          <button onClick={onCerrar} className="btn btn-outline-secondary btn-sm" disabled={guardando}>
+          <button
+            onClick={onCerrar}
+            className="btn btn-outline-secondary btn-sm"
+            disabled={guardando}
+          >
             Cancelar
           </button>
-          <button onClick={handleConfirmar} className="btn btn-success btn-sm" disabled={guardando}>
+          <button
+            onClick={handleConfirmar}
+            className="btn btn-success btn-sm"
+            disabled={guardando}
+          >
             {guardando ? "Confirmando…" : "Sí, confirmar"}
           </button>
         </div>
@@ -294,26 +378,32 @@ function ModalConfirmarCita({ cita, onConfirmar, onCerrar }: ModalConfirmarCitaP
   );
 }
 
-// ─── Componente principal ─────────────────────────────────────────────────────
 export default function GestionCitas() {
   const { citas, cargando } = useClinicaStore();
 
   const [busqueda, setBusqueda] = useState<string>("");
   const [filtroEstado, setFiltroEstado] = useState<string>("Todos");
-  const [modalCita, setModalCita] = useState<Cita | null | undefined>(undefined);
+  const [modalCita, setModalCita] = useState<Cita | null | undefined>(
+    undefined,
+  );
   const [citaAConfirmar, setCitaAConfirmar] = useState<Cita | null>(null);
 
   const citasFiltradas = useMemo(() => {
     const texto = busqueda.trim().toLowerCase();
     return citas
       .filter((c) => filtroEstado === "Todos" || c.estado === filtroEstado)
-      .filter((c) =>
-        texto === "" ||
-        c.paciente.toLowerCase().includes(texto) ||
-        c.cedulaPaciente.includes(texto) ||
-        c.medico.toLowerCase().includes(texto)
+      .filter(
+        (c) =>
+          texto === "" ||
+          c.paciente.toLowerCase().includes(texto) ||
+          c.cedulaPaciente.includes(texto) ||
+          c.medico.toLowerCase().includes(texto),
       )
-      .sort((a, b) => (a.fecha === b.fecha ? a.hora.localeCompare(b.hora) : a.fecha.localeCompare(b.fecha)));
+      .sort((a, b) =>
+        a.fecha === b.fecha
+          ? a.hora.localeCompare(b.hora)
+          : a.fecha.localeCompare(b.fecha),
+      );
   }, [citas, busqueda, filtroEstado]);
 
   const stats = {
@@ -328,10 +418,11 @@ export default function GestionCitas() {
     const medicos = clinicaStore.medicosActivos(clinicaStore.getSnapshot());
     const paciente = pacientes.find((p) => p.id === form.pacienteId);
     const medico = medicos.find((m) => m.id === form.medicoId);
-    if (!paciente || !medico) return "Selecciona un paciente y un médico válidos.";
+    if (!paciente || !medico)
+      return "Selecciona un paciente y un médico válidos.";
     if (!form.especialidadId) return "Selecciona una especialidad.";
 
-    const fechaISO = form.fecha; // el backend espera YYYY-MM-DD
+    const fechaISO = form.fecha;
 
     if (form.id) {
       const citaExistente = citas.find((c) => c.id === form.id);
@@ -382,10 +473,15 @@ export default function GestionCitas() {
       <div className="bg-white rounded-4 border overflow-hidden">
         <div className="px-4 py-3 border-bottom bg-soft d-flex flex-wrap gap-3 align-items-start justify-content-between">
           <div>
-            <h2 className="fs-6 fw-bold text-dark text-start mb-0">Gestión de citas</h2>
+            <h2 className="fs-6 fw-bold text-dark text-start mb-0">
+              Gestión de citas
+            </h2>
           </div>
           <div className="d-flex gap-2">
-            <button onClick={() => setModalCita(null)} className="btn btn-primary btn-sm">
+            <button
+              onClick={() => setModalCita(null)}
+              className="btn btn-primary btn-sm"
+            >
               + Nueva cita
             </button>
           </div>
@@ -393,15 +489,41 @@ export default function GestionCitas() {
 
         <div className="p-4">
           {cargando ? (
-            <p className="fs-6 text-secondary text-center py-5 mb-0">Cargando citas…</p>
+            <p className="fs-6 text-secondary text-center py-5 mb-0">
+              Cargando citas…
+            </p>
           ) : (
             <>
               {/* Stats */}
               <div className="row row-cols-2 row-cols-md-4 g-3 mb-4">
-                <div className="col"><StatCard label="Programadas" value={stats.programadas} color="text-primary" /></div>
-                <div className="col"><StatCard label="Confirmadas" value={stats.confirmadas} color="text-success" /></div>
-                <div className="col"><StatCard label="Atendidas" value={stats.atendidas} color="text-info" /></div>
-                <div className="col"><StatCard label="Canceladas" value={stats.canceladas} color="text-secondary" /></div>
+                <div className="col">
+                  <StatCard
+                    label="Programadas"
+                    value={stats.programadas}
+                    color="text-primary"
+                  />
+                </div>
+                <div className="col">
+                  <StatCard
+                    label="Confirmadas"
+                    value={stats.confirmadas}
+                    color="text-success"
+                  />
+                </div>
+                <div className="col">
+                  <StatCard
+                    label="Atendidas"
+                    value={stats.atendidas}
+                    color="text-info"
+                  />
+                </div>
+                <div className="col">
+                  <StatCard
+                    label="Canceladas"
+                    value={stats.canceladas}
+                    color="text-secondary"
+                  />
+                </div>
               </div>
 
               {/* Filtros */}
@@ -422,41 +544,66 @@ export default function GestionCitas() {
                   style={{ maxWidth: 200 }}
                 >
                   <option value="Todos">Todos los estados</option>
-                  {ESTADOS.map((e) => <option key={e}>{e}</option>)}
+                  {ESTADOS.map((e) => (
+                    <option key={e}>{e}</option>
+                  ))}
                 </select>
               </div>
 
               {citasFiltradas.length === 0 && (
-                <p className="fs-6 text-secondary text-center py-4 mb-0">No hay citas para este filtro.</p>
+                <p className="fs-6 text-secondary text-center py-4 mb-0">
+                  No hay citas para este filtro.
+                </p>
               )}
 
               <div className="d-flex flex-column gap-2">
                 {citasFiltradas.map((c) => (
-                  <div key={c.id} className="border rounded p-3 d-flex flex-wrap align-items-center justify-content-between gap-2 hover-row">
+                  <div
+                    key={c.id}
+                    className="border rounded p-3 d-flex flex-wrap align-items-center justify-content-between gap-2 hover-row"
+                  >
                     <div>
-                      <p className="fs-12 text-secondary mb-0">Cita #{c.id} · {c.fecha} · {c.hora}</p>
+                      <p className="fs-12 text-secondary mb-0">
+                        Cita #{c.id} · {c.fecha} · {c.hora}
+                      </p>
                       <p className="fw-medium text-dark mb-0">{c.paciente}</p>
-                      <p className="fs-11 text-secondary mb-0">{c.medico} · {c.especialidad}</p>
-                      <p className="fs-11 text-secondary mb-0">Motivo: {c.motivo}</p>
+                      <p className="fs-11 text-secondary mb-0">
+                        {c.medico} · {c.especialidad}
+                      </p>
+                      <p className="fs-11 text-secondary mb-0">
+                        Motivo: {c.motivo}
+                      </p>
                     </div>
                     <div className="d-flex align-items-center gap-2 flex-shrink-0">
-                      <span className={`badge-soft ${ESTADO_COLOR[c.estado]}`}>{c.estado}</span>
+                      <span className={`badge-soft ${ESTADO_COLOR[c.estado]}`}>
+                        {c.estado}
+                      </span>
 
                       {/* Recepcionista: puede reprogramar/cancelar cualquier cita
                           activa, y confirmar las que están "Programada". NO puede
                           marcar una cita como "Atendida" — eso es exclusivo del
                           médico, desde su propia vista. */}
-                      {(c.estado === "Programada" || c.estado === "Confirmada") && (
+                      {(c.estado === "Programada" ||
+                        c.estado === "Confirmada") && (
                         <>
-                          <button onClick={() => setModalCita(c)} className="btn btn-outline-secondary btn-sm">
+                          <button
+                            onClick={() => setModalCita(c)}
+                            className="btn btn-outline-secondary btn-sm"
+                          >
                             Reprogramar
                           </button>
                           {c.estado === "Programada" && (
-                            <button onClick={() => setCitaAConfirmar(c)} className="btn btn-outline-success btn-sm">
+                            <button
+                              onClick={() => setCitaAConfirmar(c)}
+                              className="btn btn-outline-success btn-sm"
+                            >
                               Confirmar
                             </button>
                           )}
-                          <button onClick={() => clinicaStore.cancelarCita(c.id)} className="btn btn-outline-danger btn-sm">
+                          <button
+                            onClick={() => clinicaStore.cancelarCita(c.id)}
+                            className="btn btn-outline-danger btn-sm"
+                          >
                             Cancelar
                           </button>
                         </>
@@ -473,12 +620,23 @@ export default function GestionCitas() {
   );
 }
 
-// ─── Subcomponentes ───────────────────────────────────────────────────────────
-function nombreCompleto(u: { nombre: string; apellido1: string; apellido2?: string }): string {
+function nombreCompleto(u: {
+  nombre: string;
+  apellido1: string;
+  apellido2?: string;
+}): string {
   return `${u.nombre} ${u.apellido1} ${u.apellido2 ?? ""}`.trim();
 }
 
-function StatCard({ label, value, color = "text-dark" }: { label: string; value: number; color?: string }) {
+function StatCard({
+  label,
+  value,
+  color = "text-dark",
+}: {
+  label: string;
+  value: number;
+  color?: string;
+}) {
   return (
     <div className="bg-soft border rounded px-3 py-3">
       <p className={`fs-4 fw-medium mb-0 ${color}`}>{value}</p>
@@ -487,7 +645,13 @@ function StatCard({ label, value, color = "text-dark" }: { label: string; value:
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
   return (
     <div>
       <label className="form-label fs-12 text-secondary mb-1">{label}</label>

@@ -3,8 +3,18 @@ import { useClinicaStore, clinicaStore } from "../../types/clinicaStore";
 import type { EstadoCita, ConsultaMedica } from "../../types/clinica.types";
 
 const MESES = [
-  "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
-  "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre",
+  "Enero",
+  "Febrero",
+  "Marzo",
+  "Abril",
+  "Mayo",
+  "Junio",
+  "Julio",
+  "Agosto",
+  "Septiembre",
+  "Octubre",
+  "Noviembre",
+  "Diciembre",
 ];
 
 function pad(n: number) {
@@ -29,7 +39,11 @@ interface MedicamentoForm {
   indicaciones: string;
 }
 
-const MEDICAMENTO_VACIO: MedicamentoForm = { medicamentoId: "", cantidad: "", indicaciones: "" };
+const MEDICAMENTO_VACIO: MedicamentoForm = {
+  medicamentoId: "",
+  cantidad: "",
+  indicaciones: "",
+};
 
 export default function PanelCitasMedico() {
   const snap = useClinicaStore();
@@ -37,38 +51,45 @@ export default function PanelCitasMedico() {
 
   const medico = useMemo(
     () => snap.usuarios.find((u) => u.nombreUsuario === credencial?.usuario),
-    [snap.usuarios, credencial]
+    [snap.usuarios, credencial],
   );
 
   const citasMedico = useMemo(
     () => (medico ? snap.citas.filter((c) => c.medicoId === medico.id) : []),
-    [snap.citas, medico]
+    [snap.citas, medico],
   );
 
   const medicamentosDisponibles = useMemo(
-    () => snap.medicamentos.filter((m) => m.estado === "A" && m.stockActual > 0),
-    [snap.medicamentos]
+    () =>
+      snap.medicamentos.filter((m) => m.estado === "A" && m.stockActual > 0),
+    [snap.medicamentos],
   );
 
   const medicamentosPorId = useMemo(
     () => new Map(snap.medicamentos.map((m) => [m.id, m])),
-    [snap.medicamentos]
+    [snap.medicamentos],
   );
 
   const hoy = new Date();
-  const [cursorMes, setCursorMes] = useState(new Date(hoy.getFullYear(), hoy.getMonth(), 1));
+  const [cursorMes, setCursorMes] = useState(
+    new Date(hoy.getFullYear(), hoy.getMonth(), 1),
+  );
   const [fechaSeleccionada, setFechaSeleccionada] = useState(fmtDate(hoy));
 
   const [citaActualId, setCitaActualId] = useState<number | null>(null);
   const [modalCitaAbierto, setModalCitaAbierto] = useState(false);
   const [modalExpedienteAbierto, setModalExpedienteAbierto] = useState(false);
-  const [historialPaciente, setHistorialPaciente] = useState<ConsultaMedica[]>([]);
+  const [historialPaciente, setHistorialPaciente] = useState<ConsultaMedica[]>(
+    [],
+  );
   const [cargandoHistorial, setCargandoHistorial] = useState(false);
 
   const [observaciones, setObservaciones] = useState("");
   const [diagnostico, setDiagnostico] = useState("");
   const [tratamiento, setTratamiento] = useState("");
-  const [medicamentosForm, setMedicamentosForm] = useState<MedicamentoForm[]>([{ ...MEDICAMENTO_VACIO }]);
+  const [medicamentosForm, setMedicamentosForm] = useState<MedicamentoForm[]>([
+    { ...MEDICAMENTO_VACIO },
+  ]);
 
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState("");
@@ -76,24 +97,34 @@ export default function PanelCitasMedico() {
   const citaActual = citasMedico.find((c) => c.id === citaActualId) ?? null;
 
   const diasDelMes = useMemo(() => {
-    const primerDia = new Date(cursorMes.getFullYear(), cursorMes.getMonth(), 1);
-    const ultimoDia = new Date(cursorMes.getFullYear(), cursorMes.getMonth() + 1, 0);
+    const primerDia = new Date(
+      cursorMes.getFullYear(),
+      cursorMes.getMonth(),
+      1,
+    );
+    const ultimoDia = new Date(
+      cursorMes.getFullYear(),
+      cursorMes.getMonth() + 1,
+      0,
+    );
     const offset = primerDia.getDay();
     const dias: (string | null)[] = Array(offset).fill(null);
     for (let dia = 1; dia <= ultimoDia.getDate(); dia++) {
-      dias.push(fmtDate(new Date(cursorMes.getFullYear(), cursorMes.getMonth(), dia)));
+      dias.push(
+        fmtDate(new Date(cursorMes.getFullYear(), cursorMes.getMonth(), dia)),
+      );
     }
     return dias;
   }, [cursorMes]);
 
- const fechasConCitas = useMemo(
+  const fechasConCitas = useMemo(
     () =>
       new Set(
         citasMedico
           .filter((c) => !ESTADO_BLOQUEADO.includes(c.estado))
-          .map((c) => c.fecha)
+          .map((c) => c.fecha),
       ),
-    [citasMedico]
+    [citasMedico],
   );
 
   const citasDelDia = useMemo(
@@ -101,7 +132,7 @@ export default function PanelCitasMedico() {
       citasMedico
         .filter((c) => c.fecha === fechaSeleccionada)
         .sort((a, b) => a.hora.localeCompare(b.hora)),
-    [citasMedico, fechaSeleccionada]
+    [citasMedico, fechaSeleccionada],
   );
 
   function abrirModalCita(id: number) {
@@ -137,7 +168,9 @@ export default function PanelCitasMedico() {
     setModalExpedienteAbierto(true);
     setCargandoHistorial(true);
     try {
-      const historial = await clinicaStore.obtenerHistorialPaciente(citaActual.pacienteId);
+      const historial = await clinicaStore.obtenerHistorialPaciente(
+        citaActual.pacienteId,
+      );
       setHistorialPaciente(historial);
     } catch (err) {
       console.error(err);
@@ -154,8 +187,14 @@ export default function PanelCitasMedico() {
     setMedicamentosForm((prev) => prev.filter((_, i) => i !== index));
   }
 
-  function actualizarMedicamento<K extends keyof MedicamentoForm>(index: number, campo: K, valor: MedicamentoForm[K]) {
-    setMedicamentosForm((prev) => prev.map((m, i) => (i === index ? { ...m, [campo]: valor } : m)));
+  function actualizarMedicamento<K extends keyof MedicamentoForm>(
+    index: number,
+    campo: K,
+    valor: MedicamentoForm[K],
+  ) {
+    setMedicamentosForm((prev) =>
+      prev.map((m, i) => (i === index ? { ...m, [campo]: valor } : m)),
+    );
   }
 
   async function registrarExpediente() {
@@ -176,7 +215,9 @@ export default function PanelCitasMedico() {
     for (const item of items) {
       const medicamento = medicamentosPorId.get(item.medicamentoId);
       if (!medicamento || medicamento.estado !== "A") {
-        setError("Uno de los medicamentos seleccionados ya no está disponible.");
+        setError(
+          "Uno de los medicamentos seleccionados ya no está disponible.",
+        );
         return;
       }
       if (!Number.isFinite(item.cantidad) || item.cantidad <= 0) {
@@ -184,7 +225,9 @@ export default function PanelCitasMedico() {
         return;
       }
       if (item.cantidad > medicamento.stockActual) {
-        setError(`No hay stock suficiente de ${medicamento.nombre}. Disponible: ${medicamento.stockActual}.`);
+        setError(
+          `No hay stock suficiente de ${medicamento.nombre}. Disponible: ${medicamento.stockActual}.`,
+        );
         return;
       }
     }
@@ -202,18 +245,25 @@ export default function PanelCitasMedico() {
         medicamentos: items,
       });
       cerrarModalCita();
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      setError("Ocurrió un error al registrar el expediente. Intenta de nuevo.");
+      setError(
+        err?.response?.data?.error ||
+          "Ocurrió un error al registrar el expediente. Intenta de nuevo.",
+      );
     } finally {
       setGuardando(false);
     }
   }
 
-  const bloqueado = citaActual ? ESTADO_BLOQUEADO.includes(citaActual.estado) : false;
+  const bloqueado = citaActual
+    ? ESTADO_BLOQUEADO.includes(citaActual.estado)
+    : false;
 
   if (snap.cargando) {
-    return <div className="text-center text-secondary py-5">Cargando citas...</div>;
+    return (
+      <div className="text-center text-secondary py-5">Cargando citas...</div>
+    );
   }
 
   return (
@@ -238,7 +288,15 @@ export default function PanelCitasMedico() {
             <div className="card-header d-flex justify-content-between align-items-center">
               <button
                 className="btn btn-sm btn-outline-secondary"
-                onClick={() => setCursorMes(new Date(cursorMes.getFullYear(), cursorMes.getMonth() - 1, 1))}
+                onClick={() =>
+                  setCursorMes(
+                    new Date(
+                      cursorMes.getFullYear(),
+                      cursorMes.getMonth() - 1,
+                      1,
+                    ),
+                  )
+                }
               >
                 &lt;
               </button>
@@ -247,20 +305,34 @@ export default function PanelCitasMedico() {
               </strong>
               <button
                 className="btn btn-sm btn-outline-secondary"
-                onClick={() => setCursorMes(new Date(cursorMes.getFullYear(), cursorMes.getMonth() + 1, 1))}
+                onClick={() =>
+                  setCursorMes(
+                    new Date(
+                      cursorMes.getFullYear(),
+                      cursorMes.getMonth() + 1,
+                      1,
+                    ),
+                  )
+                }
               >
                 &gt;
               </button>
             </div>
             <div className="card-body">
-              <div className="d-grid gap-1" style={{ gridTemplateColumns: "repeat(7, 1fr)" }}>
+              <div
+                className="d-grid gap-1"
+                style={{ gridTemplateColumns: "repeat(7, 1fr)" }}
+              >
                 {["Do", "Lu", "Ma", "Mi", "Ju", "Vi", "Sa"].map((d) => (
                   <div key={d} className="text-center fw-bold small">
                     {d}
                   </div>
                 ))}
               </div>
-              <div className="d-grid gap-1 mt-1" style={{ gridTemplateColumns: "repeat(7, 1fr)" }}>
+              <div
+                className="d-grid gap-1 mt-1"
+                style={{ gridTemplateColumns: "repeat(7, 1fr)" }}
+              >
                 {diasDelMes.map((fechaStr, i) =>
                   fechaStr === null ? (
                     <div key={`vacio-${i}`} />
@@ -269,20 +341,24 @@ export default function PanelCitasMedico() {
                       key={fechaStr}
                       onClick={() => setFechaSeleccionada(fechaStr)}
                       className={`btn btn-sm rounded text-center py-2 position-relative ${
-                        fechaStr === fechaSeleccionada ? "btn-primary" : "btn-light"
+                        fechaStr === fechaSeleccionada
+                          ? "btn-primary"
+                          : "btn-light"
                       }`}
                     >
                       {Number(fechaStr.slice(-2))}
                       {fechasConCitas.has(fechaStr) && (
                         <span
                           className={`position-absolute top-0 start-50 translate-middle-x mt-1 rounded-circle ${
-                            fechaStr === fechaSeleccionada ? "bg-white" : "bg-danger"
+                            fechaStr === fechaSeleccionada
+                              ? "bg-white"
+                              : "bg-danger"
                           }`}
                           style={{ width: 6, height: 6 }}
                         />
                       )}
                     </button>
-                  )
+                  ),
                 )}
               </div>
             </div>
@@ -307,20 +383,28 @@ export default function PanelCitasMedico() {
                 </thead>
                 <tbody>
                   {citasDelDia.map((c) => (
-                    <tr key={c.id} role="button" onClick={() => abrirModalCita(c.id)}>
+                    <tr
+                      key={c.id}
+                      role="button"
+                      onClick={() => abrirModalCita(c.id)}
+                    >
                       <td>{c.hora}</td>
                       <td>{c.paciente}</td>
                       <td>{c.cedulaPaciente}</td>
                       <td>{c.especialidad}</td>
                       <td>
-                        <span className={`badge ${ESTADO_BADGE[c.estado]}`}>{c.estado}</span>
+                        <span className={`badge ${ESTADO_BADGE[c.estado]}`}>
+                          {c.estado}
+                        </span>
                       </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
               {citasDelDia.length === 0 && (
-                <div className="text-center text-secondary p-4">No hay citas registradas para esta fecha.</div>
+                <div className="text-center text-secondary p-4">
+                  No hay citas registradas para esta fecha.
+                </div>
               )}
             </div>
           </div>
@@ -334,47 +418,74 @@ export default function PanelCitasMedico() {
               <div className="modal-content">
                 <div className="modal-header">
                   <h5 className="modal-title">Detalle de la cita</h5>
-                  <button type="button" className="btn-close" onClick={cerrarModalCita} />
+                  <button
+                    type="button"
+                    className="btn-close"
+                    onClick={cerrarModalCita}
+                  />
                 </div>
                 <div className="modal-body">
-                 {!bloqueado && citaActual.estado === "Programada" && (
+                  {!bloqueado && citaActual.estado === "Programada" && (
                     <div className="alert alert-info py-2 mb-3">
-                      Esta cita aún no ha sido <strong>confirmada</strong> por recepción. Puedes confirmarla desde aquí, pero no podrás marcarla como atendida ni registrar el expediente hasta que esté confirmada.
+                      Esta cita aún no ha sido <strong>confirmada</strong> por
+                      recepción. Puedes confirmarla desde aquí, pero no podrás
+                      marcarla como atendida ni registrar el expediente hasta
+                      que esté confirmada.
                     </div>
                   )}
 
                   <div className="row g-3">
                     <div className="col-md-6">
-                      <label className="form-label small text-secondary mb-0">Fecha</label>
+                      <label className="form-label small text-secondary mb-0">
+                        Fecha
+                      </label>
                       <div className="fw-semibold">{citaActual.fecha}</div>
                     </div>
                     <div className="col-md-6">
-                      <label className="form-label small text-secondary mb-0">Hora</label>
+                      <label className="form-label small text-secondary mb-0">
+                        Hora
+                      </label>
                       <div className="fw-semibold">{citaActual.hora}</div>
                     </div>
                     <div className="col-md-6">
-                      <label className="form-label small text-secondary mb-0">Especialidad</label>
-                      <div className="fw-semibold">{citaActual.especialidad}</div>
+                      <label className="form-label small text-secondary mb-0">
+                        Especialidad
+                      </label>
+                      <div className="fw-semibold">
+                        {citaActual.especialidad}
+                      </div>
                     </div>
                     <div className="col-md-6">
-                      <label className="form-label small text-secondary mb-0">Motivo</label>
+                      <label className="form-label small text-secondary mb-0">
+                        Motivo
+                      </label>
                       <div className="fw-semibold">{citaActual.motivo}</div>
                     </div>
                     <div className="col-12">
-                      <label className="form-label small text-secondary mb-0">Estado de la cita</label>
+                      <label className="form-label small text-secondary mb-0">
+                        Estado de la cita
+                      </label>
                       <div className="d-flex gap-2">
                         <button
                           className="btn btn-sm btn-outline-info"
-                          disabled={bloqueado || citaActual.estado === "Confirmada"}
+                          disabled={
+                            bloqueado || citaActual.estado === "Confirmada"
+                          }
                           onClick={handleConfirmar}
                         >
                           Confirmar
                         </button>
-                         <button
+                        <button
                           className="btn btn-sm btn-outline-success"
-                          disabled={bloqueado || citaActual.estado !== "Confirmada"}
+                          disabled={
+                            bloqueado || citaActual.estado !== "Confirmada"
+                          }
                           onClick={handleMarcarAtendida}
-                          title={citaActual.estado === "Programada" ? "El recepcionista debe confirmar la cita primero" : undefined}
+                          title={
+                            citaActual.estado === "Programada"
+                              ? "El recepcionista debe confirmar la cita primero"
+                              : undefined
+                          }
                         >
                           Marcar atendida
                         </button>
@@ -393,12 +504,18 @@ export default function PanelCitasMedico() {
                     </div>
 
                     <div className="col-md-6">
-                      <label className="form-label small text-secondary mb-0">Nombre paciente</label>
+                      <label className="form-label small text-secondary mb-0">
+                        Nombre paciente
+                      </label>
                       <div className="fw-semibold">{citaActual.paciente}</div>
                     </div>
                     <div className="col-md-6">
-                      <label className="form-label small text-secondary mb-0">Cédula paciente</label>
-                      <div className="fw-semibold">{citaActual.cedulaPaciente}</div>
+                      <label className="form-label small text-secondary mb-0">
+                        Cédula paciente
+                      </label>
+                      <div className="fw-semibold">
+                        {citaActual.cedulaPaciente}
+                      </div>
                     </div>
                   </div>
 
@@ -406,13 +523,18 @@ export default function PanelCitasMedico() {
 
                   <div className="d-flex justify-content-between align-items-center mb-2">
                     <h6 className="mb-0">Expediente</h6>
-                    <button className="btn btn-sm btn-outline-primary" onClick={abrirExpediente}>
+                    <button
+                      className="btn btn-sm btn-outline-primary"
+                      onClick={abrirExpediente}
+                    >
                       Ver historial
                     </button>
                   </div>
 
                   <div className="mb-3">
-                    <label className="form-label small">Observaciones generales</label>
+                    <label className="form-label small">
+                      Observaciones generales
+                    </label>
                     <textarea
                       className="form-control form-control-sm"
                       rows={2}
@@ -448,27 +570,45 @@ export default function PanelCitasMedico() {
 
                   <label className="form-label small">Receta (opcional)</label>
                   {medicamentosForm.map((m, i) => (
-                    <div key={i} className="border rounded p-2 mb-2 d-flex gap-2 align-items-center">
+                    <div
+                      key={i}
+                      className="border rounded p-2 mb-2 d-flex gap-2 align-items-center"
+                    >
                       <select
                         className="form-select form-select-sm"
                         value={m.medicamentoId}
-                        onChange={(e) => actualizarMedicamento(i, "medicamentoId", e.target.value ? Number(e.target.value) : "")}
+                        onChange={(e) =>
+                          actualizarMedicamento(
+                            i,
+                            "medicamentoId",
+                            e.target.value ? Number(e.target.value) : "",
+                          )
+                        }
                         disabled={bloqueado}
                       >
                         <option value="">Selecciona medicamento…</option>
                         {medicamentosDisponibles.map((med) => (
-                          <option key={med.id} value={med.id}>{med.nombre}</option>
+                          <option key={med.id} value={med.id}>
+                            {med.nombre}
+                          </option>
                         ))}
                       </select>
                       <input
                         type="number"
                         min={1}
-                        max={m.medicamentoId ? medicamentosPorId.get(m.medicamentoId)?.stockActual : undefined}
+                        max={
+                          m.medicamentoId
+                            ? medicamentosPorId.get(m.medicamentoId)
+                                ?.stockActual
+                            : undefined
+                        }
                         className="form-control form-control-sm"
                         style={{ maxWidth: 90 }}
                         placeholder="Cant."
                         value={m.cantidad}
-                        onChange={(e) => actualizarMedicamento(i, "cantidad", e.target.value)}
+                        onChange={(e) =>
+                          actualizarMedicamento(i, "cantidad", e.target.value)
+                        }
                         disabled={bloqueado}
                       />
                       <input
@@ -476,7 +616,13 @@ export default function PanelCitasMedico() {
                         className="form-control form-control-sm"
                         placeholder="Indicaciones"
                         value={m.indicaciones}
-                        onChange={(e) => actualizarMedicamento(i, "indicaciones", e.target.value)}
+                        onChange={(e) =>
+                          actualizarMedicamento(
+                            i,
+                            "indicaciones",
+                            e.target.value,
+                          )
+                        }
                         disabled={bloqueado}
                       />
                       <button
@@ -499,20 +645,34 @@ export default function PanelCitasMedico() {
                   </button>
 
                   {error && (
-                    <div className="alert alert-danger py-2 mt-3 mb-0 small">{error}</div>
+                    <div className="alert alert-danger py-2 mt-3 mb-0 small">
+                      {error}
+                    </div>
                   )}
                 </div>
-                 <div className="modal-footer">
+                <div className="modal-footer">
                   <button
                     type="button"
                     className="btn btn-success"
-                    disabled={bloqueado || guardando || citaActual.estado !== "Confirmada"}
+                    disabled={
+                      bloqueado ||
+                      guardando ||
+                      citaActual.estado !== "Confirmada"
+                    }
                     onClick={registrarExpediente}
-                    title={citaActual.estado === "Programada" ? "El recepcionista debe confirmar la cita primero" : undefined}
+                    title={
+                      citaActual.estado === "Programada"
+                        ? "El recepcionista debe confirmar la cita primero"
+                        : undefined
+                    }
                   >
                     {guardando ? "Guardando…" : "Registrar expediente"}
                   </button>
-                  <button type="button" className="btn btn-secondary" onClick={cerrarModalCita}>
+                  <button
+                    type="button"
+                    className="btn btn-secondary"
+                    onClick={cerrarModalCita}
+                  >
                     Cerrar
                   </button>
                 </div>
@@ -525,16 +685,28 @@ export default function PanelCitasMedico() {
 
       {modalExpedienteAbierto && citaActual && (
         <>
-          <div className="modal fade show d-block" tabIndex={-1} style={{ zIndex: 1060 }}>
+          <div
+            className="modal fade show d-block"
+            tabIndex={-1}
+            style={{ zIndex: 1060 }}
+          >
             <div className="modal-dialog modal-lg modal-dialog-scrollable">
               <div className="modal-content">
                 <div className="modal-header">
-                  <h5 className="modal-title">Historial de {citaActual.paciente}</h5>
-                  <button type="button" className="btn-close" onClick={() => setModalExpedienteAbierto(false)} />
+                  <h5 className="modal-title">
+                    Historial de {citaActual.paciente}
+                  </h5>
+                  <button
+                    type="button"
+                    className="btn-close"
+                    onClick={() => setModalExpedienteAbierto(false)}
+                  />
                 </div>
                 <div className="modal-body">
                   {cargandoHistorial ? (
-                    <p className="text-secondary text-center py-3 mb-0">Cargando historial…</p>
+                    <p className="text-secondary text-center py-3 mb-0">
+                      Cargando historial…
+                    </p>
                   ) : (
                     <table className="table table-bordered align-middle">
                       <thead className="table-light">
@@ -547,7 +719,10 @@ export default function PanelCitasMedico() {
                       <tbody>
                         {historialPaciente.length === 0 ? (
                           <tr>
-                            <td colSpan={3} className="text-center text-secondary">
+                            <td
+                              colSpan={3}
+                              className="text-center text-secondary"
+                            >
                               Sin consultas previas registradas.
                             </td>
                           </tr>
@@ -556,7 +731,11 @@ export default function PanelCitasMedico() {
                             .sort((a, b) => (a.fecha > b.fecha ? -1 : 1))
                             .map((c) => (
                               <tr key={c.id}>
-                                <td>{new Date(c.fecha).toLocaleDateString("es-CR")}</td>
+                                <td>
+                                  {new Date(c.fecha).toLocaleDateString(
+                                    "es-CR",
+                                  )}
+                                </td>
                                 <td>{c.diagnostico || "—"}</td>
                                 <td>{c.tratamiento || "—"}</td>
                               </tr>
