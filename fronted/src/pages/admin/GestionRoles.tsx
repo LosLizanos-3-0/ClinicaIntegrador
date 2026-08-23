@@ -8,7 +8,13 @@ import {
 } from "../../types/clinicaStore";
 import type { RolBD } from "../../services/rol.service";
 import { formatearCedula, formatearTelefono } from "../../utils/Formato";
-import { validarNombre, validarCedula, validarTelefono, validarNombreUsuario, validarContrasena } from "../../utils/validaciones";
+import {
+  validarNombre,
+  validarCedula,
+  validarTelefono,
+  validarNombreUsuario,
+  validarContrasena,
+} from "../../utils/validaciones";
 import { esCorreoValido } from "../../utils/Formato";
 
 // Ícono + descripción "bonita" para los roles que el sistema ya conoce.
@@ -253,18 +259,23 @@ function ModalEditarRol({ rol, onGuardar, onCerrar }: ModalEditarRolProps) {
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState("");
 
-    const handleSubmit = async () => {
+  const handleSubmit = async () => {
     if (!validarNombre(nombre)) {
-      setError("El nombre del rol debe tener solo letras, entre 2 y 50 caracteres.");
+      setError(
+        "El nombre del rol debe tener solo letras, entre 2 y 50 caracteres.",
+      );
       return;
     }
     setGuardando(true);
     setError("");
     try {
       await onGuardar(nombre.trim(), cita, estado);
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      setError("Ocurrió un error al guardar los cambios. Intenta de nuevo.");
+      setError(
+        err?.response?.data?.error ||
+          "Ocurrió un error al guardar los cambios. Intenta de nuevo.",
+      );
     } finally {
       setGuardando(false);
     }
@@ -405,11 +416,15 @@ function ModalUsuario({
       return;
     }
     if (!validarNombre(form.apellido1)) {
-      setError("El primer apellido debe tener solo letras, entre 2 y 50 caracteres.");
+      setError(
+        "El primer apellido debe tener solo letras, entre 2 y 50 caracteres.",
+      );
       return;
     }
     if (!validarNombre(form.apellido2 ?? "")) {
-      setError("El segundo apellido debe tener solo letras, entre 2 y 50 caracteres.");
+      setError(
+        "El segundo apellido debe tener solo letras, entre 2 y 50 caracteres.",
+      );
       return;
     }
     if (!validarTelefono(form.telefono ?? "")) {
@@ -421,14 +436,16 @@ function ModalUsuario({
       return;
     }
     if (!validarNombreUsuario(form.nombreUsuario)) {
-      setError("El usuario de acceso debe tener entre 3 y 30 caracteres (letras, números, puntos o guiones).");
+      setError(
+        "El usuario de acceso debe tener entre 3 y 30 caracteres (letras, números, puntos o guiones).",
+      );
       return;
     }
     if (!validarCedula(form.ident)) {
       setError("La cédula/identificación debe tener el formato 1-2345-6789.");
       return;
     }
-      if (esNuevo && !validarContrasena(contrasena)) {
+    if (esNuevo && !validarContrasena(contrasena)) {
       setError("La contraseña debe tener al menos 3 caracteres.");
       return;
     }
@@ -441,9 +458,12 @@ function ModalUsuario({
     setError("");
     try {
       await onGuardar(esNuevo ? { ...form, contrasena } : form);
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      setError("Ocurrió un error al guardar el usuario. Intenta de nuevo.");
+      setError(
+        err?.response?.data?.error ||
+          "Ocurrió un error al guardar el usuario. Intenta de nuevo.",
+      );
     } finally {
       setGuardando(false);
     }
@@ -974,7 +994,7 @@ export default function GestionRoles() {
                       </p>
                     </div>
                   ) : (
-                                      usuariosDelRol.map((u, i) => {
+                    usuariosDelRol.map((u, i) => {
                       const especialidadTexto = especialidadesDe(
                         u,
                         especialidades,
@@ -1036,7 +1056,9 @@ export default function GestionRoles() {
                                       ? "Desactivar usuario"
                                       : "Activar usuario"
                                   }
-                                  onClick={() => solicitarCambioEstadoUsuario(u)}
+                                  onClick={() =>
+                                    solicitarCambioEstadoUsuario(u)
+                                  }
                                 >
                                   <i
                                     className={`bi ${u.estado === "Activo" ? "bi-lock-fill" : "bi-unlock-fill"}`}

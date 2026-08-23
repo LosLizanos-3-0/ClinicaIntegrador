@@ -1,7 +1,3 @@
-/**
- * GestionPacientes.tsx
- */
-
 import React, { useMemo, useState } from "react";
 import type { Paciente } from "../../types/clinica.types";
 import { clinicaStore, useClinicaStore } from "../../types/clinicaStore";
@@ -25,7 +21,6 @@ const AVATAR_COLORS: string[] = [
 
 const COLUMNAS_TABLA_PACIENTES = "44px 1.6fr 1.5fr 0.9fr 0.9fr 0.8fr 0.9fr";
 
-// ─── Tipos internos ───────────────────────────────────────────────────────────
 type FormPaciente = Omit<Paciente, "id" | "registro"> & {
   id?: number;
   registro?: string;
@@ -50,7 +45,6 @@ interface ModalPacienteProps {
   onCerrar: () => void;
 }
 
-// ─── Modal Crear / Editar ─────────────────────────────────────────────────────
 function ModalPaciente({ paciente, onGuardar, onCerrar }: ModalPacienteProps) {
   const esNuevo = !paciente?.id;
 
@@ -93,9 +87,12 @@ function ModalPaciente({ paciente, onGuardar, onCerrar }: ModalPacienteProps) {
     try {
       const resultado = await onGuardar(form);
       if (resultado) setError(resultado);
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      setError("Ocurrió un error al guardar el paciente. Intenta de nuevo.");
+      setError(
+        err?.response?.data?.error ||
+          "Ocurrió un error al guardar el paciente. Intenta de nuevo.",
+      );
     } finally {
       setGuardando(false);
     }
@@ -280,13 +277,14 @@ function ModalPaciente({ paciente, onGuardar, onCerrar }: ModalPacienteProps) {
   );
 }
 
-// ─── Componente principal ─────────────────────────────────────────────────────
 export default function GestionPacientes() {
   const { pacientes, cargando } = useClinicaStore();
 
   const [busqueda, setBusqueda] = useState<string>("");
   const [pagina, setPagina] = useState<number>(1);
-  const [modalPaciente, setModalPaciente] = useState<Paciente | null | undefined>(undefined);
+  const [modalPaciente, setModalPaciente] = useState<
+    Paciente | null | undefined
+  >(undefined);
   const filtrados = useMemo(() => {
     const texto = busqueda.trim().toLowerCase();
     if (!texto) return pacientes;
@@ -544,7 +542,6 @@ export default function GestionPacientes() {
   );
 }
 
-// ─── Subcomponentes ───────────────────────────────────────────────────────────
 function StatCard({
   label,
   value,

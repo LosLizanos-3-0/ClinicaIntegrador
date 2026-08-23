@@ -1,10 +1,23 @@
 import React, { useMemo, useState } from "react";
-import type { EstadoFactura, Factura, MetodoPago } from "../../types/clinica.types";
+import type {
+  EstadoFactura,
+  Factura,
+  MetodoPago,
+} from "../../types/clinica.types";
 import { clinicaStore, useClinicaStore } from "../../types/clinicaStore";
-import { IVA_TASA, calcularIva, calcularTotalConIva } from "../../services/factura.service";
+import {
+  IVA_TASA,
+  calcularIva,
+  calcularTotalConIva,
+} from "../../services/factura.service";
 
 const ESTADOS: EstadoFactura[] = ["Pendiente", "Pagada", "Anulada"];
-const METODOS_PAGO: MetodoPago[] = ["Efectivo", "Tarjeta", "Sinpe Móvil", "Transferencia"];
+const METODOS_PAGO: MetodoPago[] = [
+  "Efectivo",
+  "Tarjeta",
+  "Sinpe Móvil",
+  "Transferencia",
+];
 
 const ESTADO_COLOR: Record<EstadoFactura, string> = {
   Pendiente: "badge-soft-amber",
@@ -12,19 +25,21 @@ const ESTADO_COLOR: Record<EstadoFactura, string> = {
   Anulada: "badge-soft-gray",
 };
 
-// Precio sugerido por especialidad (solo precarga el campo, el recepcionista
-// lo puede editar libremente). Ajustá estos montos a los reales de tu clínica.
 const PRECIO_POR_ESPECIALIDAD: Record<string, number> = {
-  "Cardiología": 25000,
-  "Pediatría": 20000,
-  "Ginecología": 25000,
-  "Neurología": 30000,
-  "Traumatología": 28000,
+  Cardiología: 25000,
+  Pediatría: 20000,
+  Ginecología: 25000,
+  Neurología: 30000,
+  Traumatología: 28000,
 };
 const PRECIO_DEFECTO = 20000;
 
 const formatoColones = (valor: number) =>
-  valor.toLocaleString("es-CR", { style: "currency", currency: "CRC", maximumFractionDigits: 0 });
+  valor.toLocaleString("es-CR", {
+    style: "currency",
+    currency: "CRC",
+    maximumFractionDigits: 0,
+  });
 
 interface ModalNuevaFacturaProps {
   onGuardar: (datos: {
@@ -41,7 +56,7 @@ function ModalNuevaFactura({ onGuardar, onCerrar }: ModalNuevaFacturaProps) {
   const { citas, facturas, recetas } = useClinicaStore();
   const citasYaFacturadasIds = new Set(facturas.map((f) => f.citaId));
   const citasAtendidasSinFacturar = citas.filter(
-    (c) => c.estado === "Atendida" && !citasYaFacturadasIds.has(c.id)
+    (c) => c.estado === "Atendida" && !citasYaFacturadasIds.has(c.id),
   );
 
   const [citaId, setCitaId] = useState<number | "">("");
@@ -52,18 +67,22 @@ function ModalNuevaFactura({ onGuardar, onCerrar }: ModalNuevaFacturaProps) {
 
   const citaSeleccionada = citas.find((c) => c.id === citaId);
 
-  // Receta de ESA cita puntual (via citaId), no cualquier receta pendiente del paciente.
-  // Esto evita que se mezclen medicamentos de otras citas del mismo paciente.
   const recetaPendiente = citaSeleccionada
-    ? recetas.find((r) => r.citaId === citaSeleccionada.id && r.estado === "Pendiente")
+    ? recetas.find(
+        (r) => r.citaId === citaSeleccionada.id && r.estado === "Pendiente",
+      )
     : undefined;
-  const itemsDisponibles = (recetaPendiente?.items ?? []).filter((i) => !i.incluirFactura);
+  const itemsDisponibles = (recetaPendiente?.items ?? []).filter(
+    (i) => !i.incluirFactura,
+  );
 
   const handleSeleccionarCita = (id: number | "") => {
     setCitaId(id);
     setSeleccionados(new Set());
     const cita = citas.find((c) => c.id === id);
-    setMontoConsulta(cita ? PRECIO_POR_ESPECIALIDAD[cita.especialidad] ?? PRECIO_DEFECTO : 0);
+    setMontoConsulta(
+      cita ? (PRECIO_POR_ESPECIALIDAD[cita.especialidad] ?? PRECIO_DEFECTO) : 0,
+    );
   };
 
   const toggleItem = (idDetalleReceta: number) => {
@@ -80,7 +99,7 @@ function ModalNuevaFactura({ onGuardar, onCerrar }: ModalNuevaFacturaProps) {
       itemsDisponibles
         .filter((i) => seleccionados.has(i.idDetalleReceta))
         .reduce((acc, i) => acc + i.cantidad * i.precioUnitario, 0),
-    [itemsDisponibles, seleccionados]
+    [itemsDisponibles, seleccionados],
   );
 
   const subtotal = montoConsulta + montoReceta;
@@ -111,17 +130,29 @@ function ModalNuevaFactura({ onGuardar, onCerrar }: ModalNuevaFacturaProps) {
 
   return (
     <div className="modal-overlay d-flex align-items-center justify-content-center p-3">
-      <div className="bg-white rounded-4 shadow w-100" style={{ maxWidth: 520 }}>
+      <div
+        className="bg-white rounded-4 shadow w-100"
+        style={{ maxWidth: 520 }}
+      >
         <div className="px-4 py-3 border-bottom d-flex align-items-center justify-content-between">
           <h3 className="fs-6 fw-medium text-dark mb-0">Generar factura</h3>
-          <button onClick={onCerrar} className="btn btn-link text-secondary fs-5 lh-1 text-decoration-none p-0">✕</button>
+          <button
+            onClick={onCerrar}
+            className="btn btn-link text-secondary fs-5 lh-1 text-decoration-none p-0"
+          >
+            ✕
+          </button>
         </div>
 
         <div className="p-4 d-flex flex-column gap-3">
           <Field label="Cita atendida a facturar">
             <select
               value={citaId}
-              onChange={(e) => handleSeleccionarCita(e.target.value ? Number(e.target.value) : "")}
+              onChange={(e) =>
+                handleSeleccionarCita(
+                  e.target.value ? Number(e.target.value) : "",
+                )
+              }
               className="form-select form-select-sm"
             >
               <option value="">Selecciona una cita…</option>
@@ -141,11 +172,17 @@ function ModalNuevaFactura({ onGuardar, onCerrar }: ModalNuevaFacturaProps) {
           {citaSeleccionada && (
             <>
               <div className="bg-soft border rounded p-2">
-                <p className="fs-12 fw-medium text-dark mb-0">{citaSeleccionada.paciente}</p>
-                <p className="fs-11 text-secondary mb-0">Cédula {citaSeleccionada.cedulaPaciente}</p>
+                <p className="fs-12 fw-medium text-dark mb-0">
+                  {citaSeleccionada.paciente}
+                </p>
+                <p className="fs-11 text-secondary mb-0">
+                  Cédula {citaSeleccionada.cedulaPaciente}
+                </p>
               </div>
 
-              <Field label={`Monto de la consulta (${citaSeleccionada.especialidad})`}>
+              <Field
+                label={`Monto de la consulta (${citaSeleccionada.especialidad})`}
+              >
                 <input
                   type="number"
                   min={0}
@@ -158,7 +195,8 @@ function ModalNuevaFactura({ onGuardar, onCerrar }: ModalNuevaFacturaProps) {
               {itemsDisponibles.length > 0 && (
                 <div>
                   <p className="fs-12 fw-medium text-dark mb-2">
-                    El paciente tiene medicamentos recetados. ¿Cuáles desea cancelar aquí?
+                    El paciente tiene medicamentos recetados. ¿Cuáles desea
+                    cancelar aquí?
                   </p>
                   <div className="d-flex flex-column gap-2">
                     {itemsDisponibles.map((item) => (
@@ -184,38 +222,52 @@ function ModalNuevaFactura({ onGuardar, onCerrar }: ModalNuevaFacturaProps) {
                     ))}
                   </div>
                   <p className="fs-11 text-secondary mt-1 mb-0">
-                    Lo que no marques, el paciente lo retira en otra farmacia y no se cobra aquí.
+                    Lo que no marques, el paciente lo retira en otra farmacia y
+                    no se cobra aquí.
                   </p>
                 </div>
               )}
 
               <div className="bg-soft border rounded p-3">
                 <div className="d-flex justify-content-between fs-12 text-secondary">
-                  <span>Consulta</span><span>{formatoColones(montoConsulta)}</span>
+                  <span>Consulta</span>
+                  <span>{formatoColones(montoConsulta)}</span>
                 </div>
                 <div className="d-flex justify-content-between fs-12 text-secondary">
-                  <span>Medicamentos</span><span>{formatoColones(montoReceta)}</span>
+                  <span>Medicamentos</span>
+                  <span>{formatoColones(montoReceta)}</span>
                 </div>
                 <div className="d-flex justify-content-between fs-12 text-secondary">
-                  <span>IVA ({(IVA_TASA * 100).toFixed(0)}%)</span><span>{formatoColones(iva)}</span>
+                  <span>IVA ({(IVA_TASA * 100).toFixed(0)}%)</span>
+                  <span>{formatoColones(iva)}</span>
                 </div>
                 <div className="d-flex justify-content-between fs-6 fw-medium text-dark mt-1 pt-1 border-top">
-                  <span>Total a pagar</span><span>{formatoColones(total)}</span>
+                  <span>Total a pagar</span>
+                  <span>{formatoColones(total)}</span>
                 </div>
               </div>
             </>
           )}
 
           {error && (
-            <div className="badge-soft badge-soft-red w-100 text-start py-2 px-3 fs-12">{error}</div>
+            <div className="badge-soft badge-soft-red w-100 text-start py-2 px-3 fs-12">
+              {error}
+            </div>
           )}
         </div>
 
         <div className="px-4 py-3 border-top d-flex justify-content-end gap-2">
-          <button onClick={onCerrar} className="btn btn-outline-secondary btn-sm">
+          <button
+            onClick={onCerrar}
+            className="btn btn-outline-secondary btn-sm"
+          >
             Cancelar
           </button>
-          <button onClick={handleSubmit} className="btn btn-primary btn-sm" disabled={guardando}>
+          <button
+            onClick={handleSubmit}
+            className="btn btn-primary btn-sm"
+            disabled={guardando}
+          >
             {guardando ? "Generando…" : "Generar factura"}
           </button>
         </div>
@@ -224,7 +276,6 @@ function ModalNuevaFactura({ onGuardar, onCerrar }: ModalNuevaFacturaProps) {
   );
 }
 
-// ─── Impresión de comprobante ──────────────────────────────────────────────────
 function imprimirComprobante(factura: Factura) {
   const ventana = window.open("", "_blank", "width=380,height=600");
   if (!ventana) return;
@@ -241,7 +292,7 @@ function imprimirComprobante(factura: Factura) {
           <td>${item.concepto}</td>
           <td style="text-align:center;">${item.cantidad}</td>
           <td style="text-align:right;">${formatoColones(item.cantidad * item.precioUnitario)}</td>
-        </tr>`
+        </tr>`,
     )
     .join("");
 
@@ -301,29 +352,48 @@ function imprimirComprobante(factura: Factura) {
   ventana.print();
 }
 
-// ─── Modal detalle / cobro ─────────────────────────────────────────────────────
-function ModalDetalleFactura({ factura, onCerrar }: { factura: Factura; onCerrar: () => void }) {
+function ModalDetalleFactura({
+  factura,
+  onCerrar,
+}: {
+  factura: Factura;
+  onCerrar: () => void;
+}) {
   const [metodoPago, setMetodoPago] = useState<MetodoPago>("Efectivo");
 
-  const subtotal = factura.total; // ya viene sin IVA desde la BD
+  const subtotal = factura.total;
   const iva = calcularIva(subtotal);
   const totalConIva = subtotal + iva;
 
   return (
     <div className="modal-overlay d-flex align-items-center justify-content-center p-3">
-      <div className="bg-white rounded-4 shadow w-100" style={{ maxWidth: 480 }}>
+      <div
+        className="bg-white rounded-4 shadow w-100"
+        style={{ maxWidth: 480 }}
+      >
         <div className="px-4 py-3 border-bottom d-flex align-items-center justify-content-between">
-          <h3 className="fs-6 fw-medium text-dark mb-0">Factura #{factura.id}</h3>
-          <button onClick={onCerrar} className="btn btn-link text-secondary fs-5 lh-1 text-decoration-none p-0">✕</button>
+          <h3 className="fs-6 fw-medium text-dark mb-0">
+            Factura #{factura.id}
+          </h3>
+          <button
+            onClick={onCerrar}
+            className="btn btn-link text-secondary fs-5 lh-1 text-decoration-none p-0"
+          >
+            ✕
+          </button>
         </div>
 
         <div className="p-4 d-flex flex-column gap-3">
           <div className="d-flex align-items-center justify-content-between">
             <div>
               <p className="fw-medium text-dark mb-0">{factura.paciente}</p>
-              <p className="fs-11 text-secondary mb-0">Cédula {factura.cedulaPaciente} · {factura.fecha}</p>
+              <p className="fs-11 text-secondary mb-0">
+                Cédula {factura.cedulaPaciente} · {factura.fecha}
+              </p>
             </div>
-            <span className={`badge-soft ${ESTADO_COLOR[factura.estado]}`}>{factura.estado}</span>
+            <span className={`badge-soft ${ESTADO_COLOR[factura.estado]}`}>
+              {factura.estado}
+            </span>
           </div>
 
           <div>
@@ -331,15 +401,26 @@ function ModalDetalleFactura({ factura, onCerrar }: { factura: Factura; onCerrar
             <div className="d-flex flex-column gap-2">
               <div className="bg-soft border rounded p-2 d-flex justify-content-between">
                 <p className="fs-12 fw-medium text-dark mb-0">Consulta</p>
-                <p className="fs-12 text-dark mb-0">{formatoColones(factura.montoConsulta)}</p>
+                <p className="fs-12 text-dark mb-0">
+                  {formatoColones(factura.montoConsulta)}
+                </p>
               </div>
               {factura.items.map((item, i) => (
-                <div key={i} className="bg-soft border rounded p-2 d-flex justify-content-between">
+                <div
+                  key={i}
+                  className="bg-soft border rounded p-2 d-flex justify-content-between"
+                >
                   <div>
-                    <p className="fs-12 fw-medium text-dark mb-0">{item.concepto}</p>
-                    <p className="fs-11 text-secondary mb-0">Cantidad: {item.cantidad}</p>
+                    <p className="fs-12 fw-medium text-dark mb-0">
+                      {item.concepto}
+                    </p>
+                    <p className="fs-11 text-secondary mb-0">
+                      Cantidad: {item.cantidad}
+                    </p>
                   </div>
-                  <p className="fs-12 text-dark mb-0">{formatoColones(item.cantidad * item.precioUnitario)}</p>
+                  <p className="fs-12 text-dark mb-0">
+                    {formatoColones(item.cantidad * item.precioUnitario)}
+                  </p>
                 </div>
               ))}
             </div>
@@ -347,19 +428,24 @@ function ModalDetalleFactura({ factura, onCerrar }: { factura: Factura; onCerrar
 
           <div className="bg-soft border rounded p-3">
             <div className="d-flex justify-content-between fs-12 text-secondary">
-              <span>Subtotal</span><span>{formatoColones(subtotal)}</span>
+              <span>Subtotal</span>
+              <span>{formatoColones(subtotal)}</span>
             </div>
             <div className="d-flex justify-content-between fs-12 text-secondary">
-              <span>IVA ({(IVA_TASA * 100).toFixed(0)}%)</span><span>{formatoColones(iva)}</span>
+              <span>IVA ({(IVA_TASA * 100).toFixed(0)}%)</span>
+              <span>{formatoColones(iva)}</span>
             </div>
             <div className="d-flex justify-content-between fs-6 fw-medium text-dark mt-1 pt-1 border-top">
-              <span>Total</span><span>{formatoColones(totalConIva)}</span>
+              <span>Total</span>
+              <span>{formatoColones(totalConIva)}</span>
             </div>
           </div>
 
           {factura.estado === "Pagada" && factura.metodoPago && (
             <>
-              <p className="fs-12 text-success text-center mb-0">Pagada con {factura.metodoPago}.</p>
+              <p className="fs-12 text-success text-center mb-0">
+                Pagada con {factura.metodoPago}.
+              </p>
               <button
                 onClick={() => imprimirComprobante(factura)}
                 className="btn btn-outline-primary btn-sm w-100"
@@ -370,7 +456,9 @@ function ModalDetalleFactura({ factura, onCerrar }: { factura: Factura; onCerrar
           )}
 
           {factura.estado === "Anulada" && (
-            <p className="fs-12 text-secondary text-center mb-0">Esta factura fue anulada.</p>
+            <p className="fs-12 text-secondary text-center mb-0">
+              Esta factura fue anulada.
+            </p>
           )}
 
           {factura.estado === "Pendiente" && (
@@ -381,18 +469,26 @@ function ModalDetalleFactura({ factura, onCerrar }: { factura: Factura; onCerrar
                   onChange={(e) => setMetodoPago(e.target.value as MetodoPago)}
                   className="form-select form-select-sm"
                 >
-                  {METODOS_PAGO.map((m) => <option key={m}>{m}</option>)}
+                  {METODOS_PAGO.map((m) => (
+                    <option key={m}>{m}</option>
+                  ))}
                 </select>
               </Field>
               <div className="d-flex gap-2">
                 <button
-                  onClick={() => { clinicaStore.anularFactura(factura.id); onCerrar(); }}
+                  onClick={() => {
+                    clinicaStore.anularFactura(factura.id);
+                    onCerrar();
+                  }}
                   className="btn btn-outline-danger btn-sm flex-fill"
                 >
                   Anular factura
                 </button>
                 <button
-                  onClick={() => { clinicaStore.marcarFacturaPagada(factura.id, metodoPago); onCerrar(); }}
+                  onClick={() => {
+                    clinicaStore.marcarFacturaPagada(factura.id, metodoPago);
+                    onCerrar();
+                  }}
                   className="btn btn-success btn-sm flex-fill"
                 >
                   Registrar pago
@@ -406,7 +502,6 @@ function ModalDetalleFactura({ factura, onCerrar }: { factura: Factura; onCerrar
   );
 }
 
-// ─── Componente principal ─────────────────────────────────────────────────────
 export default function GestionFacturas() {
   const { facturas } = useClinicaStore();
 
@@ -419,11 +514,12 @@ export default function GestionFacturas() {
     const texto = busqueda.trim().toLowerCase();
     return facturas
       .filter((f) => filtroEstado === "Todos" || f.estado === filtroEstado)
-      .filter((f) =>
-        texto === "" ||
-        f.paciente.toLowerCase().includes(texto) ||
-        f.cedulaPaciente.includes(texto) ||
-        String(f.id).includes(texto)
+      .filter(
+        (f) =>
+          texto === "" ||
+          f.paciente.toLowerCase().includes(texto) ||
+          f.cedulaPaciente.includes(texto) ||
+          String(f.id).includes(texto),
       )
       .sort((a, b) => b.id - a.id);
   }, [facturas, busqueda, filtroEstado]);
@@ -440,28 +536,42 @@ export default function GestionFacturas() {
     try {
       await clinicaStore.crearFactura(datos);
       setMostrarNueva(false);
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      return "Ocurrió un error al generar la factura. Intenta de nuevo.";
+      return (
+        err?.response?.data?.error ||
+        "Ocurrió un error al generar la factura. Intenta de nuevo."
+      );
     }
   };
 
   return (
     <>
       {mostrarNueva && (
-        <ModalNuevaFactura onGuardar={guardarFactura} onCerrar={() => setMostrarNueva(false)} />
+        <ModalNuevaFactura
+          onGuardar={guardarFactura}
+          onCerrar={() => setMostrarNueva(false)}
+        />
       )}
       {facturaActiva && (
-        <ModalDetalleFactura factura={facturaActiva} onCerrar={() => setFacturaActiva(null)} />
+        <ModalDetalleFactura
+          factura={facturaActiva}
+          onCerrar={() => setFacturaActiva(null)}
+        />
       )}
 
       <div className="bg-white rounded-4 border overflow-hidden">
         <div className="px-4 py-3 border-bottom bg-soft d-flex flex-wrap gap-3 align-items-start justify-content-between">
           <div>
-            <h2 className="fs-6 fw-bold text-dark text-start mb-0">Facturación de consultas</h2>
+            <h2 className="fs-6 fw-bold text-dark text-start mb-0">
+              Facturación de consultas
+            </h2>
           </div>
           <div className="d-flex gap-2">
-            <button onClick={() => setMostrarNueva(true)} className="btn btn-primary btn-sm">
+            <button
+              onClick={() => setMostrarNueva(true)}
+              className="btn btn-primary btn-sm"
+            >
               + Generar factura
             </button>
           </div>
@@ -470,9 +580,27 @@ export default function GestionFacturas() {
         <div className="p-4">
           {/* Stats */}
           <div className="row row-cols-3 g-3 mb-4">
-            <div className="col"><StatCard label="Pendientes" value={stats.pendientes} color="text-warning" /></div>
-            <div className="col"><StatCard label="Pagadas" value={stats.pagadas} color="text-success" /></div>
-            <div className="col"><StatCard label="Total cobrado (con IVA)" value={formatoColones(stats.totalCobrado)} color="text-dark" /></div>
+            <div className="col">
+              <StatCard
+                label="Pendientes"
+                value={stats.pendientes}
+                color="text-warning"
+              />
+            </div>
+            <div className="col">
+              <StatCard
+                label="Pagadas"
+                value={stats.pagadas}
+                color="text-success"
+              />
+            </div>
+            <div className="col">
+              <StatCard
+                label="Total cobrado (con IVA)"
+                value={formatoColones(stats.totalCobrado)}
+                color="text-dark"
+              />
+            </div>
           </div>
 
           {/* Filtros */}
@@ -493,27 +621,42 @@ export default function GestionFacturas() {
               style={{ maxWidth: 200 }}
             >
               <option value="Todos">Todos los estados</option>
-              {ESTADOS.map((e) => <option key={e}>{e}</option>)}
+              {ESTADOS.map((e) => (
+                <option key={e}>{e}</option>
+              ))}
             </select>
           </div>
 
           {facturasFiltradas.length === 0 && (
-            <p className="fs-6 text-secondary text-center py-4 mb-0">No hay facturas para este filtro.</p>
+            <p className="fs-6 text-secondary text-center py-4 mb-0">
+              No hay facturas para este filtro.
+            </p>
           )}
 
           <div className="d-flex flex-column gap-2">
             {facturasFiltradas.map((f) => (
-              <div key={f.id} className="border rounded p-3 d-flex align-items-center justify-content-between hover-row">
+              <div
+                key={f.id}
+                className="border rounded p-3 d-flex align-items-center justify-content-between hover-row"
+              >
                 <div>
-                  <p className="fs-12 text-secondary mb-0">Factura #{f.id} · {f.fecha}</p>
+                  <p className="fs-12 text-secondary mb-0">
+                    Factura #{f.id} · {f.fecha}
+                  </p>
                   <p className="fw-medium text-dark mb-0">{f.paciente}</p>
                   <p className="fs-11 text-secondary mb-0">
-                    {f.items.length + 1} concepto(s) · {formatoColones(calcularTotalConIva(f.total))} (IVA incl.)
+                    {f.items.length + 1} concepto(s) ·{" "}
+                    {formatoColones(calcularTotalConIva(f.total))} (IVA incl.)
                   </p>
                 </div>
                 <div className="d-flex align-items-center gap-2 flex-shrink-0">
-                  <span className={`badge-soft ${ESTADO_COLOR[f.estado]}`}>{f.estado}</span>
-                  <button onClick={() => setFacturaActiva(f)} className="btn btn-outline-secondary btn-sm">
+                  <span className={`badge-soft ${ESTADO_COLOR[f.estado]}`}>
+                    {f.estado}
+                  </span>
+                  <button
+                    onClick={() => setFacturaActiva(f)}
+                    className="btn btn-outline-secondary btn-sm"
+                  >
                     Ver detalle
                   </button>
                 </div>
@@ -526,8 +669,15 @@ export default function GestionFacturas() {
   );
 }
 
-// ─── Subcomponentes ───────────────────────────────────────────────────────────
-function StatCard({ label, value, color = "text-dark" }: { label: string; value: number | string; color?: string }) {
+function StatCard({
+  label,
+  value,
+  color = "text-dark",
+}: {
+  label: string;
+  value: number | string;
+  color?: string;
+}) {
   return (
     <div className="bg-soft border rounded px-3 py-3">
       <p className={`fs-4 fw-medium mb-0 ${color}`}>{value}</p>
@@ -536,11 +686,17 @@ function StatCard({ label, value, color = "text-dark" }: { label: string; value:
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
   return (
     <div>
       <label className="form-label fs-12 text-secondary mb-1">{label}</label>
       {children}
-    </div>  
+    </div>
   );
 }
