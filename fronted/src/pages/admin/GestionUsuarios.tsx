@@ -17,6 +17,7 @@ import {
   validarTelefono,
   validarNombreUsuario,
   validarContrasena,
+  MENSAJE_REQUISITOS_CONTRASENA,
 } from "../../utils/validaciones";
 
 const ROL_COLOR: Record<string, string> = {
@@ -220,8 +221,10 @@ function ModalUsuario({
       setError("La cédula/identificación debe tener el formato 1-2345-6789.");
       return;
     }
-    if (esNuevo && !validarContrasena(contrasena)) {
-      setError("La contraseña debe tener al menos 3 caracteres.");
+     if (esNuevo && !validarContrasena(contrasena)) {
+      setError(
+        "La contraseña debe tener entre 8 y 12 caracteres, con al menos 1 mayúscula, 1 número y 1 carácter especial."
+      );
       return;
     }
     if (!form.rol) {
@@ -358,14 +361,18 @@ function ModalUsuario({
           </div>
 
           {esNuevo && (
-            <Field label="Contraseña temporal">
+            <Field label="Contraseña">
               <input
                 type="password"
                 value={contrasena}
                 onChange={(e) => setContrasena(e.target.value)}
-                placeholder="Contraseña inicial"
+                placeholder="Ej: Pl4t4f0rm4$"
+                maxLength={12}
                 className="form-control form-control-sm"
               />
+              <p className="fs-11 text-secondary mt-1 mb-0">
+                {MENSAJE_REQUISITOS_CONTRASENA}
+              </p>
             </Field>
           )}
 
