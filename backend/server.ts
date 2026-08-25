@@ -72,7 +72,7 @@ async function seedAdministrador() {
       return;
     }
 
-    const hash = await bcrypt.hash('123', 10);
+    const hash = await bcrypt.hash('Pl4t4f0rm4$', 10);
     await UsuarioModel.insertUsuario({
       Nombre: 'Juan',
       Apellido1: 'Venegas',
@@ -85,7 +85,7 @@ async function seedAdministrador() {
       Estado: 'A',
       IdRol: rolAdmin.IdRol,
     });
-    console.log(' Usuario administrador "Juan Venegas Tellez" (admin / 123) creado automáticamente.');
+      console.log(' Usuario administrador "Juan Venegas Tellez" (admin / Pl4t4f0rm4$) creado automáticamente.');
   } catch (error) {
     console.error(' Error al verificar/crear el usuario administrador por defecto:', error);
   }
