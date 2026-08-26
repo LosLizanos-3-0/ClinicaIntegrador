@@ -4,10 +4,13 @@ import poolPromise from '../config/db';
 export const selectDashboardAdmin = async () => {
   const pool = await poolPromise;
   const result = await pool.request().execute('SelectDashboardAdmin');
+
+  const recordsets = result.recordsets as sql.IRecordSet<any>[];
+
   return {
-    kpis: result.recordsets[0][0],
-    consultasPorEspecialidad: result.recordsets[1],
-    estadoCitas: result.recordsets[2],
+    kpis: recordsets[0][0],
+    consultasPorEspecialidad: recordsets[1],
+    estadoCitas: recordsets[2],
   };
 };
 
