@@ -10,6 +10,10 @@ import {
   calcularIva,
   calcularTotalConIva,
 } from "../../services/factura.service";
+import {
+  pagarConBanky,
+  describirResultado,
+} from "../../../../backend/src/services(web)/bankyCheckout,js";
 
 const ESTADOS: EstadoFactura[] = ["Pendiente", "Pagada", "Anulada"];
 const METODOS_PAGO: MetodoPago[] = [
@@ -360,10 +364,47 @@ function ModalDetalleFactura({
   onCerrar: () => void;
 }) {
   const [metodoPago, setMetodoPago] = useState<MetodoPago>("Efectivo");
+  const [procesandoBanky, setProcesandoBanky] = useState(false);
+  const [errorBanky, setErrorBanky] = useState<string>("");
 
   const subtotal = factura.total;
   const iva = calcularIva(subtotal);
   const totalConIva = subtotal + iva;
+
+  const handlePagarConBanky = async () => {
+    setErrorBanky("");
+    setProcesandoBanky(true);
+    try {
+      const resultado = await pagarConBanky({
+        orderId: `FACT-${factura.id}`,
+        amount: Math.round(totalConIva),
+        description: `Factura #${factura.id} - ${factura.paciente}`,
+      });
+
+      if (resultado.status === "completed") {
+        // El propio banco ya validó tarjeta y cuenta del pagador dentro
+        // de su ventana; aquí solo reflejamos el resultado en la factura.
+        clinicaStore.marcarFacturaPagada(
+          factura.id,
+          "Banky Finanzas" as MetodoPago,
+        );
+        onCerrar();
+        return;
+      }
+
+      // "rejected" o "cancelled": se muestra el motivo y se deja la
+      // factura como estaba para que puedan intentar de nuevo.
+      setErrorBanky(describirResultado(resultado));
+    } catch (error: any) {
+      // Ocurre cuando el navegador bloqueó la ventana emergente.
+      setErrorBanky(
+        error?.message ||
+          "No fue posible iniciar el pago con Banky Finanzas.",
+      );
+    } finally {
+      setProcesandoBanky(false);
+    }
+  };
 
   return (
     <div className="modal-overlay d-flex align-items-center justify-content-center p-3">
@@ -474,12 +515,32 @@ function ModalDetalleFactura({
                   ))}
                 </select>
               </Field>
+
+              <button
+                type="button"
+                onClick={handlePagarConBanky}
+                disabled={procesandoBanky}
+                className="btn btn-sm w-100 text-white"
+                style={{ backgroundColor: "#FA9412", borderColor: "#FA9412" }}
+              >
+                {procesandoBanky
+                  ? "Procesando pago…"
+                  : "Pagar con Banky Finanzas"}
+              </button>
+
+              {errorBanky && (
+                <div className="badge-soft badge-soft-red w-100 text-start py-2 px-3 fs-12">
+                  {errorBanky}
+                </div>
+              )}
+
               <div className="d-flex gap-2">
                 <button
                   onClick={() => {
                     clinicaStore.anularFactura(factura.id);
                     onCerrar();
                   }}
+                  disabled={procesandoBanky}
                   className="btn btn-outline-danger btn-sm flex-fill"
                 >
                   Anular factura
@@ -489,6 +550,7 @@ function ModalDetalleFactura({
                     clinicaStore.marcarFacturaPagada(factura.id, metodoPago);
                     onCerrar();
                   }}
+                  disabled={procesandoBanky}
                   className="btn btn-success btn-sm flex-fill"
                 >
                   Registrar pago
