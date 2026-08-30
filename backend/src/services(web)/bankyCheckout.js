@@ -39,7 +39,7 @@ function construirUrlCheckout(datos) {
         origin: window.location.origin,
     });
 
-    return ${BANKY_URL}/checkout?${parametros.toString()};
+    return `${BANKY_URL}/checkout?${parametros.toString()}`;
 }
 
 export function pagarConBanky(datos) {
@@ -49,7 +49,7 @@ export function pagarConBanky(datos) {
         const ventana = window.open(
             url,
             'bankyfinanzas-checkout',
-            width=${ANCHO_VENTANA},height=${ALTO_VENTANA},
+            `width=${ANCHO_VENTANA},height=${ALTO_VENTANA}`,
         );
 
         if (!ventana) {

@@ -13,7 +13,7 @@ import {
 import {
   pagarConBanky,
   describirResultado,
-} from "../../../../backend/src/services(web)/bankyCheckout,js";
+} from "../../../../backend/src/services(web)/bankyCheckout.js";
 
 const ESTADOS: EstadoFactura[] = ["Pendiente", "Pagada", "Anulada"];
 const METODOS_PAGO: MetodoPago[] = [
