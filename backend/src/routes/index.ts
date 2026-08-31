@@ -20,6 +20,7 @@ import pagoRoutes from './Pago.routes';
 import authRoutes from './Auth.routes';
 import reporteRoutes from './Reporte.routes';
 import tributacionRoutes from './Tributacion.routes';
+import boricuasRoutes from './Boricuas.routes';
 
 const router = Router();
 
@@ -43,5 +44,6 @@ router.use('/pagos', pagoRoutes);
 router.use('/auth', authRoutes);
 router.use('/reportes', reporteRoutes);
 router.use('/tributacion', tributacionRoutes);
+router.use('/facturacion-digital', boricuasRoutes);
 
 export default router;
