@@ -143,7 +143,7 @@ export interface Factura {
   cedulaPaciente: string;
   citaId?: number;
   fecha: string;
-  items: ItemFactura[]; // solo los medicamentos facturados
+  items: ItemFactura[];
   montoConsulta: number;
   montoReceta: number;
   total: number;
