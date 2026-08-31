@@ -459,8 +459,11 @@ const handleFirmarFactura = async () => {
     try {
       const resultado = await validarConHSMSignCR(xmlFirmadoSesion.xml);
       if (resultado.esValida) {
+        const fechaFirma = resultado.signatureDate
+          ? new Date(resultado.signatureDate).toLocaleString("es-CR")
+          : "fecha desconocida";
         setMensajeFirma(
-          `Firma válida — firmado por ${resultado.signerName} el ${new Date(resultado.signatureDate).toLocaleString("es-CR")}.`
+          `Firma válida — firmado por ${resultado.signerName} el ${fechaFirma}.`
         );
       } else {
         setMensajeFirma(`Firma NO válida: ${resultado.motivo}`);
