@@ -16,6 +16,7 @@ import {
   calcularTotalConIva,
   generarXmlFactura,
   CLINICA_IDENTIFICACION,
+  facturaService,
 } from "../../services/factura.service";
 import {
   pagarConBanky,
@@ -373,7 +374,7 @@ function ModalDetalleFactura({
   const [metodoPago, setMetodoPago] = useState<MetodoPago>("Efectivo");
   const [procesandoBanky, setProcesandoBanky] = useState(false);
   const [errorBanky, setErrorBanky] = useState<string>("");
-   const [firmando, setFirmando] = useState(false);
+  const [firmando, setFirmando] = useState(false);
   const [verificando, setVerificando] = useState(false);
   const [mensajeFirma, setMensajeFirma] = useState<string>("");
   const [xmlFirmadoSesion, setXmlFirmadoSesion] = useState<{
@@ -381,6 +382,13 @@ function ModalDetalleFactura({
     hashDocumento: string;
     serialCertificado: string;
     fecha: string;
+  } | null>(null);
+  const [generandoComprobante, setGenerandoComprobante] = useState(false);
+  const [errorComprobante, setErrorComprobante] = useState<string>("");
+  const [comprobante, setComprobante] = useState<{
+    clave?: string;
+    consecutivo?: string;
+    pdfUrl: string;
   } | null>(null);
 
   const subtotal = factura.total;
@@ -422,7 +430,7 @@ function ModalDetalleFactura({
     }
   };
 
-const handleFirmarFactura = async () => {
+  const handleFirmarFactura = async () => {
     setMensajeFirma("");
     setFirmando(true);
     try {
@@ -472,6 +480,52 @@ const handleFirmarFactura = async () => {
       setMensajeFirma(error?.message || "No fue posible verificar la firma.");
     } finally {
       setVerificando(false);
+    }
+  };
+
+  const handleGenerarComprobante = async () => {
+    setErrorComprobante("");
+    setGenerandoComprobante(true);
+    try {
+      const resultado = await facturaService.generarComprobante(
+        factura.id,
+        factura.metodoPago,
+      );
+      const pdfUrl = URL.createObjectURL(resultado.pdfBlob);
+      setComprobante({
+        clave: resultado.clave,
+        consecutivo: resultado.consecutivo,
+        pdfUrl,
+      });
+    } catch (error: any) {
+      setErrorComprobante(
+        error?.response?.data?.mensaje ||
+          error?.response?.data?.error ||
+          "No se pudo generar el comprobante electrónico.",
+      );
+    } finally {
+      setGenerandoComprobante(false);
+    }
+  };
+
+  const handleVerPreview = async () => {
+    setErrorComprobante("");
+    try {
+      const html = await facturaService.previsualizarComprobante(
+        factura.id,
+        factura.metodoPago,
+      );
+      const ventana = window.open("", "_blank");
+      if (ventana) {
+        ventana.document.write(html);
+        ventana.document.close();
+      }
+    } catch (error: any) {
+      setErrorComprobante(
+        error?.response?.data?.mensaje ||
+          error?.response?.data?.error ||
+          "No se pudo generar la vista previa.",
+      );
     }
   };
 
@@ -550,11 +604,65 @@ const handleFirmarFactura = async () => {
               <span>{formatoColones(totalConIva)}</span>
             </div>
           </div>
- {factura.estado === "Pagada" && factura.metodoPago && (
+
+          {factura.estado === "Pagada" && factura.metodoPago && (
             <>
               <p className="fs-12 text-success text-center mb-0">
                 Pagada con {factura.metodoPago}.
               </p>
+
+              <div className="d-flex flex-column gap-2">
+                <p className="fs-12 fw-medium text-dark mb-0">Comprobante electrónico</p>
+                {!comprobante ? (
+                  <>
+                    <p className="fs-11 text-secondary mb-0">
+                      Aún no se ha generado el comprobante oficial.
+                    </p>
+                    <div className="d-flex gap-2">
+                      <button
+                        onClick={handleVerPreview}
+                        className="btn btn-outline-secondary btn-sm flex-fill"
+                      >
+                        Vista previa
+                      </button>
+                      <button
+                        onClick={handleGenerarComprobante}
+                        disabled={generandoComprobante}
+                        className="btn btn-primary btn-sm flex-fill"
+                      >
+                        {generandoComprobante ? "Generando…" : "Generar comprobante"}
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="badge-soft badge-soft-green w-100 text-start py-2 px-3 fs-11">
+                      <p className="mb-0 fw-medium">Comprobante emitido</p>
+                      {comprobante.consecutivo && (
+                        <p className="mb-0">Consecutivo {comprobante.consecutivo}</p>
+                      )}
+                      {comprobante.clave && (
+                        <p className="mb-0" style={{ wordBreak: "break-all" }}>
+                          Clave {comprobante.clave}
+                        </p>
+                      )}
+                    </div>
+                    <a
+                      href={comprobante.pdfUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="btn btn-outline-primary btn-sm w-100"
+                    >
+                      📄 Ver / descargar PDF
+                    </a>
+                  </>
+                )}
+                {errorComprobante && (
+                  <div className="badge-soft badge-soft-red w-100 text-start py-2 px-3 fs-12">
+                    {errorComprobante}
+                  </div>
+                )}
+              </div>
 
               <div className="d-flex flex-column gap-2">
                 <p className="fs-12 fw-medium text-dark mb-0">Firma digital</p>

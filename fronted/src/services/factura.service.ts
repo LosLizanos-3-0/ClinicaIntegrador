@@ -129,6 +129,32 @@ export const facturaService = {
       await api.patch(`/facturas/${id}/estado`, { Estado: nuevoEstado });
     }
   },
+
+  // Emite el comprobante real en Billing Kilometer y devuelve el PDF listo
+  // para mostrar/descargar, junto con la clave y el consecutivo fiscal.
+  async generarComprobante(idFactura: number, medioPago?: string) {
+    const respuesta = await api.post(
+      `/facturas/${idFactura}/comprobante`,
+      { medioPago },
+      { responseType: "blob" }
+    );
+    return {
+      pdfBlob: respuesta.data as Blob,
+      clave: respuesta.headers["x-clave"] as string | undefined,
+      consecutivo: respuesta.headers["x-consecutivo"] as string | undefined,
+      total: respuesta.headers["x-total-comprobante"] as string | undefined,
+    };
+  },
+
+  // Vista previa en HTML, sin numerar ni gastar consecutivo.
+  async previsualizarComprobante(idFactura: number, medioPago?: string): Promise<string> {
+    const { data } = await api.post<string>(
+      `/facturas/${idFactura}/comprobante/preview`,
+      { medioPago },
+      { responseType: "text" }
+    );
+    return data;
+  },
 };
 
 // Genera un XML simplificado que representa la factura, para enviarlo a
