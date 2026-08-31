@@ -23,6 +23,11 @@ import {
   type ResultadoEnvioTributacion,
 } from "../../services/tributacionDirecta.service";
 import {
+  crearVentaBoricuas,
+  firmarVentaBoricuas,
+  type ResultadoFacturacionDigital,
+} from "../../services/boricuas.service";
+import {
   pagarConBanky,
   describirResultado,
 } from "../../../../backend/src/services(web)/bankyCheckout.js";
@@ -406,6 +411,13 @@ function ModalDetalleFactura({
   const [resultadoTributacion, setResultadoTributacion] =
     useState<ResultadoEnvioTributacion | null>(null);
 
+  // Facturación digital (Boricuas -> Mini Tributación DGTD). Independiente
+  // de la Firma digital y de Tributación Directa: arma su propio XML a
+  // partir de la venta que crea Boricuas con la identidad de la clínica.
+  const [procesandoFacturacionDigital, setProcesandoFacturacionDigital] = useState(false);
+  const [resultadoFacturacionDigital, setResultadoFacturacionDigital] =
+    useState<ResultadoFacturacionDigital | null>(null);
+
   const [generandoComprobante, setGenerandoComprobante] = useState(false);
   const [errorComprobante, setErrorComprobante] = useState<string>("");
   const [comprobante, setComprobante] = useState<{
@@ -518,6 +530,51 @@ function ModalDetalleFactura({
       setResultadoTributacion(resultado);
     } finally {
       setEnviandoTributacion(false);
+    }
+  };
+
+  // Facturación digital con Boricuas: crea la venta con la identidad de
+  // la clínica, abre el popup de HSM Sign CR para firmar ESE xml (no el
+  // de la sección "Firma digital"), y envía el resultado a Boricuas.
+  const handleFacturacionDigital = async () => {
+    setResultadoFacturacionDigital(null);
+    setProcesandoFacturacionDigital(true);
+    try {
+      const venta = await crearVentaBoricuas(factura.id);
+      if (!venta.xmlOriginal) {
+        setResultadoFacturacionDigital({
+          ok: false,
+          mensaje: venta.mensaje || "Boricuas no devolvió el XML a firmar.",
+        });
+        return;
+      }
+
+      const firma = await firmarConHSMSignCR({
+        identificacion: CLINICA_IDENTIFICACION,
+        xmlFactura: venta.xmlOriginal,
+      });
+
+      if (firma.status !== "completed" || !firma.xmlFirmado) {
+        setResultadoFacturacionDigital({
+          ok: false,
+          mensaje: describirResultadoFirma(firma),
+        });
+        return;
+      }
+
+      const resultado = await firmarVentaBoricuas(venta.id, {
+        xmlFirmado: firma.xmlFirmado,
+        hashDocumento: firma.hashDocumento,
+        serialCertificado: firma.serialCertificado,
+      });
+      setResultadoFacturacionDigital(resultado);
+    } catch (error: any) {
+      setResultadoFacturacionDigital({
+        ok: false,
+        mensaje: error?.response?.data?.mensaje || error?.message || "No fue posible completar la facturación digital.",
+      });
+    } finally {
+      setProcesandoFacturacionDigital(false);
     }
   };
 
@@ -794,6 +851,45 @@ function ModalDetalleFactura({
                   )}
                 </div>
               )}
+
+              {/* ── FACTURACIÓN DIGITAL (Boricuas -> Mini Tributación) ── */}
+              <div className="d-flex flex-column gap-2">
+                <p className="fs-12 fw-medium text-dark mb-0">Facturación digital</p>
+
+                {resultadoFacturacionDigital?.ok ? (
+                  <>
+                    <span className="badge-soft badge-soft-green w-fit-content">
+                      Aceptada
+                    </span>
+                    {resultadoFacturacionDigital.numeroAcuse != null && (
+                      <p className="fs-11 text-secondary mb-0">
+                        N.º de acuse: {resultadoFacturacionDigital.numeroAcuse}
+                      </p>
+                    )}
+                  </>
+                ) : (
+                  <button
+                    onClick={handleFacturacionDigital}
+                    disabled={procesandoFacturacionDigital}
+                    className="btn btn-outline-primary btn-sm w-100 d-flex align-items-center justify-content-center gap-1"
+                  >
+                    <i className="bi bi-file-earmark-check-fill" aria-hidden="true" />
+                    {procesandoFacturacionDigital ? "Procesando…" : "Facturar digitalmente"}
+                  </button>
+                )}
+
+                {resultadoFacturacionDigital && !resultadoFacturacionDigital.ok && (
+                  <div className="badge-soft badge-soft-red w-100 text-start py-2 px-3 fs-12">
+                    {resultadoFacturacionDigital.mensaje}
+                  </div>
+                )}
+
+                {resultadoFacturacionDigital?.ok && (
+                  <div className="badge-soft badge-soft-blue w-100 text-start py-2 px-3 fs-12">
+                    {resultadoFacturacionDigital.mensaje}
+                  </div>
+                )}
+              </div>
 
                            <button
                 onClick={() => imprimirComprobante(factura)}
