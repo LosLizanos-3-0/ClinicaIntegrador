@@ -6,10 +6,21 @@ import type {
 } from "../../types/clinica.types";
 import { clinicaStore, useClinicaStore } from "../../types/clinicaStore";
 import {
+  firmarConHSMSignCR,
+  describirResultadoFirma,
+  validarConHSMSignCR,
+} from "../../../../backend/src/services(web)/hsmSignCheckout.js";
+import {
   IVA_TASA,
   calcularIva,
   calcularTotalConIva,
+  generarXmlFactura,
+  CLINICA_IDENTIFICACION,
 } from "../../services/factura.service";
+import {
+  pagarConBanky,
+  describirResultado,
+} from "../../../../backend/src/services(web)/bankyCheckout.js";
 
 const ESTADOS: EstadoFactura[] = ["Pendiente", "Pagada", "Anulada"];
 const METODOS_PAGO: MetodoPago[] = [
@@ -360,10 +371,109 @@ function ModalDetalleFactura({
   onCerrar: () => void;
 }) {
   const [metodoPago, setMetodoPago] = useState<MetodoPago>("Efectivo");
+  const [procesandoBanky, setProcesandoBanky] = useState(false);
+  const [errorBanky, setErrorBanky] = useState<string>("");
+   const [firmando, setFirmando] = useState(false);
+  const [verificando, setVerificando] = useState(false);
+  const [mensajeFirma, setMensajeFirma] = useState<string>("");
+  const [xmlFirmadoSesion, setXmlFirmadoSesion] = useState<{
+    xml: string;
+    hashDocumento: string;
+    serialCertificado: string;
+    fecha: string;
+  } | null>(null);
 
   const subtotal = factura.total;
   const iva = calcularIva(subtotal);
   const totalConIva = subtotal + iva;
+
+  const handlePagarConBanky = async () => {
+    setErrorBanky("");
+    setProcesandoBanky(true);
+    try {
+      const resultado = await pagarConBanky({
+        orderId: `FACT-${factura.id}`,
+        amount: Math.round(totalConIva),
+        description: `Factura #${factura.id} - ${factura.paciente}`,
+      });
+
+      if (resultado.status === "completed") {
+        // El propio banco ya validó tarjeta y cuenta del pagador dentro
+        // de su ventana; aquí solo reflejamos el resultado en la factura.
+        clinicaStore.marcarFacturaPagada(
+          factura.id,
+          "Banky Finanzas" as MetodoPago,
+        );
+        onCerrar();
+        return;
+      }
+
+      // "rejected" o "cancelled": se muestra el motivo y se deja la
+      // factura como estaba para que puedan intentar de nuevo.
+      setErrorBanky(describirResultado(resultado));
+    } catch (error: any) {
+      // Ocurre cuando el navegador bloqueó la ventana emergente.
+      setErrorBanky(
+        error?.message ||
+          "No fue posible iniciar el pago con Banky Finanzas.",
+      );
+    } finally {
+      setProcesandoBanky(false);
+    }
+  };
+
+const handleFirmarFactura = async () => {
+    setMensajeFirma("");
+    setFirmando(true);
+    try {
+      const xml = generarXmlFactura(factura);
+      const resultado = await firmarConHSMSignCR({
+        identificacion: CLINICA_IDENTIFICACION,
+        xmlFactura: xml,
+      });
+
+      if (resultado.status === "completed" && resultado.xmlFirmado) {
+        // No se guarda en nuestra base de datos: la firma y su validez
+        // dependen del certificado y de HSM Sign CR, no de nosotros.
+        setXmlFirmadoSesion({
+          xml: resultado.xmlFirmado,
+          hashDocumento: resultado.hashDocumento ?? "",
+          serialCertificado: resultado.serialCertificado ?? "",
+          fecha: new Date().toISOString(),
+        });
+        setMensajeFirma("La factura se firmó correctamente.");
+      } else {
+        setMensajeFirma(describirResultadoFirma(resultado));
+      }
+    } catch (error: any) {
+      setMensajeFirma(error?.message || "No fue posible iniciar la firma digital.");
+    } finally {
+      setFirmando(false);
+    }
+  };
+
+  const handleVerificarFirma = async () => {
+    if (!xmlFirmadoSesion) return;
+    setMensajeFirma("");
+    setVerificando(true);
+    try {
+      const resultado = await validarConHSMSignCR(xmlFirmadoSesion.xml);
+      if (resultado.esValida) {
+        const fechaFirma = resultado.signatureDate
+          ? new Date(resultado.signatureDate).toLocaleString("es-CR")
+          : "fecha desconocida";
+        setMensajeFirma(
+          `Firma válida — firmado por ${resultado.signerName} el ${fechaFirma}.`
+        );
+      } else {
+        setMensajeFirma(`Firma NO válida: ${resultado.motivo}`);
+      }
+    } catch (error: any) {
+      setMensajeFirma(error?.message || "No fue posible verificar la firma.");
+    } finally {
+      setVerificando(false);
+    }
+  };
 
   return (
     <div className="modal-overlay d-flex align-items-center justify-content-center p-3">
@@ -440,12 +550,48 @@ function ModalDetalleFactura({
               <span>{formatoColones(totalConIva)}</span>
             </div>
           </div>
-
-          {factura.estado === "Pagada" && factura.metodoPago && (
+ {factura.estado === "Pagada" && factura.metodoPago && (
             <>
               <p className="fs-12 text-success text-center mb-0">
                 Pagada con {factura.metodoPago}.
               </p>
+
+              <div className="d-flex flex-column gap-2">
+                <p className="fs-12 fw-medium text-dark mb-0">Firma digital</p>
+
+                {xmlFirmadoSesion ? (
+                  <>
+                    <span className="badge-soft badge-soft-green w-fit-content">
+                      Firmada
+                    </span>
+                    <p className="fs-11 text-secondary mb-0">
+                      Firmada digitalmente el {new Date(xmlFirmadoSesion.fecha).toLocaleString("es-CR")}.
+                    </p>
+                    <button
+                      onClick={handleVerificarFirma}
+                      disabled={verificando}
+                      className="btn btn-outline-secondary btn-sm w-100"
+                    >
+                      {verificando ? "Verificando…" : "🔍 Verificar firma digital"}
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    onClick={handleFirmarFactura}
+                    disabled={firmando}
+                    className="btn btn-outline-primary btn-sm w-100"
+                  >
+                    {firmando ? "Firmando…" : "🔏 Firmar factura digitalmente"}
+                  </button>
+                )}
+
+                {mensajeFirma && (
+                  <div className="badge-soft badge-soft-blue w-100 text-start py-2 px-3 fs-12">
+                    {mensajeFirma}
+                  </div>
+                )}
+              </div>
+
               <button
                 onClick={() => imprimirComprobante(factura)}
                 className="btn btn-outline-primary btn-sm w-100"
@@ -474,12 +620,32 @@ function ModalDetalleFactura({
                   ))}
                 </select>
               </Field>
+
+              <button
+                type="button"
+                onClick={handlePagarConBanky}
+                disabled={procesandoBanky}
+                className="btn btn-sm w-100 text-white"
+                style={{ backgroundColor: "#FA9412", borderColor: "#FA9412" }}
+              >
+                {procesandoBanky
+                  ? "Procesando pago…"
+                  : "Pagar con Banky Finanzas"}
+              </button>
+
+              {errorBanky && (
+                <div className="badge-soft badge-soft-red w-100 text-start py-2 px-3 fs-12">
+                  {errorBanky}
+                </div>
+              )}
+
               <div className="d-flex gap-2">
                 <button
                   onClick={() => {
                     clinicaStore.anularFactura(factura.id);
                     onCerrar();
                   }}
+                  disabled={procesandoBanky}
                   className="btn btn-outline-danger btn-sm flex-fill"
                 >
                   Anular factura
@@ -489,6 +655,7 @@ function ModalDetalleFactura({
                     clinicaStore.marcarFacturaPagada(factura.id, metodoPago);
                     onCerrar();
                   }}
+                  disabled={procesandoBanky}
                   className="btn btn-success btn-sm flex-fill"
                 >
                   Registrar pago
