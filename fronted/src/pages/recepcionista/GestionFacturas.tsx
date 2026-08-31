@@ -19,6 +19,10 @@ import {
   facturaService,
 } from "../../services/factura.service";
 import {
+  enviarFacturaATributacion,
+  type ResultadoEnvioTributacion,
+} from "../../services/tributacionDirecta.service";
+import {
   pagarConBanky,
   describirResultado,
 } from "../../../../backend/src/services(web)/bankyCheckout.js";
@@ -382,6 +386,10 @@ function ModalDetalleFactura({
   const [metodoPago, setMetodoPago] = useState<MetodoPago>("Efectivo");
   const [procesandoBanky, setProcesandoBanky] = useState(false);
   const [errorBanky, setErrorBanky] = useState<string>("");
+
+  // La firma NO se guarda en la base de datos — vive solo mientras este
+  // modal está abierto. La validación real de la firma la hace el sistema
+  // de HSM Sign CR, no nosotros.
   const [firmando, setFirmando] = useState(false);
   const [verificando, setVerificando] = useState(false);
   const [mensajeFirma, setMensajeFirma] = useState<string>("");
@@ -391,6 +399,13 @@ function ModalDetalleFactura({
     serialCertificado: string;
     fecha: string;
   } | null>(null);
+
+  // Tributación Directa: solo tiene sentido una vez que la factura ya
+  // está firmada (xmlFirmadoSesion existe).
+  const [enviandoTributacion, setEnviandoTributacion] = useState(false);
+  const [resultadoTributacion, setResultadoTributacion] =
+    useState<ResultadoEnvioTributacion | null>(null);
+
   const [generandoComprobante, setGenerandoComprobante] = useState(false);
   const [errorComprobante, setErrorComprobante] = useState<string>("");
   const [comprobante, setComprobante] = useState<{
@@ -438,6 +453,9 @@ function ModalDetalleFactura({
     }
   };
 
+  // La firma acredita QUIÉN emitió la factura y que no fue alterada.
+  // Solo se ofrece DESPUÉS de que la factura está pagada (ver bloque
+  // condicional más abajo).
   const handleFirmarFactura = async () => {
     setMensajeFirma("");
     setFirmando(true);
@@ -449,8 +467,6 @@ function ModalDetalleFactura({
       });
 
       if (resultado.status === "completed" && resultado.xmlFirmado) {
-        // No se guarda en nuestra base de datos: la firma y su validez
-        // dependen del certificado y de HSM Sign CR, no de nosotros.
         setXmlFirmadoSesion({
           xml: resultado.xmlFirmado,
           hashDocumento: resultado.hashDocumento ?? "",
@@ -488,6 +504,20 @@ function ModalDetalleFactura({
       setMensajeFirma(error?.message || "No fue posible verificar la firma.");
     } finally {
       setVerificando(false);
+    }
+  };
+
+  // Envía la factura firmada a Tributación Directa. Solo tiene sentido
+  // una vez que ya está firmada (xmlFirmadoSesion existe).
+  const handleEnviarTributacion = async () => {
+    if (!xmlFirmadoSesion) return;
+    setEnviandoTributacion(true);
+    setResultadoTributacion(null);
+    try {
+      const resultado = await enviarFacturaATributacion(factura, xmlFirmadoSesion.xml);
+      setResultadoTributacion(resultado);
+    } finally {
+      setEnviandoTributacion(false);
     }
   };
 
@@ -542,12 +572,12 @@ function ModalDetalleFactura({
   };
 
   return (
-    <div className="modal-overlay d-flex align-items-center justify-content-center p-3">
+      <div className="modal-overlay d-flex align-items-center justify-content-center p-3">
       <div
-        className="bg-white rounded-4 shadow w-100"
-        style={{ maxWidth: 480 }}
+        className="bg-white rounded-4 shadow w-100 d-flex flex-column"
+        style={{ maxWidth: 480, maxHeight: "85vh" }}
       >
-        <div className="px-4 py-3 border-bottom d-flex align-items-center justify-content-between">
+        <div className="px-4 py-3 border-bottom d-flex align-items-center justify-content-between flex-shrink-0">
           <h3 className="fs-6 fw-medium text-dark mb-0">
             Factura #{factura.id}
           </h3>
@@ -559,7 +589,7 @@ function ModalDetalleFactura({
           </button>
         </div>
 
-        <div className="p-4 d-flex flex-column gap-3">
+        <div className="p-4 d-flex flex-column gap-3 overflow-auto">
           <div className="d-flex align-items-center justify-content-between">
             <div>
               <p className="fw-medium text-dark mb-0">{factura.paciente}</p>
@@ -623,6 +653,7 @@ function ModalDetalleFactura({
                 Pagada con {factura.metodoPago}.
               </p>
 
+              {/* ── COMPROBANTE ELECTRÓNICO ───────────────────────────── */}
               <div className="d-flex flex-column gap-2">
                 <p className="fs-12 fw-medium text-dark mb-0">Comprobante electrónico</p>
                 {!comprobante ? (
@@ -631,17 +662,18 @@ function ModalDetalleFactura({
                       Aún no se ha generado el comprobante oficial.
                     </p>
                     <div className="d-flex gap-2">
-                      <button
+                                         <button
                         onClick={handleVerPreview}
-                        className="btn btn-outline-secondary btn-sm flex-fill"
+                        className="btn btn-outline-secondary btn-sm flex-fill d-flex align-items-center justify-content-center gap-1"
                       >
-                        Vista previa
+                        <i className="bi bi-eye-fill" aria-hidden="true" /> Vista previa
                       </button>
                       <button
                         onClick={handleGenerarComprobante}
                         disabled={generandoComprobante}
-                        className="btn btn-primary btn-sm flex-fill"
+                        className="btn btn-primary btn-sm flex-fill d-flex align-items-center justify-content-center gap-1"
                       >
+                        <i className="bi bi-file-earmark-check-fill" aria-hidden="true" />
                         {generandoComprobante ? "Generando…" : "Generar comprobante"}
                       </button>
                     </div>
@@ -658,14 +690,15 @@ function ModalDetalleFactura({
                           Clave {comprobante.clave}
                         </p>
                       )}
-                    </div>
-                    <a
+                                      </div>
+                      <a
+                                      
                       href={comprobante.pdfUrl}
                       target="_blank"
                       rel="noreferrer"
-                      className="btn btn-outline-primary btn-sm w-100"
+                      className="btn btn-outline-primary btn-sm w-100 d-flex align-items-center justify-content-center gap-1"
                     >
-                      📄 Ver / descargar PDF
+                      <i className="bi bi-file-earmark-pdf-fill" aria-hidden="true" /> Ver / descargar PDF
                     </a>
                   </>
                 )}
@@ -676,6 +709,7 @@ function ModalDetalleFactura({
                 )}
               </div>
 
+              {/* ── FIRMA DIGITAL — solo después del pago ─────────────── */}
               <div className="d-flex flex-column gap-2">
                 <p className="fs-12 fw-medium text-dark mb-0">Firma digital</p>
 
@@ -687,21 +721,23 @@ function ModalDetalleFactura({
                     <p className="fs-11 text-secondary mb-0">
                       Firmada digitalmente el {new Date(xmlFirmadoSesion.fecha).toLocaleString("es-CR")}.
                     </p>
-                    <button
+                       <button
                       onClick={handleVerificarFirma}
                       disabled={verificando}
-                      className="btn btn-outline-secondary btn-sm w-100"
+                      className="btn btn-outline-secondary btn-sm w-100 d-flex align-items-center justify-content-center gap-1"
                     >
-                      {verificando ? "Verificando…" : "🔍 Verificar firma digital"}
+                      <i className="bi bi-search" aria-hidden="true" />
+                      {verificando ? "Verificando…" : "Verificar firma digital"}
                     </button>
                   </>
                 ) : (
                   <button
                     onClick={handleFirmarFactura}
                     disabled={firmando}
-                    className="btn btn-outline-primary btn-sm w-100"
+                    className="btn btn-outline-primary btn-sm w-100 d-flex align-items-center justify-content-center gap-1"
                   >
-                    {firmando ? "Firmando…" : "🔏 Firmar factura digitalmente"}
+                    <i className="bi bi-shield-lock-fill" aria-hidden="true" />
+                    {firmando ? "Firmando…" : "Firmar factura digitalmente"}
                   </button>
                 )}
 
@@ -712,21 +748,62 @@ function ModalDetalleFactura({
                 )}
               </div>
 
-              <button
+              {/* ── TRIBUTACIÓN DIRECTA — solo después de firmada ─────── */}
+              {xmlFirmadoSesion && (
+                <div className="d-flex flex-column gap-2">
+                  <p className="fs-12 fw-medium text-dark mb-0">Tributación Directa</p>
+
+                  {resultadoTributacion?.ok ? (
+                    <>
+                      <span className="badge-soft badge-soft-green w-fit-content">
+                        Aceptada
+                      </span>
+                      {resultadoTributacion.numeroAcuse != null && (
+                        <p className="fs-11 text-secondary mb-0">
+                          N.º de acuse: {resultadoTributacion.numeroAcuse}
+                        </p>
+                      )}
+                    </>
+                  ) : (
+                                <button
+                      onClick={handleEnviarTributacion}
+                      disabled={enviandoTributacion}
+                      className="btn btn-outline-primary btn-sm w-100 d-flex align-items-center justify-content-center gap-1"
+                    >
+                      <i className="bi bi-send-fill" aria-hidden="true" />
+                      {enviandoTributacion ? "Enviando…" : "Enviar a Tributación Directa"}
+                    </button>
+                  )}
+
+                  {resultadoTributacion && !resultadoTributacion.ok && (
+                    <div className="badge-soft badge-soft-red w-100 text-start py-2 px-3 fs-12">
+                      {resultadoTributacion.mensaje}
+                      {resultadoTributacion.camposFaltantes && resultadoTributacion.camposFaltantes.length > 0 && (
+                        <>
+                          {" "}
+                          Faltan: {resultadoTributacion.camposFaltantes.join(", ")}.
+                        </>
+                      )}
+                    </div>
+                  )}
+
+                  {resultadoTributacion?.ok && (
+                    <div className="badge-soft badge-soft-blue w-100 text-start py-2 px-3 fs-12">
+                      {resultadoTributacion.mensaje}
+                    </div>
+                  )}
+                </div>
+              )}
+
+                           <button
                 onClick={() => imprimirComprobante(factura)}
-                className="btn btn-outline-primary btn-sm w-100"
+                className="btn btn-outline-primary btn-sm w-100 d-flex align-items-center justify-content-center gap-1"
               >
-                🖨️ Imprimir comprobante
+                <i className="bi bi-printer-fill" aria-hidden="true" /> Imprimir comprobante
               </button>
             </>
           )}
-
-          {factura.estado === "Anulada" && (
-            <p className="fs-12 text-secondary text-center mb-0">
-              Esta factura fue anulada.
-            </p>
-          )}
-
+          
           {factura.estado === "Pendiente" && (
             <>
               <Field label="Método de pago">

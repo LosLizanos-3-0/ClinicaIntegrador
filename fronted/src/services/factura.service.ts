@@ -23,6 +23,7 @@ const BD_A_METODO: Record<string, MetodoPago> = {
 
 export const CLINICA_IDENTIFICACION = "677778888";
 export const CLINICA_NOMBRE = "CliniSoft";
+export const CLINICA_CORREO = "integradorclinica@gmail.com";
 
 interface FacturaBD {
   IdFactura: number;

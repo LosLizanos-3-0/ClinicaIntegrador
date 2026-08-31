@@ -19,6 +19,7 @@ import detalleFacturaRoutes from './DetalleFactura.routes';
 import pagoRoutes from './Pago.routes';
 import authRoutes from './Auth.routes';
 import reporteRoutes from './Reporte.routes';
+import tributacionRoutes from './Tributacion.routes';
 
 const router = Router();
 
@@ -41,5 +42,6 @@ router.use('/detalle-factura', detalleFacturaRoutes);
 router.use('/pagos', pagoRoutes);
 router.use('/auth', authRoutes);
 router.use('/reportes', reporteRoutes);
+router.use('/tributacion', tributacionRoutes);
 
 export default router;
