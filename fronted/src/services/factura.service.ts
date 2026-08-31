@@ -21,6 +21,9 @@ const BD_A_METODO: Record<string, MetodoPago> = {
   SINPE: "Sinpe Móvil",
 };
 
+export const CLINICA_IDENTIFICACION = "677778888";
+export const CLINICA_NOMBRE = "CliniSoft";
+
 interface FacturaBD {
   IdFactura: number;
   IdPaciente: number;
@@ -126,4 +129,81 @@ export const facturaService = {
       await api.patch(`/facturas/${id}/estado`, { Estado: nuevoEstado });
     }
   },
+
+  // Emite el comprobante real en Billing Kilometer y devuelve el PDF listo
+  // para mostrar/descargar, junto con la clave y el consecutivo fiscal.
+  async generarComprobante(idFactura: number, medioPago?: string) {
+    const respuesta = await api.post(
+      `/facturas/${idFactura}/comprobante`,
+      { medioPago },
+      { responseType: "blob" }
+    );
+    return {
+      pdfBlob: respuesta.data as Blob,
+      clave: respuesta.headers["x-clave"] as string | undefined,
+      consecutivo: respuesta.headers["x-consecutivo"] as string | undefined,
+      total: respuesta.headers["x-total-comprobante"] as string | undefined,
+    };
+  },
+
+  // Vista previa en HTML, sin numerar ni gastar consecutivo.
+  async previsualizarComprobante(idFactura: number, medioPago?: string): Promise<string> {
+    const { data } = await api.post<string>(
+      `/facturas/${idFactura}/comprobante/preview`,
+      { medioPago },
+      { responseType: "text" }
+    );
+    return data;
+  },
 };
+
+// Genera un XML simplificado que representa la factura, para enviarlo a
+// firmar a HSM Sign CR. No es el formato oficial de Hacienda (XSD v4.4),
+// sino una representación propia de los datos reales de la factura.
+export function generarXmlFactura(factura: Factura): string {
+  const subtotal = factura.total;
+  const iva = calcularIva(subtotal);
+  const totalConIva = calcularTotalConIva(subtotal);
+
+  const escapar = (valor: string | number) =>
+    String(valor)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;");
+
+  const filasItems = factura.items
+    .map(
+      (item) => `
+    <Item>
+      <Concepto>${escapar(item.concepto)}</Concepto>
+      <Cantidad>${item.cantidad}</Cantidad>
+      <PrecioUnitario>${item.precioUnitario.toFixed(2)}</PrecioUnitario>
+    </Item>`
+    )
+    .join("");
+
+  return `<FacturaElectronica>
+  <Emisor>
+    <Nombre>${escapar(CLINICA_NOMBRE)}</Nombre>
+    <Identificacion>${escapar(CLINICA_IDENTIFICACION)}</Identificacion>
+  </Emisor>
+  <Receptor>
+    <Nombre>${escapar(factura.paciente)}</Nombre>
+    <Identificacion>${escapar(factura.cedulaPaciente)}</Identificacion>
+  </Receptor>
+  <NumeroFactura>${factura.id}</NumeroFactura>
+  <FechaEmision>${escapar(factura.fecha)}</FechaEmision>
+  <DetalleServicio>
+    <Item>
+      <Concepto>Consulta médica</Concepto>
+      <Cantidad>1</Cantidad>
+      <PrecioUnitario>${factura.montoConsulta.toFixed(2)}</PrecioUnitario>
+    </Item>${filasItems}
+  </DetalleServicio>
+  <ResumenFactura>
+    <SubTotal>${subtotal.toFixed(2)}</SubTotal>
+    <Iva>${iva.toFixed(2)}</Iva>
+    <Total>${totalConIva.toFixed(2)}</Total>
+  </ResumenFactura>
+</FacturaElectronica>`;
+}
