@@ -46,6 +46,14 @@ const PRECIO_POR_ESPECIALIDAD: Record<string, number> = {
 };
 const PRECIO_DEFECTO = 20000;
 
+// Catálogo de Hacienda - Nota 6 (tipoMedioPago), estructura v4.4
+const MEDIO_PAGO_HACIENDA: Record<MetodoPago, string> = {
+  "Efectivo": "01",
+  "Tarjeta": "02",
+  "Transferencia": "04",
+  "Sinpe Móvil": "06",
+};
+
 const formatoColones = (valor: number) =>
   valor.toLocaleString("es-CR", {
     style: "currency",
@@ -487,9 +495,11 @@ function ModalDetalleFactura({
     setErrorComprobante("");
     setGenerandoComprobante(true);
     try {
+      const codigoMedioPago =
+        MEDIO_PAGO_HACIENDA[factura.metodoPago as MetodoPago] ?? "99";
       const resultado = await facturaService.generarComprobante(
         factura.id,
-        factura.metodoPago,
+        codigoMedioPago,
       );
       const pdfUrl = URL.createObjectURL(resultado.pdfBlob);
       setComprobante({
@@ -511,9 +521,11 @@ function ModalDetalleFactura({
   const handleVerPreview = async () => {
     setErrorComprobante("");
     try {
+      const codigoMedioPago =
+        MEDIO_PAGO_HACIENDA[factura.metodoPago as MetodoPago] ?? "99";
       const html = await facturaService.previsualizarComprobante(
         factura.id,
-        factura.metodoPago,
+        codigoMedioPago,
       );
       const ventana = window.open("", "_blank");
       if (ventana) {
