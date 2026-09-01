@@ -96,11 +96,25 @@ export function pagarConBanky(datos) {
         // Sin este vigía, si el usuario cierra la ventana sin pagar
         // la promesa quedaría pendiente para siempre y la pantalla
         // se congelaría en el estado de procesando.
+        //
+        // Ojo: cuando el pago SÍ se completa, BankyFinanzas envía el
+        // postMessage y cierra su ventana casi al mismo tiempo. Si este
+        // vigía resolviera "cancelled" apenas detecta la ventana cerrada,
+        // puede ganarle la carrera al mensaje real y reportar cancelado
+        // un pago que en realidad fue exitoso. Por eso, al detectar el
+        // cierre, se espera un margen breve para dejar que el mensaje
+        // pendiente (si lo hay) se procese antes de dar por cancelado.
+        const MARGEN_GRACIA_MS = 800;
         const intervaloVigilancia = setInterval(() => {
             if (ventana.closed && !finalizado) {
-                finalizado = true;
-                limpiar();
-                resolve({ status: 'cancelled' });
+                clearInterval(intervaloVigilancia);
+                setTimeout(() => {
+                    if (!finalizado) {
+                        finalizado = true;
+                        limpiar();
+                        resolve({ status: 'cancelled' });
+                    }
+                }, MARGEN_GRACIA_MS);
             }
         }, INTERVALO_VIGILANCIA_MS);
 
