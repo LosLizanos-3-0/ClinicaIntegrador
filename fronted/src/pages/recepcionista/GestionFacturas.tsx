@@ -19,10 +19,6 @@ import {
   facturaService,
 } from "../../services/factura.service";
 import {
-  enviarFacturaATributacion,
-  type ResultadoEnvioTributacion,
-} from "../../services/tributacionDirecta.service";
-import {
   crearVentaBoricuas,
   firmarVentaBoricuas,
   type ResultadoFacturacionDigital,
@@ -35,9 +31,7 @@ import {
 const ESTADOS: EstadoFactura[] = ["Pendiente", "Pagada", "Anulada"];
 const METODOS_PAGO: MetodoPago[] = [
   "Efectivo",
-  "Tarjeta",
-  "Sinpe Móvil",
-  "Transferencia",
+  "Banky Finanzas",
 ];
 
 const ESTADO_COLOR: Record<EstadoFactura, string> = {
@@ -61,6 +55,7 @@ const MEDIO_PAGO_HACIENDA: Record<MetodoPago, string> = {
   "Tarjeta": "02",
   "Transferencia": "04",
   "Sinpe Móvil": "06",
+  "Banky Finanzas": "02",
 };
 
 const formatoColones = (valor: number) =>
@@ -405,15 +400,9 @@ function ModalDetalleFactura({
     fecha: string;
   } | null>(null);
 
-  // Tributación Directa: solo tiene sentido una vez que la factura ya
-  // está firmada (xmlFirmadoSesion existe).
-  const [enviandoTributacion, setEnviandoTributacion] = useState(false);
-  const [resultadoTributacion, setResultadoTributacion] =
-    useState<ResultadoEnvioTributacion | null>(null);
-
   // Facturación digital (Boricuas -> Mini Tributación DGTD). Independiente
-  // de la Firma digital y de Tributación Directa: arma su propio XML a
-  // partir de la venta que crea Boricuas con la identidad de la clínica.
+  // de la Firma digital: arma su propio XML a partir de la venta que crea
+  // Boricuas con la identidad de la clínica.
   const [procesandoFacturacionDigital, setProcesandoFacturacionDigital] = useState(false);
   const [resultadoFacturacionDigital, setResultadoFacturacionDigital] =
     useState<ResultadoFacturacionDigital | null>(null);
@@ -443,10 +432,7 @@ function ModalDetalleFactura({
       if (resultado.status === "completed") {
         // El propio banco ya validó tarjeta y cuenta del pagador dentro
         // de su ventana; aquí solo reflejamos el resultado en la factura.
-        clinicaStore.marcarFacturaPagada(
-          factura.id,
-          "Banky Finanzas" as MetodoPago,
-        );
+        clinicaStore.marcarFacturaPagada(factura.id, "Banky Finanzas");
         onCerrar();
         return;
       }
@@ -516,20 +502,6 @@ function ModalDetalleFactura({
       setMensajeFirma(error?.message || "No fue posible verificar la firma.");
     } finally {
       setVerificando(false);
-    }
-  };
-
-  // Envía la factura firmada a Tributación Directa. Solo tiene sentido
-  // una vez que ya está firmada (xmlFirmadoSesion existe).
-  const handleEnviarTributacion = async () => {
-    if (!xmlFirmadoSesion) return;
-    setEnviandoTributacion(true);
-    setResultadoTributacion(null);
-    try {
-      const resultado = await enviarFacturaATributacion(factura, xmlFirmadoSesion.xml);
-      setResultadoTributacion(resultado);
-    } finally {
-      setEnviandoTributacion(false);
     }
   };
 
@@ -803,55 +775,6 @@ function ModalDetalleFactura({
                 )}
               </div>
 
-              {/* Tributación Directa deshabilitada temporalmente. Descomentar el bloque siguiente (y volver a activar handleEnviarTributacion) para reactivarla.
-              {xmlFirmadoSesion && (
-                <div className="d-flex flex-column gap-2">
-                  <p className="fs-12 fw-medium text-dark mb-0">Tributación Directa</p>
-
-                  {resultadoTributacion?.ok ? (
-                    <>
-                      <span className="badge-soft badge-soft-green w-fit-content">
-                        Aceptada
-                      </span>
-                      {resultadoTributacion.numeroAcuse != null && (
-                        <p className="fs-11 text-secondary mb-0">
-                          N.º de acuse: {resultadoTributacion.numeroAcuse}
-                        </p>
-                      )}
-                    </>
-                  ) : (
-                                <button
-                      onClick={handleEnviarTributacion}
-                      disabled={enviandoTributacion}
-                      className="btn btn-outline-primary btn-sm w-100 d-flex align-items-center justify-content-center gap-1"
-                    >
-                      <i className="bi bi-send-fill" aria-hidden="true" />
-                      {enviandoTributacion ? "Enviando…" : "Enviar a Tributación Directa"}
-                    </button>
-                  )}
-
-                  {resultadoTributacion && !resultadoTributacion.ok && (
-                    <div className="badge-soft badge-soft-red w-100 text-start py-2 px-3 fs-12">
-                      {resultadoTributacion.mensaje}
-                      {resultadoTributacion.camposFaltantes && resultadoTributacion.camposFaltantes.length > 0 && (
-                        <>
-                          {" "}
-                          Faltan: {resultadoTributacion.camposFaltantes.join(", ")}.
-                        </>
-                      )}
-                    </div>
-                  )}
-
-                  {resultadoTributacion?.ok && (
-                    <div className="badge-soft badge-soft-blue w-100 text-start py-2 px-3 fs-12">
-                      {resultadoTributacion.mensaje}
-                    </div>
-                  )}
-                </div>
-              )}
-              */}
-              {false && xmlFirmadoSesion && resultadoTributacion && enviandoTributacion && (typeof handleEnviarTributacion === "function") && null}
-
               <div className="d-flex flex-column gap-2">
                 <p className="fs-12 fw-medium text-dark mb-0">Facturación digital</p>
 
@@ -908,36 +831,51 @@ function ModalDetalleFactura({
                   className="form-select form-select-sm"
                 >
                   {METODOS_PAGO.map((m) => (
-                    <option key={m}>{m}</option>
+                    <option key={m} value={m}>
+                      {m === "Banky Finanzas" ? "Tarjeta (Banky Finanzas)" : m}
+                    </option>
                   ))}
                 </select>
               </Field>
 
-              <button
-                type="button"
-                onClick={handlePagarConBanky}
-                disabled={procesandoBanky}
-                className="btn btn-sm w-100 text-white"
-                style={{ backgroundColor: "#FA9412", borderColor: "#FA9412" }}
-              >
-                {procesandoBanky
-                  ? "Procesando pago…"
-                  : "Pagar con Banky Finanzas"}
-              </button>
+              {metodoPago === "Banky Finanzas" ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={handlePagarConBanky}
+                    disabled={procesandoBanky}
+                    className="btn btn-sm w-100 text-white"
+                    style={{ backgroundColor: "#FA9412", borderColor: "#FA9412" }}
+                  >
+                    {procesandoBanky
+                      ? "Procesando pago…"
+                      : "Pagar con Banky Finanzas"}
+                  </button>
 
-              {errorBanky && (
-                <div className="badge-soft badge-soft-red w-100 text-start py-2 px-3 fs-12">
-                  {errorBanky}
-                </div>
-              )}
+                  {errorBanky && (
+                    <div className="badge-soft badge-soft-red w-100 text-start py-2 px-3 fs-12">
+                      {errorBanky}
+                    </div>
+                  )}
 
+                  <button
+                    onClick={() => {
+                      clinicaStore.anularFactura(factura.id);
+                      onCerrar();
+                    }}
+                    disabled={procesandoBanky}
+                    className="btn btn-outline-danger btn-sm w-100"
+                  >
+                    Anular factura
+                  </button>
+                </>
+              ) : (
               <div className="d-flex gap-2">
                 <button
                   onClick={() => {
                     clinicaStore.anularFactura(factura.id);
                     onCerrar();
                   }}
-                  disabled={procesandoBanky}
                   className="btn btn-outline-danger btn-sm flex-fill"
                 >
                   Anular factura
@@ -953,6 +891,7 @@ function ModalDetalleFactura({
                   Registrar pago
                 </button>
               </div>
+              )}
             </>
           )}
         </div>

@@ -12,6 +12,7 @@ const METODO_A_BD: Record<MetodoPago, string> = {
   Tarjeta: "Tarjeta",
   Transferencia: "Transferencia",
   "Sinpe Móvil": "SINPE",
+  "Banky Finanzas": "Banky",
 };
 
 const BD_A_METODO: Record<string, MetodoPago> = {
