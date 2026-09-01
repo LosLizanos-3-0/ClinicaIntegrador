@@ -850,7 +850,7 @@ function ModalDetalleFactura({
                 </div>
               )}
               */}
-              {false && xmlFirmadoSesion && resultadoTributacion && enviandoTributacion && handleEnviarTributacion && null}
+              {false && xmlFirmadoSesion && resultadoTributacion && enviandoTributacion && (typeof handleEnviarTributacion === "function") && null}
 
               <div className="d-flex flex-column gap-2">
                 <p className="fs-12 fw-medium text-dark mb-0">Facturación digital</p>
