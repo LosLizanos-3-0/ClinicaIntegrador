@@ -126,7 +126,7 @@ export interface Cita {
 
 export type EstadoFactura = "Pendiente" | "Pagada" | "Anulada";
 
-export type MetodoPago = "Efectivo" | "Tarjeta" | "Sinpe Móvil" | "Transferencia";
+export type MetodoPago = "Efectivo" | "Tarjeta" | "Sinpe Móvil" | "Transferencia" | "Banky Finanzas";
 
 export interface ItemFactura {
   idDetalleFactura?: number;
