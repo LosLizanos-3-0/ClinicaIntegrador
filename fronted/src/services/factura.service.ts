@@ -12,7 +12,13 @@ const METODO_A_BD: Record<MetodoPago, string> = {
   Tarjeta: "Tarjeta",
   Transferencia: "Transferencia",
   "Sinpe Móvil": "SINPE",
-  "Banky Finanzas": "Banky",
+  // La BD tiene una restricción CHECK que solo acepta valores conocidos
+  // (Efectivo, Tarjeta, Transferencia, SINPE). "Banky Finanzas" no existe
+  // ahí, así que se registra como Tarjeta porque Banky procesa el cobro
+  // con tarjeta por detrás. NO cambiar esto a "Banky" ni a ningún otro
+  // valor nuevo sin antes ampliar el CHECK constraint en la BD, o el
+  // INSERT truena con 500.
+  "Banky Finanzas": "Tarjeta",
 };
 
 const BD_A_METODO: Record<string, MetodoPago> = {
