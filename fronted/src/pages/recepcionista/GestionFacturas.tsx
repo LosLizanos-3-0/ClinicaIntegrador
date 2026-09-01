@@ -710,7 +710,6 @@ function ModalDetalleFactura({
                 Pagada con {factura.metodoPago}.
               </p>
 
-              {/* ── COMPROBANTE ELECTRÓNICO ───────────────────────────── */}
               <div className="d-flex flex-column gap-2">
                 <p className="fs-12 fw-medium text-dark mb-0">Comprobante electrónico</p>
                 {!comprobante ? (
@@ -766,7 +765,6 @@ function ModalDetalleFactura({
                 )}
               </div>
 
-              {/* ── FIRMA DIGITAL — solo después del pago ─────────────── */}
               <div className="d-flex flex-column gap-2">
                 <p className="fs-12 fw-medium text-dark mb-0">Firma digital</p>
 
@@ -805,7 +803,7 @@ function ModalDetalleFactura({
                 )}
               </div>
 
-              {/* ── TRIBUTACIÓN DIRECTA — solo después de firmada ─────── */}
+              {/* Tributación Directa deshabilitada temporalmente. Descomentar el bloque siguiente (y volver a activar handleEnviarTributacion) para reactivarla.
               {xmlFirmadoSesion && (
                 <div className="d-flex flex-column gap-2">
                   <p className="fs-12 fw-medium text-dark mb-0">Tributación Directa</p>
@@ -851,8 +849,9 @@ function ModalDetalleFactura({
                   )}
                 </div>
               )}
+              */}
+              {false && xmlFirmadoSesion && resultadoTributacion && enviandoTributacion && handleEnviarTributacion && null}
 
-              {/* ── FACTURACIÓN DIGITAL (Boricuas -> Mini Tributación) ── */}
               <div className="d-flex flex-column gap-2">
                 <p className="fs-12 fw-medium text-dark mb-0">Facturación digital</p>
 
@@ -1038,7 +1037,6 @@ export default function GestionFacturas() {
         </div>
 
         <div className="p-4">
-          {/* Stats */}
           <div className="row row-cols-3 g-3 mb-4">
             <div className="col">
               <StatCard
@@ -1063,7 +1061,6 @@ export default function GestionFacturas() {
             </div>
           </div>
 
-          {/* Filtros */}
           <div className="d-flex flex-column flex-sm-row gap-2 mb-3">
             <div className="flex-fill d-flex align-items-center gap-2 bg-soft border rounded px-3 py-2">
               <span className="text-secondary fs-6">🔍</span>

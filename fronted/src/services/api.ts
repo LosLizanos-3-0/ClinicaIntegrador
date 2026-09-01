@@ -2,7 +2,7 @@ import axios from "axios";
 import { getUsuarioActualId } from "./sesionActual";
 
 const api = axios.create({
-  baseURL: "/api",
+  baseURL: "http://localhost:4000/api",
   headers: { "Content-Type": "application/json" },
 });
 
